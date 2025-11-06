@@ -99,7 +99,7 @@ def post_detail(post_id):
                     )
                     db.session.add(notification)
                     
-                    # Émettre une notification temps réel
+                    # Emit real-time notification
                     socketio.emit('notification', {
                         'type': 'comment',
                         'title': 'Nouveau commentaire !',
@@ -328,7 +328,7 @@ def admin_chat_user(user_id):
         ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
     ).order_by(Message.timestamp.asc()).all()
     
-    # Gérer l'envoi de message
+    # Handle message sending
     if request.method == 'POST':
         content = request.form.get('content', '').strip()
         file = request.files.get('file')
@@ -706,8 +706,8 @@ def reply_to_comment(post_id, comment_id):
             notification = Notification(
                 user_id=parent_comment.author_id,
                 type='reply',
-                title='Nouvelle réponse !',
-                message=f'{current_user.username} a répondu à votre commentaire',
+                title='New reply!',
+                message=f'Someone replied to your comment',
                 related_post_id=post.id,
                 related_comment_id=reply.id
             )
@@ -716,8 +716,8 @@ def reply_to_comment(post_id, comment_id):
             # Émettre une notification temps réel
             socketio.emit('notification', {
                 'type': 'reply',
-                'title': 'Nouvelle réponse !',
-                'message': f'{current_user.username} a répondu à votre commentaire',
+                'title': 'New reply!',
+                'message': f'Someone replied to your comment',
                 'user_id': parent_comment.author_id
             })
         
@@ -905,7 +905,7 @@ def user_profile(user_id):
 
 # Function to create default badges
 def create_default_badges():
-    """Crée les badges par défaut du système"""
+    """Creates default system badges"""
     default_badges = [
         {
             'name': 'Premier Post',
@@ -960,7 +960,7 @@ def create_default_badges():
 
 # Function to check and award badges
 def check_and_award_badges(user):
-    """Vérifie et attribue les badges à un utilisateur"""
+    """Checks and awards badges to a user"""
     badges = Badge.query.all()
     
     for badge in badges:
@@ -983,12 +983,12 @@ def check_and_award_badges(user):
                 user.add_badge(badge.name)
                 user.add_experience(badge.points_reward)
                 
-                # Créer une notification
+                # Create notification
                 notification = Notification(
                     user_id=user.id,
                     type='badge',
-                    title='Nouveau badge obtenu !',
-                    message=f'Vous avez obtenu le badge "{badge.name}" : {badge.description}',
+                    title='New badge earned!',
+                    message=f'You earned the badge "{badge.name}": {badge.description}',
                 )
                 db.session.add(notification)
                 
@@ -1022,7 +1022,7 @@ def edit_profile():
         # Mettre à jour le nom d'utilisateur
         current_user.username = form.username.data
         
-        # Gérer l'upload de la photo de profil
+        # Handle profile picture upload
         if form.profile_picture.data:
             file = form.profile_picture.data
             if file and allowed_file(file.filename):
@@ -1046,7 +1046,7 @@ def edit_profile():
         flash('Profile updated successfully!', 'success')
         return redirect(url_for('user_profile', user_id=current_user.id))
     
-    # Pré-remplir le formulaire avec les données actuelles
+    # Pre-fill form with current data
     form.username.data = current_user.username
     
     return render_template('edit_profile.html', form=form)
