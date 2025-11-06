@@ -12,7 +12,7 @@
             {% for message in messages %}
             <div class="message {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}">
                 <div class="message-header">
-                    <span class="message-author">{{ message.sender.username }}</span>
+                    <span class="message-author">{% if message.sender.is_admin %}Admin{% else %}You{% endif %}</span>
                     <span class="message-time">{{ message.timestamp.strftime('%H:%M') }}</span>
                 </div>
                 <div class="message-content">
