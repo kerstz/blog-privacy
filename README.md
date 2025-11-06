@@ -27,6 +27,10 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 - **Frontend**: HTML5, CSS3, JavaScript
 - **Styling**: Custom CSS with modern gradients and animations
 
+## Quick Start
+
+**New to this?** Check out our [5-Minute Setup Guide](SETUP_GUIDE.md) to quickly personalize your blog!
+
 ## Installation
 
 ### Prerequisites
@@ -38,7 +42,7 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/techblog.git
+git clone https://github.com/berstz/blog-privacy.git
 cd techblog
 ```
 
@@ -190,7 +194,7 @@ Want to change the look and feel of your blog? Check out our comprehensive [Them
 ```
 
 ## Future Enhancements
-
+ I don't really know if i have the time for this but why not add this in the future :)
 - [ ] Search functionality
 - [ ] Categories and tags
 - [ ] RSS feed
