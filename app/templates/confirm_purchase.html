@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="confirm-purchase-page">
+    <h1>Confirm Your Purchase</h1>
+    <p>You are about to purchase {{ quantity }} months of the <strong>{{ plan.name }}</strong> plan for a total of <strong>${{ total_price }}</strong>.</p>
+<form method="POST">
+    {{ form.hidden_tag() }}  <!-- Inclure le jeton CSRF ici -->
+    {{ form.submit(class="btn btn-success") }}  <!-- Bouton de soumission -->
+    <a href="{{ url_for('premium_content') }}" class="btn btn-secondary">Cancel</a>
+</form>
+
+</div>
+{% endblock %}

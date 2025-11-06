@@ -1,0 +1,265 @@
+{% extends 'layout.html' %}
+
+{% block title %}Notifications - Blog{% endblock %}
+
+{% block content %}
+
+        <div class="notifications-container">
+            <div class="notifications-header">
+                <h2><span class="icon-bell"></span> Notifications</h2>
+                <form method="POST" action="{{ url_for('mark_all_notifications_read') }}" style="display: inline;">
+                    {{ form.hidden_tag() }}
+                    <button type="submit" class="btn-mark-all-read">
+                        <span class="icon-check-double"></span> Tout marquer comme lu
+                    </button>
+                </form>
+            </div>
+
+            {% if notifications %}
+                <div class="notifications-list">
+                    {% for notification in notifications %}
+                        <div class="notification-item {% if not notification.is_read %}unread{% endif %}">
+                            <div class="notification-icon">
+                                {% if notification.type == 'comment' %}
+                                    <span class="icon-comment"></span>
+                                {% elif notification.type == 'reply' %}
+                                    <span class="icon-reply"></span>
+                                {% elif notification.type == 'like' %}
+                                    <span class="icon-heart"></span>
+                                {% elif notification.type == 'badge' %}
+                                    <span class="icon-medal"></span>
+                                {% else %}
+                                    <span class="icon-bell"></span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="notification-content">
+                                <h4>{{ notification.title }}</h4>
+                                <p>{{ notification.message }}</p>
+                                <span class="notification-time">
+                                    <span class="icon-clock"></span> {{ notification.created_at.strftime('%d/%m/%Y à %H:%M') }}
+                                </span>
+                            </div>
+                            
+                            <div class="notification-actions">
+                                {% if not notification.is_read %}
+                                    <form method="POST" action="{{ url_for('mark_notification_read', notification_id=notification.id) }}" style="display: inline;">
+                                        {{ form.hidden_tag() }}
+                                        <button type="submit" class="btn-mark-read">
+                                            <span class="icon-check"></span>
+                                        </button>
+                                    </form>
+                                {% endif %}
+                                
+                                {% if notification.related_post_id %}
+                                    <a href="{{ url_for('post_detail', post_id=notification.related_post_id) }}" class="btn-view">
+                                        <span class="icon-eye"></span>
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-notifications">
+                    <span class="icon-bell-slash"></span>
+                    <h3>Aucune notification</h3>
+                    <p>Vous n'avez pas encore de notifications.</p>
+                </div>
+            {% endif %}
+        </div>
+
+{% endblock %}
+
+{% block extra_css %}
+        .notifications-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .notifications-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+            border-radius: 15px;
+            border: 2px solid #8b93ff;
+        }
+
+        .notifications-header h2 {
+            color: #8b93ff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-mark-all-read {
+            background: linear-gradient(135deg, #51cf66, #40c057);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-mark-all-read:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4);
+        }
+
+        .notifications-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .notification-item {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            transition: all 0.3s ease;
+            border-left: 4px solid #444;
+        }
+
+        .notification-item.unread {
+            background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+            border-left-color: #8b93ff;
+            box-shadow: 0 4px 15px rgba(139, 147, 255, 0.2);
+        }
+
+        .notification-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .notification-item.unread .notification-icon {
+            background: rgba(139, 147, 255, 0.2);
+            color: #8b93ff;
+        }
+
+        .notification-item:not(.unread) .notification-icon {
+            background: rgba(108, 117, 125, 0.2);
+            color: #6c757d;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-content h4 {
+            color: #e0e0e0;
+            margin: 0 0 8px 0;
+            font-size: 1.1rem;
+        }
+
+        .notification-content p {
+            color: #c3c4cb;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        .notification-time {
+            color: #888;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-mark-read, .btn-view {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-mark-read {
+            background: #51cf66;
+            color: white;
+        }
+
+        .btn-mark-read:hover {
+            background: #40c057;
+            transform: scale(1.1);
+        }
+
+        .btn-view {
+            background: #8b93ff;
+            color: white;
+        }
+
+        .btn-view:hover {
+            background: #6f7ae6;
+            transform: scale(1.1);
+            color: white;
+        }
+
+        .no-notifications {
+            text-align: center;
+            padding: 60px 20px;
+            color: #c3c4cb;
+        }
+
+        .no-notifications i {
+            font-size: 4rem;
+            color: #8b93ff;
+            margin-bottom: 20px;
+        }
+
+        .no-notifications h3 {
+            color: #e0e0e0;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .notifications-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .notification-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .notification-actions {
+                justify-content: center;
+            }
+        }
+{% endblock %}

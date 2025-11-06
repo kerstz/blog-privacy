@@ -1,0 +1,156 @@
+/* Icônes Unicode pour compatibilité NoScript/Tor */
+
+/* Icônes de base - via ::before (compatible NoScript) */
+.icon-user::before { content: "👤"; }
+.icon-cog::before { content: "⚙️"; }
+.icon-bell::before { content: "🔔"; }
+.icon-sign-out::before { content: "🚪"; }
+.icon-comments::before { content: "💬"; }
+.icon-users::before { content: "👥"; }
+.icon-comment-dots::before { content: "💭"; }
+.icon-download::before { content: "⬇️"; }
+.icon-comment-slash::before { content: "💬"; }
+.icon-heart::before { content: "❤️"; }
+.icon-medal::before { content: "🏅"; }
+.icon-reply::before { content: "↩️"; }
+.icon-edit::before { content: "✏️"; }
+.icon-delete::before { content: "🗑️"; }
+.icon-plus::before { content: "➕"; }
+.icon-search::before { content: "🔍"; }
+.icon-home::before { content: "🏠"; }
+.icon-envelope::before { content: "✉️"; }
+.icon-calendar::before { content: "📅"; }
+.icon-clock::before { content: "🕐"; }
+.icon-star::before { content: "⭐"; }
+.icon-lock::before { content: "🔒"; }
+.icon-unlock::before { content: "🔓"; }
+.icon-eye::before { content: "👁️"; }
+.icon-eye-slash::before { content: "🙈"; }
+.icon-check::before { content: "✅"; }
+.icon-times::before { content: "❌"; }
+.icon-arrow-left::before { content: "⬅️"; }
+.icon-arrow-right::before { content: "➡️"; }
+.icon-arrow-up::before { content: "⬆️"; }
+.icon-arrow-down::before { content: "⬇️"; }
+.icon-image::before { content: "🖼️"; }
+.icon-video::before { content: "🎥"; }
+.icon-file::before { content: "📄"; }
+.icon-folder::before { content: "📁"; }
+.icon-link::before { content: "🔗"; }
+.icon-share::before { content: "📤"; }
+.icon-settings::before { content: "⚙️"; }
+.icon-info::before { content: "ℹ️"; }
+.icon-warning::before { content: "⚠️"; }
+.icon-error::before { content: "❌"; }
+.icon-success::before { content: "✅"; }
+.icon-newspaper::before { content: "📰"; }
+.icon-plus-circle::before { content: "➕"; }
+.icon-list::before { content: "📋"; }
+.icon-save::before { content: "💾"; }
+
+/* Masquer les icônes Font Awesome */
+.fas, .far, .fab, .fa {
+    display: none !important;
+}
+
+/* Style pour les icônes Unicode */
+[class*="icon-"]::before {
+    display: inline-block;
+    margin-right: 5px;
+    font-size: 1.1em;
+    line-height: 1;
+}
+
+/* Centrage spécial pour les boutons de navigation */
+.user-btn [class*="icon-"],
+.notification-btn [class*="icon-"],
+.logout-btn [class*="icon-"],
+.panel-btn [class*="icon-"] {
+    margin: 0;
+    font-size: 1em;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* Ne pas décaler l’icône dans les boutons ronds */
+.user-btn [class*="icon-"]::before,
+.notification-btn [class*="icon-"]::before,
+.logout-btn [class*="icon-"]::before,
+.panel-btn [class*="icon-"]::before {
+    margin-right: 0;
+}
+
+/* Indicateur de notification (petit rond rouge) */
+.notification-btn {
+    position: relative;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: #ff4444;
+    color: white;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    font-size: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    border: 2px solid #1a1a1a;
+    z-index: 10;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+/* Icônes spécifiques pour l'admin */
+.admin-icon::before {
+    content: "👑";
+    color: #ffd700;
+}
+
+/* Icônes pour les posts */
+.post-icon::before {
+    content: "📝";
+}
+
+/* Icônes pour les commentaires */
+.comment-icon::before {
+    content: "💬";
+}
+
+/* Icônes pour les utilisateurs */
+.user-icon::before {
+    content: "👤";
+}
+
+/* Icônes pour les statistiques */
+.stats-icon::before {
+    content: "📊";
+}
+
+/* Icônes pour les bannières */
+.banner-icon::before {
+    content: "🖼️";
+}
+
+/* Icônes pour les pages statiques */
+.page-icon::before {
+    content: "📄";
+}
+
+/* Icônes pour le chat */
+.chat-icon::before {
+    content: "💬";
+}

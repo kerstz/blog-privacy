@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TechBlog{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <header>
+        <nav class="navbar">
+            <a class="navbar-brand" href="{{ url_for('index') }}">TechBlog</a>
+            <ul class="navbar-menu">
+                <li><a href="{{ url_for('about') }}">About</a></li>
+                <li><a href="{{ url_for('contact') }}">Contact</a></li>
+
+                {% if current_user.is_authenticated %}
+                    {% if current_user.is_admin %}
+                        <li><a href="{{ url_for('admin_dashboard') }}" class="panel-btn">
+                            <span class="icon-cog"></span>
+                        </a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="user-btn">
+                        <span class="icon-user"></span>
+                    </a></li>
+                    <li><a href="{{ url_for('notifications') }}" class="notification-btn">
+                        <span class="icon-bell"></span>
+                        {% if current_user.unread_notifications_count() > 0 %}
+                            <span class="notification-badge">{{ current_user.unread_notifications_count() }}</span>
+                        {% endif %}
+                    </a></li>
+                    <li><a href="{{ url_for('logout') }}" class="logout-btn">
+                        <span class="icon-sign-out"></span>
+                    </a></li>
+                {% else %}
+                    <li><a href="{{ url_for('register') }}" class="register-btn">Register</a></li>
+                    <li><a href="{{ url_for('login') }}" class="login-btn">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <a href="{{ url_for('donate') }}" class="donate-btn">
+                ❤️ Support
+            </a>
+        </div>
+    </footer>
+</body>
+</html>

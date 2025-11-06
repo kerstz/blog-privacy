@@ -1,0 +1,269 @@
+{% extends 'layout.html' %}
+
+{% block title %}Aide de l'Éditeur - Blog{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="editor-help-container">
+        <h2><span class="icon-info"></span> Aide de l'Éditeur de Texte</h2>
+        
+        <div class="help-section">
+            <h3>Balises de Formatage</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[b]Texte en gras[/b]</code>
+                    <p>Met le texte en <strong>gras</strong></p>
+                </div>
+                <div class="help-item">
+                    <code>[i]Texte en italique[/i]</code>
+                    <p>Met le texte en <em>italique</em></p>
+                </div>
+                <div class="help-item">
+                    <code>[u]Texte souligné[/u]</code>
+                    <p>Met le texte en <u>souligné</u></p>
+                </div>
+                <div class="help-item">
+                    <code>[s]Texte barré[/s]</code>
+                    <p>Met le texte en <s>barré</s></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Liens et Images</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[url]https://example.com[/url]</code>
+                    <p>Crée un lien vers une URL</p>
+                </div>
+                <div class="help-item">
+                    <code>[url=https://example.com]Texte du lien[/url]</code>
+                    <p>Crée un lien avec un texte personnalisé</p>
+                </div>
+                <div class="help-item">
+                    <code>[img]https://example.com/image.jpg[/img]</code>
+                    <p>Insère une image depuis une URL</p>
+                </div>
+                <div class="help-item">
+                    <code>[img=width,height]https://example.com/image.jpg[/img]</code>
+                    <p>Insère une image avec des dimensions spécifiques</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Listes et Structure</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[list]<br>[*]Élément 1<br>[*]Élément 2<br>[/list]</code>
+                    <p>Crée une liste à puces</p>
+                </div>
+                <div class="help-item">
+                    <code>[list=1]<br>[*]Élément 1<br>[*]Élément 2<br>[/list]</code>
+                    <p>Crée une liste numérotée</p>
+                </div>
+                <div class="help-item">
+                    <code>[quote]Citation[/quote]</code>
+                    <p>Crée un bloc de citation</p>
+                </div>
+                <div class="help-item">
+                    <code>[code]Code source[/code]</code>
+                    <p>Crée un bloc de code</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Couleurs et Tailles</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[color=red]Texte rouge[/color]</code>
+                    <p>Change la couleur du texte</p>
+                </div>
+                <div class="help-item">
+                    <code>[size=18]Texte plus grand[/size]</code>
+                    <p>Change la taille du texte (en pixels)</p>
+                </div>
+                <div class="help-item">
+                    <code>[font=Arial]Texte avec police[/font]</code>
+                    <p>Change la police du texte</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Alignement</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[center]Texte centré[/center]</code>
+                    <p>Centre le texte</p>
+                </div>
+                <div class="help-item">
+                    <code>[left]Texte aligné à gauche[/left]</code>
+                    <p>Aligne le texte à gauche</p>
+                </div>
+                <div class="help-item">
+                    <code>[right]Texte aligné à droite[/right]</code>
+                    <p>Aligne le texte à droite</p>
+                </div>
+                <div class="help-item">
+                    <code>[justify]Texte justifié[/justify]</code>
+                    <p>Justifie le texte</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Média et Fichiers</h3>
+            <div class="help-grid">
+                <div class="help-item">
+                    <code>[video]https://example.com/video.mp4[/video]</code>
+                    <p>Insère une vidéo</p>
+                </div>
+                <div class="help-item">
+                    <code>[audio]https://example.com/audio.mp3[/audio]</code>
+                    <p>Insère un fichier audio</p>
+                </div>
+                <div class="help-item">
+                    <code>[file]https://example.com/document.pdf[/file]</code>
+                    <p>Crée un lien de téléchargement</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="help-section">
+            <h3>Exemple Complet</h3>
+            <div class="example-box">
+                <pre><code>[b]Titre en gras[/b]
+
+[i]Paragraphe en italique[/i]
+
+[img]https://example.com/image.jpg[/img]
+
+[list]
+[*]Premier point
+[*]Deuxième point
+[/list]
+
+[quote]Citation importante[/quote]
+
+[url=https://example.com]Lien vers un site[/url]</code></pre>
+            </div>
+        </div>
+
+        <div class="help-footer">
+            <p><span class="icon-info"></span> <strong>Astuce :</strong> Vous pouvez combiner plusieurs balises pour créer des effets complexes.</p>
+            <p><span class="icon-warning"></span> <strong>Attention :</strong> Assurez-vous que les URLs d'images et de médias sont accessibles publiquement.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.editor-help-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 15px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+}
+
+.editor-help-container h2 {
+    color: #8b93ff;
+    text-align: center;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.help-section {
+    margin-bottom: 40px;
+}
+
+.help-section h3 {
+    color: #8b93ff;
+    border-bottom: 2px solid #8b93ff;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.help-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+}
+
+.help-item code {
+    background: rgba(0, 0, 0, 0.3);
+    color: #8b93ff;
+    padding: 8px 12px;
+    border-radius: 5px;
+    display: block;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid rgba(139, 147, 255, 0.2);
+}
+
+.help-item p {
+    color: #c3c4cb;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.example-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 20px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+}
+
+.example-box pre {
+    color: #8b93ff;
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+}
+
+.help-footer {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(139, 147, 255, 0.1);
+    border-radius: 10px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+}
+
+.help-footer p {
+    color: #c3c4cb;
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-footer strong {
+    color: #8b93ff;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .editor-help-container {
+        margin: 10px;
+        padding: 20px;
+    }
+}
+</style>
+{% endblock %}

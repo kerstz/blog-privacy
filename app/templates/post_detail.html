@@ -1,0 +1,120 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="post-content">
+    <h2 class="post-title">{{ post.title }}</h2>
+    <div class="post-meta">
+        <span class="post-date">{{ post.date_posted.strftime('%B %d, %Y at %H:%M') }}</span>
+        <span class="post-views">{{ post.views_count }} views</span>
+    </div>
+    
+    <div class="post-actions">
+        {% if current_user.is_authenticated %}
+            <form method="POST" action="{{ url_for('like_post', post_id=post.id) }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="like-btn">
+                    <span class="icon-heart"></span> {{ post.likes_count }}
+                </button>
+            </form>
+        {% else %}
+            <span class="like-count">
+                <span class="icon-heart"></span> {{ post.likes_count }}
+            </span>
+        {% endif %}
+    </div>
+    
+    <div class="post-text">{{ post.content | safe }}</div>
+</div>
+
+<hr>
+
+<div class="comments-section">
+    <h3>Comments</h3>
+
+    {% macro render_comment(comment, level=0) %}
+    <div class="comment {% if level > 0 %}comment-reply{% endif %}" style="margin-left: {{ level * 20 }}px;">
+        <div class="comment-header">
+            <span class="comment-author"
+                style="color: {% if comment.author and comment.author.is_admin %}#f59e0b{% else %}#10b981{% endif %};">
+                {% if comment.author %}User{% else %}[deleted]{% endif %}
+            </span>
+            <span class="comment-date"> • {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+
+        <div class="comment-content">
+            {% if comment.deleted %}
+                <em>[deleted]</em>
+            {% else %}
+                {{ comment.content | safe }}
+            {% endif %}
+        </div>
+
+        {% if not comment.deleted %}
+            <div class="comment-actions">
+                {% if current_user.is_authenticated %}
+                    <form method="POST" action="{{ url_for('like_comment', comment_id=comment.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="btn-like-comment">
+                            <span class="icon-heart"></span> {{ comment.likes_count }}
+                        </button>
+                    </form>
+                    <a href="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}" class="btn-reply">💬 Reply</a>
+                {% else %}
+                    <span class="comment-likes">
+                        <span class="icon-heart"></span> {{ comment.likes_count }}
+                    </span>
+                {% endif %}
+
+                <!-- Admin can delete and edit all comments -->
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                    <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
+                        {{ form.hidden_tag() }}
+                        <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+                    </form>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm">✏ Edit</a>
+
+                <!-- User can edit and delete ONLY THEIR comments -->
+                {% elif current_user.is_authenticated and current_user.id == comment.author_id %}
+                    <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
+                        {{ form.hidden_tag() }}
+                        <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+                    </form>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm">✏ Edit</a>
+                {% endif %}
+            </div>
+
+            <div class="reply-form">
+                <form method="POST" action="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}">
+                    {{ form.hidden_tag() }}
+                    <textarea name="content" required class="form-control" rows="2" placeholder="Write your reply..."></textarea>
+                    <button type="submit" class="btn-submit">Reply</button>
+                </form>
+            </div>
+        {% endif %}
+
+        {% for reply in comment.replies %}
+            {{ render_comment(reply, level + 1) }}
+        {% endfor %}
+    </div>
+    {% endmacro %}
+
+    {% for comment in post.comments if not comment.parent_id %}
+        {{ render_comment(comment) }}
+    {% endfor %}
+</div>
+
+{% if current_user.is_authenticated %}
+<form method="POST" action="{{ url_for('post_detail', post_id=post.id) }}" class="new-comment-form mt-4">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.content.label }}
+        {{ form.content(rows=3, class="form-control") }}
+    </div>
+    <button type="submit" class="btn-submit">Add Comment</button>
+</form>
+{% else %}
+    <p class="alert-text text-muted">🔒 You must be logged in to leave a comment.</p>
+    <a href="{{ url_for('login') }}" class="btn-login">Log in</a>
+{% endif %}
+
+{% endblock %}

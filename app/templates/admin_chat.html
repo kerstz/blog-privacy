@@ -1,0 +1,342 @@
+{% extends 'layout.html' %}
+
+{% block title %}Admin Chat - Blog{% endblock %}
+
+{% block content %}
+<div class="admin-chat-container">
+    <div class="chat-header">
+        <h2><span class="icon-comments"></span> Admin Chat</h2>
+        <p>Select a user to start a conversation</p>
+    </div>
+
+    <div class="chat-layout">
+        <!-- Liste des utilisateurs -->
+        <div class="users-sidebar">
+            <h3><span class="icon-users"></span> Users</h3>
+            <div class="users-list">
+                {% for user in users %}
+                    <div class="user-item">
+                        <a href="{{ url_for('admin_chat_user', user_id=user.id) }}" class="user-link">
+                            <div class="user-avatar">
+                                <span class="icon-user"></span>
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">{{ user.username }}</span>
+                                <span class="user-level">Level {{ user.level }}</span>
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+                {% if not users %}
+                    <p class="no-users">No users available</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Zone de messages -->
+        <div class="messages-area">
+            <div class="messages-header">
+                <h3><span class="icon-comment-dots"></span> All Messages</h3>
+            </div>
+            <div class="messages-container">
+                {% for message in messages %}
+                    <div class="message-item {% if message.sender.is_admin %}admin-message{% else %}user-message{% endif %}">
+                        <div class="message-header">
+                            <span class="sender-name">{{ message.sender.username }}</span>
+                            <span class="message-time">{{ message.timestamp.strftime('%H:%M') }}</span>
+                        </div>
+                        <div class="message-content">
+                            {% if message.file_path %}
+                                {% if message.file_type == 'image' %}
+                                    <div class="message-file">
+                                        <img src="{{ url_for('static', filename=message.file_path) }}" alt="Image" class="message-image">
+                                    </div>
+                                {% elif message.file_type == 'video' %}
+                                    <div class="message-file">
+                                        <video controls class="message-video">
+                                            <source src="{{ url_for('static', filename=message.file_path) }}" type="video/mp4">
+                                            Votre navigateur ne supporte pas la lecture vidéo.
+                                        </video>
+                                    </div>
+                                {% else %}
+                                    <div class="message-file">
+                                        <a href="{{ url_for('static', filename=message.file_path) }}" download class="file-download">
+                                            <span class="icon-download"></span> Télécharger le fichier
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                            {% if message.get_decrypted_content() %}
+                                <div class="message-text">{{ message.get_decrypted_content() }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                {% if not messages %}
+                    <div class="no-messages">
+                        <span class="icon-comment-slash"></span>
+                        <p>No messages yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-chat-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.chat-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.chat-header h2 {
+    color: #8b93ff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.chat-header p {
+    color: #c3c4cb;
+    margin: 0;
+}
+
+.chat-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    height: 600px;
+}
+
+.users-sidebar {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+}
+
+.users-sidebar h3 {
+    color: #8b93ff;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+}
+
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.user-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.user-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.user-level {
+    color: #c3c4cb;
+    font-size: 0.8rem;
+}
+
+.no-users {
+    color: #c3c4cb;
+    text-align: center;
+    font-style: italic;
+    padding: 20px;
+}
+
+.messages-area {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 15px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.messages-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.messages-header h3 {
+    color: #8b93ff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+}
+
+.messages-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #8b93ff;
+}
+
+.admin-message {
+    border-left-color: #51cf66;
+    background: rgba(81, 207, 102, 0.1);
+}
+
+.user-message {
+    border-left-color: #8b93ff;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sender-name {
+    color: #8b93ff;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.admin-message .sender-name {
+    color: #51cf66;
+}
+
+.message-time {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.message-content {
+    color: #e0e0e0;
+    line-height: 1.5;
+}
+
+.message-text {
+    margin-top: 8px;
+}
+
+.message-file {
+    margin: 8px 0;
+}
+
+.message-image {
+    max-width: 300px;
+    max-height: 200px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.message-video {
+    max-width: 400px;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.file-download {
+    color: #8b93ff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(139, 147, 255, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.file-download:hover {
+    background: rgba(139, 147, 255, 0.2);
+    color: #8b93ff;
+    text-decoration: none;
+}
+
+.no-messages {
+    text-align: center;
+    color: #c3c4cb;
+    padding: 40px;
+}
+
+.no-messages i {
+    font-size: 3rem;
+    color: #8b93ff;
+    margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chat-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .users-sidebar {
+        order: 2;
+    }
+    
+    .messages-area {
+        order: 1;
+        height: 400px;
+    }
+}
+</style>
+{% endblock %}

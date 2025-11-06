@@ -1,0 +1,259 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="chat-page">
+    <div class="chat-header">
+        <h2>💬 Chat avec l'Admin</h2>
+        <p>Envoyez un message à l'administrateur du blog</p>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            {% for message in messages %}
+            <div class="message {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}">
+                <div class="message-header">
+                    <span class="message-author">{{ message.sender.username }}</span>
+                    <span class="message-time">{{ message.timestamp.strftime('%H:%M') }}</span>
+                </div>
+                <div class="message-content">
+                    {% if message.file_path %}
+                        {% if message.file_type == 'image' %}
+                            <img src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" alt="Image" class="message-image">
+                        {% elif message.file_type == 'video' %}
+                            <video controls class="message-video">
+                                <source src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" type="video/mp4">
+                            </video>
+                        {% else %}
+                            <a href="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" class="message-file" download>
+                                <span class="icon-download"></span> Télécharger le fichier
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    {% if message.content %}
+                        <p>{{ message.get_decrypted_content() if message.is_encrypted else message.content }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="chat-input-container">
+            <form method="POST" enctype="multipart/form-data" class="chat-form">
+                {{ form.hidden_tag() }}
+                <div class="input-group">
+                    <textarea name="message" placeholder="Tapez votre message..." rows="2" class="message-input"></textarea>
+                    <div class="file-upload-group">
+                        <input type="file" name="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.mp4" style="display: none;">
+                        <label for="file-input" class="file-upload-btn">
+                            <span class="icon-paperclip"></span>
+                        </label>
+                        <span id="file-name" class="file-name"></span>
+                    </div>
+                    <button type="submit" class="send-btn">
+                        <span class="icon-paper-plane"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.chat-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.chat-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.chat-header h2 {
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+
+.chat-header p {
+    color: #a0a0a0;
+    font-size: 0.9rem;
+}
+
+.chat-container {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-messages {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.message {
+    max-width: 70%;
+    padding: 0.8rem;
+    border-radius: 12px;
+    position: relative;
+}
+
+.message-sent {
+    align-self: flex-end;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.message-received {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.message-author {
+    font-weight: 600;
+    color: #e0e0e0;
+}
+
+.message-time {
+    color: #a0a0a0;
+}
+
+.message-content p {
+    margin: 0;
+    color: #e0e0e0;
+    line-height: 1.4;
+}
+
+.message-image, .message-video {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.message-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #60a5fa;
+    text-decoration: none;
+    padding: 0.5rem;
+    background: rgba(96, 165, 250, 0.1);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.message-file:hover {
+    background: rgba(96, 165, 250, 0.2);
+}
+
+.chat-input-container {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+}
+
+.input-group {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+.message-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.8rem;
+    color: #e0e0e0;
+    resize: none;
+    font-family: inherit;
+}
+
+.message-input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.file-upload-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.file-upload-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0.8rem;
+    cursor: pointer;
+    color: #a0a0a0;
+    transition: all 0.3s ease;
+}
+
+.file-upload-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #e0e0e0;
+}
+
+.file-name {
+    font-size: 0.7rem;
+    color: #a0a0a0;
+    margin-top: 0.2rem;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.send-btn {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 0.8rem;
+    color: #60a5fa;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.send-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+}
+</style>
+
+<script>
+// Auto-scroll vers le bas
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chat-messages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Afficher le nom du fichier sélectionné
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const fileName = document.getElementById('file-name');
+    if (e.target.files.length > 0) {
+        fileName.textContent = e.target.files[0].name;
+    } else {
+        fileName.textContent = '';
+    }
+});
+
+// Scroll initial
+scrollToBottom();
+</script>
+{% endblock %}

@@ -1,0 +1,435 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}Gérer les Commentaires - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h2><span class="icon-comments"></span> Gérer les Commentaires</h2>
+        <p>Modérez et gérez tous les commentaires du blog</p>
+    </div>
+
+    <div class="comments-section">
+        <div class="section-card">
+            <div class="section-header">
+                <h3><span class="icon-list"></span> Commentaires ({{ comments|length }})</h3>
+                <div class="filter-options">
+                    <select class="filter-select" id="statusFilter">
+                        <option value="all">Tous les commentaires</option>
+                        <option value="recent">Récents (7 derniers jours)</option>
+                        <option value="popular">Populaires (5+ likes)</option>
+                    </select>
+                </div>
+            </div>
+            
+            {% if comments %}
+                <div class="comments-grid">
+                    {% for comment in comments %}
+                        <div class="comment-card" data-date="{{ comment.date_posted.strftime('%Y-%m-%d') }}" data-likes="{{ comment.likes_count or 0 }}">
+                            <div class="comment-header">
+                                <div class="comment-author">
+                                    <div class="author-avatar">
+                                        {% if comment.author and comment.author.profile_picture %}
+                                            <img src="{{ url_for('uploaded_file', filename=comment.author.profile_picture.split('/')[-1]) }}" alt="Avatar">
+                                        {% else %}
+                                            <span class="icon-user"></span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="author-info">
+                                        <span class="author-name">
+                                            {{ comment.author.username if comment.author else '[Utilisateur supprimé]' }}
+                                        </span>
+                                        <span class="comment-date">
+                                            <span class="icon-clock"></span> {{ comment.date_posted.strftime('%d/%m/%Y à %H:%M') }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="comment-stats">
+                                    <span class="stat likes">
+                                        <span class="icon-heart"></span> {{ comment.likes_count or 0 }}
+                                    </span>
+                                    <span class="stat replies">
+                                        <span class="icon-reply"></span> {{ comment.replies|length }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="comment-content">
+                                <div class="post-context">
+                                    <span class="icon-newspaper"></span>
+                                    <strong>Article:</strong> 
+                                    <a href="{{ url_for('post_detail', post_id=comment.post_id) }}" class="post-link">
+                                        {{ comment.post.title }}
+                                    </a>
+                                </div>
+                                <div class="comment-text">
+                                    {{ comment.content[:200] }}{% if comment.content|length > 200 %}...{% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="comment-actions">
+                                <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="btn-edit">
+                                    <span class="icon-edit"></span> Modifier
+                                </a>
+                                <a href="{{ url_for('post_detail', post_id=comment.post_id) }}#comment-{{ comment.id }}" class="btn-view">
+                                    <span class="icon-eye"></span> Voir
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="delete-form">
+                                    {{ form.hidden_tag() }}
+                                    <button type="submit" class="btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')">
+                                        <span class="icon-trash"></span> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-comments">
+                    <span class="icon-comments"></span>
+                    <p>Aucun commentaire à gérer pour le moment</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.content-header h2 {
+    color: #8b93ff;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.content-header p {
+    color: #c3c4cb;
+    font-size: 1.1rem;
+}
+
+.section-card {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #8b93ff;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.section-header h3 {
+    color: #8b93ff;
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+
+.filter-options {
+    display: flex;
+    gap: 10px;
+}
+
+.filter-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #e0e0e0;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #8b93ff;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.comments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 20px;
+}
+
+.comment-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.comment-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: #8b93ff;
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+    gap: 15px;
+}
+
+.comment-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.author-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(139, 147, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.author-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.author-avatar i {
+    color: #8b93ff;
+    font-size: 1.2rem;
+}
+
+.author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.author-name {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.comment-date {
+    color: #a0a0a0;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.comment-stats {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.stat {
+    color: #8b93ff;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(139, 147, 255, 0.1);
+    padding: 4px 8px;
+    border-radius: 12px;
+}
+
+.comment-content {
+    margin-bottom: 20px;
+}
+
+.post-context {
+    color: #c3c4cb;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.post-link {
+    color: #8b93ff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.post-link:hover {
+    text-decoration: underline;
+}
+
+.comment-text {
+    color: #e0e0e0;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 12px;
+    border-radius: 8px;
+    border-left: 3px solid #8b93ff;
+}
+
+.comment-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-edit, .btn-view {
+    background: linear-gradient(135deg, #51cf66, #40c057);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-view {
+    background: linear-gradient(135deg, #74c0fc, #339af0);
+}
+
+.btn-edit:hover, .btn-view:hover {
+    transform: translateY(-1px);
+    text-decoration: none;
+    color: white;
+}
+
+.delete-form {
+    display: inline;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #e55353, #d63384);
+    transform: translateY(-1px);
+}
+
+.no-comments {
+    text-align: center;
+    color: #c3c4cb;
+    padding: 60px 20px;
+}
+
+.no-comments i {
+    font-size: 4rem;
+    color: #8b93ff;
+    margin-bottom: 20px;
+}
+
+.no-comments p {
+    font-size: 1.2rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-content {
+        padding: 15px;
+    }
+    
+    .content-header h2 {
+        font-size: 2rem;
+    }
+    
+    .section-card {
+        padding: 20px;
+    }
+    
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .comments-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .comment-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .comment-stats {
+        justify-content: flex-start;
+    }
+    
+    .comment-actions {
+        flex-direction: column;
+    }
+    
+    .btn-edit, .btn-view, .btn-delete {
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// Filtrage des commentaires
+document.getElementById('statusFilter').addEventListener('change', function() {
+    const filter = this.value;
+    const commentCards = document.querySelectorAll('.comment-card');
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    commentCards.forEach(card => {
+        let show = true;
+        
+        if (filter === 'recent') {
+            const commentDate = new Date(card.dataset.date);
+            show = commentDate >= weekAgo;
+        } else if (filter === 'popular') {
+            const likes = parseInt(card.dataset.likes);
+            show = likes >= 5;
+        }
+        
+        card.style.display = show ? 'block' : 'none';
+    });
+});
+</script>
+{% endblock %}

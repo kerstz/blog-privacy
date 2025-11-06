@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+
+{% block title %}Site Statistics{% endblock %}
+
+{% block content %}
+<h2>Site Statistics</h2>
+<p>Total Users: {{ total_users }}</p>
+<p>Total Admins: {{ total_admins }}</p>
+<p>Total Posts: {{ total_posts }}</p>
+<p>Total Comments: {{ total_comments }}</p>
+<p>Most Active User: {{ most_active_user.username }} with {{ most_active_user.post_count }} posts</p>
+<p>Average Comments per Post: {{ avg_comments_per_post }}</p>
+
+{% endblock %}

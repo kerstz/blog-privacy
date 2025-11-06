@@ -1,0 +1,15 @@
+ 
+<!-- schedule_post.html -->
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h2>Schedule Post</h2>
+    <form method="POST" action="{{ url_for('schedule_post', post_id=post.id) }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            <label for="scheduled_date">Scheduled Date and Time:</label>
+            {{ form.scheduled_date(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">Schedule</button>
+    </form>
+{% endblock %}

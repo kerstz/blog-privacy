@@ -1,0 +1,31 @@
+<!-- send_message.html -->
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h2>Send Message</h2>
+    <form method="POST" action="{{ url_for('send_message') }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            <label for="receiver">Select User:</label>
+            {{ form.receiver(class="form-control") }}
+        </div>
+        <div class="form-group">
+            <label for="content">Message Content:</label>
+            {{ form.content(class="form-control", rows=5) }}
+        </div>
+        <button type="submit" class="btn btn-primary">Send</button>
+    </form>
+{% endblock %}
+
+<!-- inbox.html -->
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h2>Inbox</h2>
+    <ul>
+        {% for message in messages %}
+            <li>{{ message.content }} - From: {{ message.sender.username }} on {{ message.timestamp }}</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
+

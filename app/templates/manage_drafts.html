@@ -1,0 +1,26 @@
+<!-- manage_drafts.html -->
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h2>Manage Drafts</h2>
+    <ul>
+        {% for post in drafts %}
+            <li>
+                <a href="{{ url_for('edit_post', post_id=post.id) }}">{{ post.title }}</a>
+                (Last edited on {{ post.date_modified }})
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}
+
+<!-- view_revisions.html -->
+{% extends 'layout.html' %}
+
+{% block content %}
+    <h2>Revisions for {{ post.title }}</h2>
+    <ul>
+        {% for revision in revisions %}
+            <li>Version {{ revision.version }} ({{ revision.date_modified }})</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

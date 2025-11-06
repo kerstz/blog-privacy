@@ -1,0 +1,418 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}Manage Users - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h2><span class="icon-users"></span> Gérer les Utilisateurs</h2>
+        <p>Gérez les comptes utilisateurs, leurs rôles et permissions</p>
+    </div>
+
+    <div class="users-section">
+        <div class="section-card">
+            <h3><span class="icon-list"></span> Utilisateurs Inscrits ({{ users|length }})</h3>
+            
+            {% if users %}
+                <div class="users-grid">
+                    {% for user in users %}
+                        <div class="user-card">
+                            <div class="user-header">
+                                <div class="user-avatar">
+                                    {% if user.profile_picture %}
+                                        <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Avatar" class="avatar-img">
+                                    {% else %}
+                                        <span class="icon-user-circle"></span>
+                                    {% endif %}
+                                </div>
+                                <div class="user-info">
+                                    <h4>{{ user.username }}</h4>
+                                    <div class="user-meta">
+                                        <span class="user-level">
+                                            <span class="icon-star"></span> Niveau {{ user.level }}
+                                        </span>
+                                        <span class="user-xp">
+                                            <span class="icon-bolt"></span> {{ user.experience_points }} XP
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="user-stats">
+                                <div class="stat-item">
+                                    <span class="icon-newspaper"></span>
+                                    <span>{{ user.posts|length }} articles</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="icon-comments"></span>
+                                    <span>{{ user.comments|length }} commentaires</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="icon-heart"></span>
+                                    <span>{{ user.likes|length }} likes donnés</span>
+                                </div>
+                            </div>
+                            
+                            <div class="user-badges">
+                                {% if user.get_badges() %}
+                                    {% for badge in user.get_badges()[:3] %}
+                                        <span class="badge-item" title="{{ badge.description }}">
+                                            <i class="{{ badge.icon }}"></i>
+                                        </span>
+                                    {% endfor %}
+                                    {% if user.get_badges()|length > 3 %}
+                                        <span class="badge-more">+{{ user.get_badges()|length - 3 }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="no-badges">Aucun badge</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="user-role">
+                                {% if user.is_admin %}
+                                    <span class="role-badge admin">
+                                        <span class="icon-crown"></span> Administrateur
+                                    </span>
+                                {% else %}
+                                    <span class="role-badge user">
+                                        <span class="icon-user"></span> Utilisateur
+                                    </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="user-actions">
+                                {% if user.is_admin %}
+                                    <form method="POST" action="{{ url_for('demote_user', user_id=user.id) }}" class="action-form">
+                                        {{ form.hidden_tag() }}
+                                        <button type="submit" class="btn-warning" onclick="return confirm('Confirmer la rétrogradation de {{ user.username }} ?')">
+                                            <span class="icon-arrow-down"></span> Rétrograder
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" class="action-form">
+                                        {{ form.hidden_tag() }}
+                                        <button type="submit" class="btn-success" onclick="return confirm('Confirmer la promotion de {{ user.username }} en admin ?')">
+                                            <span class="icon-arrow-up"></span> Promouvoir
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="action-form">
+                                    {{ form.hidden_tag() }}
+                                    <button type="submit" class="btn-danger" onclick="return confirm('Voulez-vous vraiment supprimer {{ user.username }} ? Cette action est irréversible.')">
+                                        <span class="icon-trash"></span> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-users">
+                    <span class="icon-users"></span>
+                    <p>Aucun utilisateur inscrit</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.content-header h2 {
+    color: #8b93ff;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.content-header p {
+    color: #c3c4cb;
+    font-size: 1.1rem;
+}
+
+.section-card {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #8b93ff;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+}
+
+.section-card h3 {
+    color: #8b93ff;
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.user-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.user-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: #8b93ff;
+}
+
+.user-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    overflow: hidden;
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-info h4 {
+    color: #e0e0e0;
+    font-size: 1.2rem;
+    margin-bottom: 5px;
+}
+
+.user-meta {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.user-meta span {
+    color: #c3c4cb;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.user-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    color: #8b93ff;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.user-badges {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge-item {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd43b, #ffb700);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1a1a2e;
+    font-size: 0.9rem;
+    cursor: help;
+}
+
+.badge-more {
+    color: #c3c4cb;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.no-badges {
+    color: #888;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.user-role {
+    margin-bottom: 15px;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.role-badge.admin {
+    background: linear-gradient(135deg, #ffd43b, #ffb700);
+    color: #1a1a2e;
+}
+
+.role-badge.user {
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    color: white;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.action-form {
+    display: inline;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffd43b, #ffb700);
+    color: #1a1a2e;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #ffb700, #ff9500);
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #51cf66, #40c057);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #40c057, #37b24d);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #e55353, #d63384);
+    transform: translateY(-1px);
+}
+
+.no-users {
+    text-align: center;
+    color: #c3c4cb;
+    padding: 40px;
+}
+
+.no-users i {
+    font-size: 3rem;
+    color: #8b93ff;
+    margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-content {
+        padding: 15px;
+    }
+    
+    .content-header h2 {
+        font-size: 2rem;
+    }
+    
+    .section-card {
+        padding: 20px;
+    }
+    
+    .users-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .user-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .user-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .user-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

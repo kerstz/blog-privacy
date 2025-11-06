@@ -1,0 +1,12 @@
+{% extends 'admin_layout.html' %}
+
+{% block content %}
+<h2>Manage Subscriptions</h2>
+<ul>
+    {% for subscription in subscriptions %}
+    <li>
+        <a href="{{ url_for('edit_subscription', subscription_id=subscription.id) }}">{{ subscription.name }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}
