@@ -10,7 +10,7 @@
     </div>
 
     <div class="chat-layout">
-        <!-- Liste des utilisateurs -->
+        <!-- User List -->
         <div class="users-sidebar">
             <h3><span class="icon-users"></span> Users</h3>
             <div class="users-list">
@@ -33,7 +33,7 @@
             </div>
         </div>
 
-        <!-- Zone de messages -->
+        <!-- Messages Area -->
         <div class="messages-area">
             <div class="messages-header">
                 <h3><span class="icon-comment-dots"></span> All Messages</h3>
@@ -55,19 +55,19 @@
                                     <div class="message-file">
                                         <video controls class="message-video">
                                             <source src="{{ url_for('static', filename=message.file_path) }}" type="video/mp4">
-                                            Votre navigateur ne supporte pas la lecture vidéo.
+                                            Your browser does not support video playback.
                                         </video>
                                     </div>
                                 {% else %}
                                     <div class="message-file">
                                         <a href="{{ url_for('static', filename=message.file_path) }}" download class="file-download">
-                                            <span class="icon-download"></span> Télécharger le fichier
+                                            <span class="icon-download"></span> Download file
                                         </a>
                                     </div>
                                 {% endif %}
                             {% endif %}
                             {% if message.get_decrypted_content() %}
-                                <div class="message-text">{{ message.get_decrypted_content() }}</div>
+                                <div class="message-text">{{ message.get_decrypted_content() | safe }}</div>
                             {% endif %}
                         </div>
                     </div>

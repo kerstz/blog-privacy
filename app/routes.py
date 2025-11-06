@@ -249,6 +249,8 @@ def chat():
         if file and file.filename:
             if allowed_file(file.filename):  # Check if file is allowed
                 filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"chat_{current_user.id}_admin_{timestamp}_{filename}"
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
 
@@ -256,15 +258,20 @@ def chat():
                 if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
                     modify_exif_data(file_path)
 
-                # Save message with file
+                # Determine file type
+                file_type = get_file_type(file.filename)
+
+                # Save message with file using proper fields
                 message = Message(
                     sender_id=current_user.id,
                     receiver_id=1,  # Admin ID = 1
-                    content=f"📁 Sent a file: <a href='/uploads/{filename}' target='_blank'>{filename}</a>"
+                    content=message_content if message_content else "",
+                    file_path=file_path,
+                    file_type=file_type
                 )
                 db.session.add(message)
                 db.session.commit()
-                flash("Image sent!", "success")
+                flash("File sent!", "success")
             else:
                 flash("File upload failed!", "danger")
 
