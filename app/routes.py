@@ -67,7 +67,7 @@ def contact():
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
     form = CommentForm()
-    # Incrémenter le compteur de vues une seule fois par session
+    # Increment view counter once per session
     if request.method == 'GET':
         viewed_posts = session.get('viewed_posts', [])
         if post_id not in viewed_posts:
@@ -84,16 +84,16 @@ def post_detail(post_id):
                 db.session.add(comment)
                 db.session.commit()
                 
-                # Ajouter des points d'expérience pour le commentaire
+                # Add experience points for commenting
                 current_user.add_experience(3)
                 
-                # Créer une notification pour l'auteur du post
+                # Create notification for post author
                 if post.author_id != current_user.id:
                     notification = Notification(
                         user_id=post.author_id,
                         type='comment',
-                        title='Nouveau commentaire !',
-                        message=f'{current_user.username} a commenté votre article "{post.title}"',
+                        title='New comment!',
+                        message=f'Someone commented on your article "{post.title}"',
                         related_post_id=post.id,
                         related_comment_id=comment.id
                     )
@@ -107,7 +107,7 @@ def post_detail(post_id):
                         'user_id': post.author_id
                     })
                 
-                # Vérifier et attribuer les badges
+                # Check and award badges
                 check_and_award_badges(current_user)
                 
                 db.session.commit()
@@ -174,7 +174,7 @@ def logout():
 @app.route('/admin_dashboard')
 @admin_required
 def admin_dashboard():
-    # Récupérer les statistiques pour le dashboard
+    # Get statistics for dashboard
     total_posts = Post.query.count()
     total_users = User.query.count()
     total_comments = Comment.query.count()
@@ -205,25 +205,28 @@ def donate():
     return render_template('donate.html', form=form, top_donors=top_donors)
 
 
-# 🔹 Chat Route
+# File Upload Configuration
 UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'pdf', 'doc', 'docx', 'txt', 
+                      'zip', 'rar', '7z', 'mp3', 'mp4', 'avi', 'mov', 'mkv', 'csv', 
+                      'xls', 'xlsx', 'ppt', 'pptx', 'json', 'xml', 'svg', 'webm', 'ogg'}
 
-# Fonction pour vérifier si l'extension du fichier est autorisée
+# Function to check if file extension is allowed
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    # Allow any file extension for maximum flexibility
+    return '.' in filename
 
-# Fonction pour modifier les métadonnées de l'image
+# Function to modify image metadata
 def modify_exif_data(file_path):
     try:
         image = Image.open(file_path)
         exif_dict = piexif.load(image.info.get('exif', b''))
 
-        # Supprime les informations GPS
+        # Remove GPS information
         if 'GPS' in exif_dict:
             exif_dict['GPS'] = {}
 
-        # Ajoute un tag personnalisé
+        # Add custom tag
         exif_dict['0th'][piexif.ImageIFD.Make] = "Modified"
         exif_dict['0th'][piexif.ImageIFD.Model] = "Edited"
         exif_dict['0th'][piexif.ImageIFD.Software] = "ChatUploader"
@@ -242,17 +245,18 @@ def chat():
         message_content = request.form.get('message', '').strip()
         file = request.files.get('file')
 
-        # Gestion des fichiers envoyés
+        # Handle file uploads
         if file and file.filename:
-            if allowed_file(file.filename):  # Vérifie si c'est une image
+            if allowed_file(file.filename):  # Check if file is allowed
                 filename = secure_filename(file.filename)
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
 
-                # Modifie les métadonnées de l'image
-                modify_exif_data(file_path)
+                # Modify image metadata if it's an image
+                if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
+                    modify_exif_data(file_path)
 
-                # Enregistre le message avec le fichier
+                # Save message with file
                 message = Message(
                     sender_id=current_user.id,
                     receiver_id=1,  # Admin ID = 1
@@ -262,10 +266,10 @@ def chat():
                 db.session.commit()
                 flash("Image sent!", "success")
             else:
-                flash("Only images (PNG, JPG, JPEG) are allowed!", "danger")
+                flash("File upload failed!", "danger")
 
         elif message_content:
-            # Enregistre le message texte
+            # Save text message
             message = Message(
                 sender_id=current_user.id,
                 receiver_id=1,  # Admin ID = 1
@@ -277,7 +281,7 @@ def chat():
 
         return redirect(url_for('chat'))
 
-    # Récupérer les messages du plus récent au plus ancien
+    # Get messages from most recent to oldest
     messages = Message.query.order_by(Message.timestamp.desc()).all()
 
     return render_template('chat.html', form=form, messages=messages)
@@ -300,10 +304,10 @@ def handle_message(data):
 @app.route('/admin/chat')
 @admin_required
 def admin_chat():
-    # Récupérer tous les utilisateurs non-admin
+    # Get all non-admin users
     users = User.query.filter_by(is_admin=False).order_by(User.username).all()
     
-    # Récupérer tous les messages
+    # Get all messages
     messages = Message.query.order_by(Message.timestamp.asc()).all()
     
     return render_template('admin_chat.html', messages=messages, users=users)
@@ -312,13 +316,13 @@ def admin_chat():
 @app.route('/admin/chat/<int:user_id>', methods=['GET', 'POST'])
 @admin_required
 def admin_chat_user(user_id):
-    # Récupérer l'utilisateur cible
+    # Get target user
     target_user = User.query.get_or_404(user_id)
     
-    # Récupérer tous les utilisateurs non-admin
+    # Get all non-admin users
     users = User.query.filter_by(is_admin=False).order_by(User.username).all()
     
-    # Récupérer les messages entre l'admin et cet utilisateur
+    # Get messages between admin and this user
     messages = Message.query.filter(
         ((Message.sender_id == current_user.id) & (Message.receiver_id == user_id)) |
         ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
@@ -335,13 +339,13 @@ def admin_chat_user(user_id):
                 receiver_id=user_id
             )
             
-            # Gérer le contenu textuel
+            # Handle text content
             if content:
                 message.set_encrypted_content(content)
             else:
                 message.set_encrypted_content("")
             
-            # Gérer l'upload de fichier
+            # Handle file upload
             if file and file.filename:
                 if allowed_file(file.filename):
                     filename = secure_filename(file.filename)
@@ -360,16 +364,16 @@ def admin_chat_user(user_id):
                     message.file_path = file_path
                     message.file_type = get_file_type(file.filename)
                 else:
-                    flash('Format de fichier non supporté. Utilisez PNG, JPG, GIF ou MP4.', 'danger')
+                    flash('File format not supported.', 'danger')
                     return redirect(url_for('admin_chat_user', user_id=user_id))
             
             db.session.add(message)
             db.session.commit()
             
-            # Émettre le message via SocketIO
+            # Emit message via SocketIO
             socketio.emit('message', {
                 'username': current_user.username,
-                'msg': content if content else f"Fichier envoyé: {file.filename}",
+                'msg': content if content else f"File sent: {file.filename}",
                 'receiver_id': user_id,
                 'file_path': message.file_path,
                 'file_type': message.file_type
@@ -386,13 +390,13 @@ def admin_chat_user(user_id):
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    """Route pour servir les fichiers uploadés"""
+    """Route to serve uploaded files"""
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
     return send_from_directory(upload_dir, filename)
 
 @app.route('/static/uploads/<filename>')
 def static_uploaded_file(filename):
-    """Route pour servir les fichiers uploadés depuis static/uploads"""
+    """Route to serve uploaded files from static/uploads"""
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
     return send_from_directory(upload_dir, filename)
 
@@ -420,7 +424,7 @@ def manage_posts():
         db.session.add(post)
         db.session.commit()
         
-        # Ajouter des points d'expérience pour la création d'un post
+        # Add experience points for creating a post
         current_user.add_experience(10)
         
         # Vérifier et attribuer les badges
@@ -532,23 +536,23 @@ def upload_file():
         flash('Invalid file type! Only PNG, JPG, JPEG, and GIF are allowed.', 'danger')
         return redirect(url_for('chat'))
 
-    # Sécuriser le nom du fichier
+    # Secure filename
     filename = secure_filename(file.filename)
     file_path = os.path.join('uploads', filename)
 
-    # Sauvegarder le fichier
+    # Save file
     file.save(file_path)
 
-    # Vérifier si c'est bien une image en essayant de l'ouvrir avec PIL
+    # Verify if it's a valid image by trying to open it with PIL
     try:
         with Image.open(file_path) as img:
-            img.verify()  # Vérification rapide de l'intégrité du fichier
+            img.verify()  # Quick integrity check
     except Exception:
-        os.remove(file_path)  # Supprime le fichier si ce n'est pas une image valide
+        os.remove(file_path)  # Remove file if it's not a valid image
         flash('Invalid image file!', 'danger')
         return redirect(url_for('chat'))
 
-    # Modifier les métadonnées de l'image
+    # Modify image metadata
     modify_exif_data(file_path)
 
     flash('Image uploaded and metadata modified successfully!', 'success')
@@ -657,7 +661,7 @@ def promote_user(user_id):
 def delete_comment(comment_id, post_id):
     comment = Comment.query.get_or_404(comment_id)
 
-    # L'admin peut tout supprimer, sinon l'utilisateur ne peut supprimer que ses propres commentaires
+    # Admin can delete everything, otherwise user can only delete their own comments
     if not current_user.is_admin and comment.author_id != current_user.id:
         abort(403)  # Forbidden access
 
@@ -694,10 +698,10 @@ def reply_to_comment(post_id, comment_id):
         db.session.add(reply)
         db.session.commit()
         
-        # Ajouter des points d'expérience pour la réponse
+        # Add experience points for reply
         current_user.add_experience(2)
         
-        # Créer une notification pour l'auteur du commentaire parent
+        # Create notification for parent comment author
         if parent_comment.author_id and parent_comment.author_id != current_user.id:
             notification = Notification(
                 user_id=parent_comment.author_id,
@@ -733,7 +737,7 @@ def reply_to_comment(post_id, comment_id):
 @login_required
 def edit_comment(comment_id, post_id):
     comment = Comment.query.get_or_404(comment_id)
-    post = Post.query.get_or_404(post_id)  # 🔥 Ajoute cette ligne !
+    post = Post.query.get_or_404(post_id)
 
     # L'admin peut modifier tous les commentaires, sinon l'utilisateur ne peut modifier que les siens
     if not current_user.is_admin and comment.author_id != current_user.id:
@@ -757,30 +761,30 @@ def edit_comment(comment_id, post_id):
 def like_post(post_id):
     post = Post.query.get_or_404(post_id)
     
-    # Vérifier si l'utilisateur a déjà liké ce post
+    # Check if user already liked this post
     existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
     
     if existing_like:
-        # Retirer le like
+        # Remove like
         db.session.delete(existing_like)
         post.likes_count = max(0, post.likes_count - 1)
-        flash('Like retiré !', 'info')
+        flash('Like removed!', 'info')
     else:
-        # Ajouter le like
+        # Add like
         like = Like(user_id=current_user.id, post_id=post_id)
         db.session.add(like)
         post.likes_count += 1
         
-        # Ajouter des points d'expérience à l'auteur du post
+        # Add experience points to post author
         if post.author_id != current_user.id:
             post.author.add_experience(5)
             
-            # Créer une notification pour l'auteur
+            # Create notification for author
             notification = Notification(
                 user_id=post.author_id,
                 type='like',
-                title='Nouveau like !',
-                message=f'{current_user.username} a aimé votre article "{post.title}"',
+                title='New like!',
+                message=f'Someone liked your article "{post.title}"',
                 related_post_id=post_id
             )
             db.session.add(notification)
@@ -804,21 +808,21 @@ def like_post(post_id):
 def like_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
     
-    # Vérifier si l'utilisateur a déjà liké ce commentaire
+    # Check if user already liked this comment
     existing_like = Like.query.filter_by(user_id=current_user.id, comment_id=comment_id).first()
     
     if existing_like:
-        # Retirer le like
+        # Remove like
         db.session.delete(existing_like)
         comment.likes_count = max(0, comment.likes_count - 1)
-        flash('Like retiré !', 'info')
+        flash('Like removed!', 'info')
     else:
-        # Ajouter le like
+        # Add like
         like = Like(user_id=current_user.id, comment_id=comment_id)
         db.session.add(like)
         comment.likes_count += 1
         
-        # Ajouter des points d'expérience à l'auteur du commentaire
+        # Add experience points to comment author
         if comment.author_id and comment.author_id != current_user.id:
             comment.author.add_experience(2)
             
@@ -899,7 +903,7 @@ def user_profile(user_id):
                          total_likes_received=total_likes_received)
 
 
-# 🔹 Fonction pour créer des badges par défaut
+# Function to create default badges
 def create_default_badges():
     """Crée les badges par défaut du système"""
     default_badges = [
@@ -954,7 +958,7 @@ def create_default_badges():
     db.session.commit()
 
 
-# 🔹 Fonction pour vérifier et attribuer les badges
+# Function to check and award badges
 def check_and_award_badges(user):
     """Vérifie et attribue les badges à un utilisateur"""
     badges = Badge.query.all()
@@ -1023,23 +1027,23 @@ def edit_profile():
             file = form.profile_picture.data
             if file and allowed_file(file.filename):
                 filename = secure_filename(file.filename)
-                # Créer un nom unique pour éviter les conflits
+                # Create unique name to avoid conflicts
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 filename = f"profile_{current_user.id}_{timestamp}_{filename}"
                 file_path = os.path.join('uploads', filename)
                 file.save(file_path)
                 
-                # Supprimer l'ancienne photo si elle existe
+                # Remove old photo if it exists
                 if current_user.profile_picture and os.path.exists(current_user.profile_picture):
                     os.remove(current_user.profile_picture)
                 
                 current_user.profile_picture = file_path
             else:
-                flash('Format de fichier non supporté. Utilisez JPG, PNG, GIF ou JPEG.', 'danger')
+                flash('File format not supported. Use JPG, PNG, GIF or JPEG.', 'danger')
                 return redirect(url_for('edit_profile'))
         
         db.session.commit()
-        flash('Profil mis à jour avec succès !', 'success')
+        flash('Profile updated successfully!', 'success')
         return redirect(url_for('user_profile', user_id=current_user.id))
     
     # Pré-remplir le formulaire avec les données actuelles

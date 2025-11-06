@@ -4,7 +4,8 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 
 ## Features
 
-- **Modern UI**: Clean, responsive design with a beautiful green/orange color scheme
+- **Modern UI**: Clean, responsive design with a beautiful green/orange color scheme (fully customizable!)
+- **Easy Theme Customization**: Change colors and styling without coding knowledge - see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md)
 - **User Authentication**: Secure registration and login system
 - **Article Management**: Create, edit, and publish articles with rich text editor
 - **Comments System**: Nested comment threads with replies
@@ -170,6 +171,23 @@ This project is open source and available under the MIT License.
 - Secure session cookies
 - SQL injection prevention through SQLAlchemy ORM
 - Message encryption for chat system
+
+## Theme Customization
+
+Want to change the look and feel of your blog? Check out our comprehensive [Theme Customization Guide](CUSTOMIZE_THEME.md) which includes:
+
+- Pre-made color schemes (Blue, Purple, Red, Monochrome, etc.)
+- Step-by-step instructions for beginners
+- AI prompt template for generating custom themes
+- Tips and tools for creating your perfect design
+
+**Quick Example:**
+```css
+/* Change these 3 colors in style.css to transform your entire blog! */
+--primary-color: #YOUR_COLOR_1;
+--secondary-color: #YOUR_COLOR_2;  
+--accent-color: #YOUR_COLOR_3;
+```
 
 ## Future Enhancements
 
