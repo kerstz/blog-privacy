@@ -1,0 +1,60 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<h2>Manage Banners</h2>
+
+<form method="POST" action="{{ url_for('manage_banners') }}">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+        {{ form.title.label }} {{ form.title(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.content.label }} {{ form.content(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.image_url.label }} {{ form.image_url(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.link_url.label }} {{ form.link_url(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.position.label }} {{ form.position(class="form-control") }}
+    </div>
+    <div class="form-group">
+        {{ form.is_active.label }} {{ form.is_active() }}
+    </div>
+    <button type="submit" class="btn btn-primary">Add Banner</button>
+</form>
+
+<hr>
+
+<h3>Existing Banners</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Image</th>
+            <th>Link</th>
+            <th>Position</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for banner in banners %}
+        <tr>
+            <td><img src="{{ banner.image_url }}" alt="Banner" style="max-width: 100px;"></td>
+            <td>{{ banner.link_url }}</td>
+            <td>{{ banner.position }}</td>
+            <td>{{ 'Active' if banner.is_active else 'Inactive' }}</td>
+            <td>
+                <a href="{{ url_for('edit_banner', banner_id=banner.id) }}" class="btn btn-sm btn-primary">Edit</a>
+                <form method="POST" action="{{ url_for('delete_banner', banner_id=banner.id) }}" style="display:inline;">
+                    {{ delete_form.hidden_tag() }}  <!-- CSRF token inclusion -->
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

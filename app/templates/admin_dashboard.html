@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - TechBlog</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #10b981;
+            --secondary-color: #059669;
+            --dark-bg: #0f2027;
+            --card-bg: #1a2933;
+            --sidebar-bg: #203a43;
+            --text-primary: #e8eaed;
+            --text-secondary: #d1d5db;
+            --accent-color: #f59e0b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --border-color: #2c5364;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--dark-bg) 0%, #203a43 100%);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            height: 100vh;
+            background: linear-gradient(180deg, var(--sidebar-bg) 0%, #0f2027 100%);
+            padding: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .sidebar-header h2 {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-header h2 i {
+            font-size: 1.8rem;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-item {
+            margin: 5px 15px;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-link::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .nav-link:hover::before {
+            left: 100%;
+        }
+
+        .nav-link:hover {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--primary-color);
+            transform: translateX(5px);
+        }
+
+        .nav-link i {
+            margin-right: 12px;
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 280px;
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .top-navbar {
+            background: rgba(26, 41, 51, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .top-navbar h3 {
+            color: var(--text-primary);
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .top-navbar h3 i {
+            color: var(--primary-color);
+        }
+
+        /* Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--card-bg) 0%, #2c5364 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.2);
+        }
+
+        .stat-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .stat-card-title {
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .stat-card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-card-icon.posts { background: rgba(16, 185, 129, 0.2); color: var(--primary-color); }
+        .stat-card-icon.users { background: rgba(16, 185, 129, 0.2); color: var(--success-color); }
+        .stat-card-icon.comments { background: rgba(245, 158, 11, 0.2); color: var(--accent-color); }
+        .stat-card-icon.banners { background: rgba(245, 158, 11, 0.2); color: var(--warning-color); }
+
+        .stat-card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .stat-card-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* Action Cards */
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .action-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 25px;
+            transition: all 0.3s ease;
+        }
+
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-card h5 {
+            color: var(--text-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-card p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+
+        .btn-modern {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 100%;
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card, .action-card {
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .stat-card:nth-child(2) { animation-delay: 0.1s; }
+        .stat-card:nth-child(3) { animation-delay: 0.2s; }
+        .stat-card:nth-child(4) { animation-delay: 0.3s; }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2><span class="icon-shield-alt"></span> Admin Panel</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-link active">
+                    <span class="icon-tachometer-alt"></span>
+                    Dashboard
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('manage_posts') }}" class="nav-link">
+                    <span class="icon-newspaper"></span>
+                    Manage Posts
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('manage_users') }}" class="nav-link">
+                    <span class="icon-users"></span>
+                    Manage Users
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('manage_comments') }}" class="nav-link">
+                    <span class="icon-comments"></span>
+                    Manage Comments
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('site_statistics') }}" class="nav-link">
+                    <span class="icon-chart-bar"></span>
+                    Statistics
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('manage_banners') }}" class="nav-link">
+                    <span class="icon-image"></span>
+                    Manage Banners
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('manage_pages') }}" class="nav-link">
+                    <span class="icon-file-alt"></span>
+                    Static Pages
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('admin_chat') }}" class="nav-link">
+                    <span class="icon-comment-dots"></span>
+                    Admin Chat
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="{{ url_for('logout') }}" class="nav-link">
+                    <span class="icon-sign-out-alt"></span>
+                    Logout
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <div class="top-navbar">
+            <h3><span class="icon-home"></span> Welcome, Administrator!</h3>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <h5 class="stat-card-title">Posts</h5>
+                    <div class="stat-card-icon posts">
+                        <span class="icon-newspaper"></span>
+                    </div>
+                </div>
+                <p class="stat-card-value">{{ total_posts }}</p>
+                <p class="stat-card-description">Published articles</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <h5 class="stat-card-title">Users</h5>
+                    <div class="stat-card-icon users">
+                        <span class="icon-users"></span>
+                    </div>
+                </div>
+                <p class="stat-card-value">{{ total_users }}</p>
+                <p class="stat-card-description">Registered users</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <h5 class="stat-card-title">Comments</h5>
+                    <div class="stat-card-icon comments">
+                        <span class="icon-comments"></span>
+                    </div>
+                </div>
+                <p class="stat-card-value">{{ total_comments }}</p>
+                <p class="stat-card-description">Total comments</p>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <h5 class="stat-card-title">Banners</h5>
+                    <div class="stat-card-icon banners">
+                        <span class="icon-image"></span>
+                    </div>
+                </div>
+                <p class="stat-card-value">{{ total_banners }}</p>
+                <p class="stat-card-description">Active banners</p>
+            </div>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="action-grid">
+
+            <div class="action-card">
+                <h5><span class="icon-file-alt"></span> Static Pages</h5>
+                <p>Create and manage static pages for your blog (About, Contact, etc.).</p>
+                <a href="{{ url_for('manage_pages') }}" class="btn-modern">
+                    <span class="icon-edit"></span>
+                    Manage Pages
+                </a>
+            </div>
+
+
+            <div class="action-card">
+                <h5><span class="icon-comment-dots"></span> Admin Chat</h5>
+                <p>Communicate with users through the integrated chat system.</p>
+                <a href="{{ url_for('admin_chat') }}" class="btn-modern">
+                    <span class="icon-comments"></span>
+                    Open Chat
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
+    <script>
+        // Card animation on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.stat-card, .action-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${index * 0.1}s`;
+            });
+        });
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            sidebar.classList.toggle('show');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,492 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}Manage Posts - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h2><span class="icon-newspaper"></span> Gérer les Articles</h2>
+        <p>Créez, modifiez et supprimez les articles du blog</p>
+    </div>
+
+    <!-- Formulaire de création d'article -->
+    <div class="create-post-section">
+        <div class="section-card">
+            <div class="section-header">
+                <h3><span class="icon-plus-circle"></span> Créer un Nouvel Article</h3>
+                <a href="{{ url_for('editor_help') }}" class="help-link" target="_blank">
+                    <span class="icon-info"></span> Aide pour les balises
+                </a>
+            </div>
+            <form method="POST" action="{{ url_for('manage_posts') }}" class="post-form">
+                {{ form.hidden_tag() }}
+                <div class="form-group">
+                    <label for="title">Titre de l'article</label>
+                    <input type="text" name="title" id="title" class="form-control" required placeholder="Entrez le titre de l'article">
+                </div>
+                <div class="form-group">
+                    <label for="content">Contenu</label>
+                    <div class="editor-help-inline">
+                        <p><strong>Balises disponibles :</strong></p>
+                        <div class="tags-examples">
+                            <code>[b]gras[/b]</code> <code>[i]italique[/i]</code> <code>[u]souligné[/u]</code>
+                            <code>[img]url_image[/img]</code> <code>[url]lien[/url]</code>
+                            <code>[list][*]item1[*]item2[/list]</code>
+                        </div>
+                        <p><em>Voir l'aide complète pour plus de balises</em></p>
+                    </div>
+                    <textarea name="content" id="content" class="form-control ckeditor-textarea" required placeholder="Rédigez le contenu de votre article..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span class="icon-save"></span> Publier l'Article
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Liste des articles existants -->
+    <div class="posts-section">
+        <div class="section-card">
+            <h3><span class="icon-list"></span> Articles Existants ({{ posts|length }})</h3>
+            
+            {% if posts %}
+                <div class="posts-grid">
+                    {% for post in posts %}
+                        <div class="post-card">
+                            <div class="post-header">
+                                <h4>{{ post.title }}</h4>
+                                <div class="post-meta">
+                                    <span class="author">
+                                        <span class="icon-user"></span> {{ post.author.username }}
+                                    </span>
+                                    <span class="date">
+                                        <span class="icon-calendar"></span> {{ post.date_posted.strftime('%d/%m/%Y à %H:%M') }}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            <div class="post-content">
+                                <p>{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                            </div>
+                            
+                            <div class="post-stats">
+                                <span class="stat">
+                                    <span class="icon-eye"></span> {{ post.views_count or 0 }} vues
+                                </span>
+                                <span class="stat">
+                                    <span class="icon-heart"></span> {{ post.likes_count or 0 }} likes
+                                </span>
+                                <span class="stat">
+                                    <span class="icon-comments"></span> {{ post.comments|length }} commentaires
+                                </span>
+                            </div>
+                            
+                            <div class="post-actions">
+                                <a href="{{ url_for('edit_post', post_id=post.id) }}" class="btn-edit">
+                                    <span class="icon-edit"></span> Modifier
+                                </a>
+                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="delete-form">
+                                    <button type="submit" class="btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet article ?')">
+                                        <span class="icon-trash"></span> Supprimer
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="no-posts">
+                    <span class="icon-newspaper"></span>
+                    <p>Aucun article publié pour le moment</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.content-header h2 {
+    color: #8b93ff;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.content-header p {
+    color: #c3c4cb;
+    font-size: 1.1rem;
+}
+
+.section-card {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #8b93ff;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+}
+
+.section-card h3 {
+    color: #8b93ff;
+    font-size: 1.5rem;
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #e0e0e0;
+    padding: 12px 15px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8b93ff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+}
+
+.form-control::placeholder {
+    color: #888;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+}
+
+.posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.post-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.post-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border-color: #8b93ff;
+}
+
+.post-header h4 {
+    color: #e0e0e0;
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.post-meta {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.post-meta span {
+    color: #c3c4cb;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.post-content p {
+    color: #c3c4cb;
+    line-height: 1.6;
+    margin-bottom: 15px;
+}
+
+.post-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.stat {
+    color: #8b93ff;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.post-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #51cf66, #40c057);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-edit:hover {
+    background: linear-gradient(135deg, #40c057, #37b24d);
+    transform: translateY(-1px);
+    text-decoration: none;
+    color: white;
+}
+
+.delete-form {
+    display: inline;
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #e55353, #d63384);
+    transform: translateY(-1px);
+}
+
+.no-posts {
+    text-align: center;
+    color: #c3c4cb;
+    padding: 40px;
+}
+
+.no-posts i {
+    font-size: 3rem;
+    color: #8b93ff;
+    margin-bottom: 15px;
+}
+
+/* Styles pour CKEditor */
+.ck-editor__editable {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px !important;
+    color: #e0e0e0 !important;
+    min-height: 400px !important;
+}
+
+.ck-editor__editable:focus {
+    border-color: #8b93ff !important;
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2) !important;
+}
+
+.ck-toolbar {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-bottom: none !important;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.ck-toolbar .ck-button {
+    color: #e0e0e0 !important;
+}
+
+.ck-toolbar .ck-button:hover {
+    background: rgba(139, 147, 255, 0.2) !important;
+}
+
+.ck-toolbar .ck-button.ck-on {
+    background: rgba(139, 147, 255, 0.3) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-content {
+        padding: 15px;
+    }
+    
+    .content-header h2 {
+        font-size: 2rem;
+    }
+    
+    .section-card {
+        padding: 20px;
+    }
+    
+    .posts-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .post-meta {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .post-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .post-actions {
+        flex-direction: column;
+    }
+}
+
+.ckeditor-textarea {
+    min-height: 400px !important;
+}
+</style>
+
+<style>
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.section-header h3 {
+    color: #8b93ff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(139, 147, 255, 0.1);
+    color: #8b93ff;
+    text-decoration: none;
+    border-radius: 6px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+}
+
+.help-link:hover {
+    background: rgba(139, 147, 255, 0.2);
+    color: #8b93ff;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Aide inline pour l'éditeur */
+.editor-help-inline {
+    background: rgba(139, 147, 255, 0.1);
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.editor-help-inline p {
+    margin: 0 0 10px 0;
+    color: #8b93ff;
+    font-size: 0.9rem;
+}
+
+.editor-help-inline p:last-child {
+    margin-bottom: 0;
+    color: #c3c4cb;
+    font-size: 0.8rem;
+}
+
+.tags-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.tags-examples code {
+    background: rgba(0, 0, 0, 0.3);
+    color: #8b93ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(139, 147, 255, 0.2);
+}
+</style>
+{% endblock %}

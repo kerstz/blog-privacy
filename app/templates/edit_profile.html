@@ -1,0 +1,247 @@
+{% extends 'layout.html' %}
+
+{% block title %}Éditer le Profil - Blog{% endblock %}
+
+{% block content %}
+<div class="edit-profile-container">
+    <div class="edit-profile-header">
+        <h2><span class="icon-user-edit"></span> Éditer le Profil</h2>
+        <p>Modifiez vos informations personnelles</p>
+    </div>
+
+    <div class="edit-profile-form">
+        <form method="POST" enctype="multipart/form-data">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur</label>
+                {{ form.username(class="form-control", placeholder="Votre nom d'utilisateur") }}
+                {% if form.username.errors %}
+                    <div class="error-messages">
+                        {% for error in form.username.errors %}
+                            <span class="error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="profile_picture">Photo de profil</label>
+                <div class="file-upload-container">
+                    {{ form.profile_picture(class="file-input", id="profile_picture") }}
+                    <label for="profile_picture" class="file-upload-label">
+                        <span class="icon-camera"></span>
+                        <span>Choisir une photo</span>
+                    </label>
+                    <div class="file-info">
+                        <small>Formats acceptés : JPG, PNG, GIF, JPEG (max 5MB)</small>
+                    </div>
+                </div>
+                {% if form.profile_picture.errors %}
+                    <div class="error-messages">
+                        {% for error in form.profile_picture.errors %}
+                            <span class="error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-save">
+                    <span class="icon-save"></span> Sauvegarder
+                </button>
+                <a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="btn-cancel">
+                    <span class="icon-times"></span> Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.edit-profile-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 20px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.edit-profile-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.edit-profile-header h2 {
+    color: #8b93ff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.edit-profile-header p {
+    color: #c3c4cb;
+    margin: 0;
+}
+
+.edit-profile-form {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 25px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    color: #e0e0e0;
+    font-weight: 600;
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8b93ff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+}
+
+.file-upload-container {
+    position: relative;
+}
+
+.file-input {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.file-upload-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+    border: 2px solid transparent;
+}
+
+.file-upload-label:hover {
+    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+}
+
+.file-info {
+    margin-top: 8px;
+    text-align: center;
+}
+
+.file-info small {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.error-messages {
+    margin-top: 8px;
+}
+
+.error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.btn-save, .btn-cancel {
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-save {
+    background: linear-gradient(135deg, #51cf66, #40c057);
+    color: white;
+}
+
+.btn-save:hover {
+    background: linear-gradient(135deg, #40c057, #37b24d);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4);
+    text-decoration: none;
+    color: white;
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: #c3c4cb;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .edit-profile-container {
+        margin: 20px;
+        padding: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-save, .btn-cancel {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

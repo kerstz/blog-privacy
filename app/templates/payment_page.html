@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="payment-page">
+    <h1>Confirm Your Payment</h1>
+
+    {% if plan %}
+    <p>You are about to subscribe to the <strong>{{ plan.name }}</strong> plan for <strong>{{ quantity }} month(s)</strong>.</p>
+    {% elif item_type %}
+    <p>You are about to purchase <strong>{{ quantity }} {{ item_type }}(s)</strong>.</p>
+    {% endif %}
+
+    <!-- Bouton pour finaliser le paiement -->
+    <form method="POST" action="{{ url_for('complete_payment') }}">
+        <input type="hidden" name="plan_id" value="{{ plan.id if plan else '' }}">
+        <input type="hidden" name="item_type" value="{{ item_type if item_type else '' }}">
+        <input type="hidden" name="quantity" value="{{ quantity }}">
+        <button type="submit" class="btn btn-success">Complete Payment</button>
+    </form>
+</div>
+{% endblock %}

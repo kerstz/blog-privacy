@@ -1,0 +1,441 @@
+{% extends 'layout.html' %}
+
+{% block title %}Donate - Blog{% endblock %}
+
+{% block content %}
+<div class="donate-page">
+    <h1 class="donate-title">✨ Keep This Cozy Space Alive ✨</h1>
+    <p class="donate-message">Your kindness helps keep this little home on the internet warm and welcoming! ❤️ This space is more than just a collection of posts. It's a safe place to share, to escape, and to feel less alone. If this blog has ever brought you comfort, inspiration, or even just a smile, consider helping to keep it alive! 💙</p>
+
+    <!-- Top Donators Section -->
+    <div class="top-donators">
+        <h2>🏆 Top Donators of the Month 🏆</h2>
+        <p class="no-donations">No donations yet this month. Be the first to support! ❤️</p>
+    </div>
+
+    <!-- Anonymous Donation Section -->
+    <div class="anonymous-donation">
+        <h3>💰 Donate Anonymously with Trocador</h3>
+        <p>Use the widget below to crypto anonymously. 🔒</p>
+        <p>Want to donate anonymously? Trocador lets you swap any crypto for Monero (XMR) and send it directly.</p>
+        
+        <div class="instructions">
+            <ol>
+                <li>Select the currency you want to send.</li>
+                <li>Enter the amount and confirm.</li>
+                <li>Trocador will automatically convert it to Monero for full privacy. ---</li>
+            </ol>
+        </div>
+
+        <div class="trocador-widget">
+            <iframe src="https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=47wJbYtPB6SLd4P9PCwLcKfTgXCTnZGPwUuGSv3dPTGuG1RmhcB8LVQUVHATAAW1Q6ZVJQQ82EeC9Rzox7aWt6jgCtw54Pj&donation=True&amount=0.0001&name=Blog+Support&description=Thanks+for+supporting+the+blog&bgcolor=" 
+                    width="100%" height="600" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <!-- Direct Cryptocurrency Donation Section -->
+    <div class="direct-crypto">
+        <h3>💰 Donate with Crypto</h3>
+        <p>Choose your preferred cryptocurrency and scan the QR code:</p>
+        
+        <div class="crypto-grid">
+            <!-- Bitcoin -->
+            <div class="crypto-card">
+                <div class="crypto-icon">⚡</div>
+                <h4>Bitcoin (BTC)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">bc1qpcla6t8ldyk092essl3q8r3lav7xu50ktwnq7f</p>
+            </div>
+
+            <!-- Monero -->
+            <div class="crypto-card">
+                <div class="crypto-icon">❤️</div>
+                <h4>Monero (XMR)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">4ShjzTudhUd6JLywpU2mP1sKzUNEYaNh1TvjBJVKTN26Ha7xEd0jHTB7vCrW1GaHRGLEPrmxxCjwVMKKWkdadLXA</p>
+            </div>
+
+            <!-- Litecoin -->
+            <div class="crypto-card">
+                <div class="crypto-icon">⚡</div>
+                <h4>Litecoin (LTC)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">LUcfXBKQoB74efn9rHreG3neujWyKmHSeC</p>
+            </div>
+
+            <!-- Ethereum -->
+            <div class="crypto-card">
+                <div class="crypto-icon">⚡</div>
+                <h4>Ethereum (ETH)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
+            </div>
+
+            <!-- Solana -->
+            <div class="crypto-card">
+                <div class="crypto-icon">☀️</div>
+                <h4>Solana (SOL)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">GRSXMYRC6G8dZczwWhgH25GHDwAkKGLGntQd5Vstv</p>
+            </div>
+
+            <!-- Tether -->
+            <div class="crypto-card">
+                <div class="crypto-icon">⚡</div>
+                <h4>Tether (USDT-ERC20)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
+            </div>
+
+            <!-- Tron -->
+            <div class="crypto-card">
+                <div class="crypto-icon">💎</div>
+                <h4>Tron (TRX)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">TXtjY9h2K2S2rH7uTQJKco4sr5eFhuJwvy</p>
+            </div>
+
+            <!-- Ripple -->
+            <div class="crypto-card">
+                <div class="crypto-icon">⚡</div>
+                <h4>Ripple (XRP)</h4>
+                <div class="qr-code">
+                    <div class="qr-placeholder">QR Code</div>
+                </div>
+                <p class="crypto-address">rNfTZ1htYGXaNNoRfHX4XgqmL5FfK52NM2</p>
+            </div>
+        </div>
+    </div>
+
+    <p class="thank-you">💛 Thank you for keeping this space alive! 💛</p>
+</div>
+
+<style>
+.donate-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    color: #e0e0e0;
+}
+
+.donate-title {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #ffd43b;
+    margin-bottom: 20px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.donate-message {
+    text-align: center;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 40px;
+    color: #e0e0e0;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.top-donators {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.top-donators h2 {
+    color: #ffd43b;
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+}
+
+.no-donations {
+    color: #e0e0e0;
+    font-size: 1rem;
+}
+
+.anonymous-donation {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #8b93ff;
+    border-radius: 20px;
+    padding: 30px;
+    margin: 30px 0;
+    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+}
+
+.anonymous-donation h3 {
+    color: #ffd43b;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.anonymous-donation p {
+    color: #e0e0e0;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.instructions {
+    margin: 20px 0;
+}
+
+.instructions ol {
+    color: #e0e0e0;
+    max-width: 600px;
+    margin: 0 auto;
+    padding-left: 20px;
+}
+
+.instructions li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.trocador-widget {
+    margin-top: 30px;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.direct-crypto {
+    margin-top: 40px;
+}
+
+.direct-crypto h3 {
+    color: #ffd43b;
+    font-size: 1.5rem;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.direct-crypto > p {
+    color: #e0e0e0;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.crypto-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.crypto-card {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #ffd43b;
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 212, 59, 0.1);
+}
+
+.crypto-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(255, 212, 59, 0.2);
+    border-color: #ffd43b;
+}
+
+.crypto-icon {
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.crypto-card h4 {
+    color: #ffd43b;
+    font-size: 1.2rem;
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.qr-code {
+    width: 120px;
+    height: 120px;
+    background: #2a2b3d;
+    border: 2px solid #ffd43b;
+    border-radius: 10px;
+    margin: 0 auto 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-placeholder {
+    color: #ffd43b;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.crypto-address {
+    color: #c3c4cb;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    word-break: break-all;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    line-height: 1.4;
+}
+
+.thank-you {
+    text-align: center;
+    font-size: 1.3rem;
+    color: #ffd43b;
+    margin-top: 50px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .donate-page {
+        padding: 20px 15px;
+    }
+    
+    .donate-title {
+        font-size: 2rem;
+    }
+    
+    .donate-message {
+        font-size: 1rem;
+    }
+    
+    .anonymous-donation {
+        padding: 20px;
+    }
+    
+    .crypto-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .crypto-card {
+        padding: 15px;
+    }
+    
+    .qr-code {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .crypto-address {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .donate-title {
+        font-size: 1.8rem;
+    }
+    
+    .anonymous-donation h3,
+    .direct-crypto h3 {
+        font-size: 1.3rem;
+    }
+    
+    .crypto-icon {
+        font-size: 1.5rem;
+    }
+    
+    .qr-code {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .qr-placeholder {
+        font-size: 0.8rem;
+    }
+}
+</style>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Créer une notification de succès
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #51cf66, #40c057);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(81, 207, 102, 0.3);
+            animation: slideIn 0.3s ease;
+        `;
+        notification.innerHTML = '<span class="icon-check"></span> Address copied!';
+        document.body.appendChild(notification);
+        
+        // Supprimer la notification après 3 secondes
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, 3000);
+    }).catch(function(err) {
+        console.error('Erreur lors de la copie: ', err);
+        alert('Erreur lors de la copie de l\'adresse');
+    });
+}
+
+// Ajouter les animations CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
+
+// Ajouter des boutons de copie pour chaque adresse crypto
+document.addEventListener('DOMContentLoaded', function() {
+    const cryptoAddresses = document.querySelectorAll('.crypto-address');
+    cryptoAddresses.forEach(address => {
+        address.style.cursor = 'pointer';
+        address.title = 'Click to copy';
+        address.addEventListener('click', function() {
+            copyToClipboard(this.textContent);
+        });
+    });
+});
+</script>
+{% endblock %}

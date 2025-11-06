@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Enter your Admin PIN</h2>
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+        <div class="alert alert-{{ category }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+    <form method="POST" action="{{ url_for('verify_pin') }}">
+        {{ form.hidden_tag() }}  <!-- Inclure le token CSRF -->
+        <div class="form-group">
+            <label for="pin_code">PIN Code</label>
+            <input type="password" name="pin_code" id="pin_code" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Verify</button>
+    </form>
+</div>
+{% endblock %}

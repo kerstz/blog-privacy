@@ -1,0 +1,502 @@
+{% extends 'layout.html' %}
+
+{% block title %}Chat with {{ target_user.username }} - Blog{% endblock %}
+
+{% block content %}
+<div class="admin-chat-container">
+    <div class="chat-header">
+        <h2><span class="icon-comments"></span> Chat with {{ target_user.username }}</h2>
+        <p>Level {{ target_user.level }} • {{ target_user.experience_points }} XP</p>
+    </div>
+
+    <div class="chat-layout">
+        <!-- Liste des utilisateurs -->
+        <div class="users-sidebar">
+            <h3><span class="icon-users"></span> Users</h3>
+            <div class="users-list">
+                {% for user in users %}
+                    <div class="user-item {% if user.id == target_user.id %}active{% endif %}">
+                        <a href="{{ url_for('admin_chat_user', user_id=user.id) }}" class="user-link">
+                            <div class="user-avatar">
+                                <span class="icon-user"></span>
+                            </div>
+                            <div class="user-info">
+                                <span class="user-name">{{ user.username }}</span>
+                                <span class="user-level">Level {{ user.level }}</span>
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Zone de messages -->
+        <div class="messages-area">
+            <div class="messages-header">
+                <h3><span class="icon-comment-dots"></span> Conversation with {{ target_user.username }}</h3>
+            </div>
+            <div class="messages-container" id="messages-container">
+                {% for message in messages %}
+                    <div class="message-item {% if message.sender.is_admin %}admin-message{% else %}user-message{% endif %}">
+                        <div class="message-header">
+                            <span class="sender-name">
+                                {% if message.sender.is_admin %}
+                                    <span class="icon-crown"></span> {{ message.sender.username }}
+                                {% else %}
+                                    <span class="icon-user"></span> {{ message.sender.username }}
+                                {% endif %}
+                            </span>
+                            <span class="message-time">{{ message.timestamp.strftime('%H:%M') }}</span>
+                        </div>
+                        <div class="message-content">
+                            {% if message.file_path %}
+                                {% if message.file_type == 'image' %}
+                                    <div class="message-file">
+                                        <img src="{{ url_for('static', filename=message.file_path) }}" alt="Image" class="message-image">
+                                    </div>
+                                {% elif message.file_type == 'video' %}
+                                    <div class="message-file">
+                                        <video controls class="message-video">
+                                            <source src="{{ url_for('static', filename=message.file_path) }}" type="video/mp4">
+                                            Votre navigateur ne supporte pas la lecture vidéo.
+                                        </video>
+                                    </div>
+                                {% else %}
+                                    <div class="message-file">
+                                        <a href="{{ url_for('static', filename=message.file_path) }}" download class="file-download">
+                                            <span class="icon-download"></span> Télécharger le fichier
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            {% endif %}
+                            {% if message.get_decrypted_content() %}
+                                <div class="message-text">{{ message.get_decrypted_content() }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+                {% if not messages %}
+                    <div class="no-messages">
+                        <span class="icon-comment-slash"></span>
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Formulaire d'envoi de message -->
+            <div class="message-form-container">
+                <form method="POST" enctype="multipart/form-data" class="message-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+                        <textarea name="content" class="form-control" placeholder="Type your message here..." rows="3"></textarea>
+                    </div>
+                    <div class="file-upload-group">
+                        <input type="file" name="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.mp4" style="display: none;">
+                        <label for="file-input" class="file-upload-btn">
+                            <span class="icon-paperclip"></span> Attacher un fichier
+                        </label>
+                        <span id="file-name" class="file-name"></span>
+                    </div>
+                    <button type="submit" class="send-btn">
+                        <span class="icon-paper-plane"></span> Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-chat-container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+}
+
+.chat-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.chat-header h2 {
+    color: #8b93ff;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.chat-header p {
+    color: #c3c4cb;
+    margin: 0;
+}
+
+.chat-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    height: 600px;
+}
+
+.users-sidebar {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 15px;
+    padding: 20px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+}
+
+.users-sidebar h3 {
+    color: #8b93ff;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+}
+
+.users-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.user-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.user-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.user-item.active {
+    background: rgba(139, 147, 255, 0.2);
+    border: 1px solid #8b93ff;
+}
+
+.user-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-name {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.user-level {
+    color: #c3c4cb;
+    font-size: 0.8rem;
+}
+
+.messages-area {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border-radius: 15px;
+    border: 2px solid #8b93ff;
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+}
+
+.messages-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.messages-header h3 {
+    color: #8b93ff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.2rem;
+}
+
+.messages-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    max-height: 400px;
+}
+
+.message-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    border-left: 4px solid #8b93ff;
+}
+
+.admin-message {
+    border-left-color: #51cf66;
+    background: rgba(81, 207, 102, 0.1);
+}
+
+.user-message {
+    border-left-color: #8b93ff;
+}
+
+.message-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.sender-name {
+    color: #8b93ff;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.admin-message .sender-name {
+    color: #51cf66;
+}
+
+.message-time {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.message-content {
+    color: #e0e0e0;
+    line-height: 1.5;
+}
+
+.message-text {
+    margin-top: 8px;
+}
+
+.message-file {
+    margin: 8px 0;
+}
+
+.message-image {
+    max-width: 300px;
+    max-height: 200px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.message-video {
+    max-width: 400px;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.file-download {
+    color: #8b93ff;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: rgba(139, 147, 255, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    transition: all 0.3s ease;
+}
+
+.file-download:hover {
+    background: rgba(139, 147, 255, 0.2);
+    color: #8b93ff;
+    text-decoration: none;
+}
+
+.file-upload-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.file-upload-btn {
+    background: rgba(139, 147, 255, 0.2);
+    color: #8b93ff;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.file-upload-btn:hover {
+    background: rgba(139, 147, 255, 0.3);
+}
+
+.file-name {
+    color: #c3c4cb;
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+.no-messages {
+    text-align: center;
+    color: #c3c4cb;
+    padding: 40px;
+}
+
+.no-messages i {
+    font-size: 3rem;
+    color: #8b93ff;
+    margin-bottom: 15px;
+}
+
+.message-form-container {
+    padding: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.message-form {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-control {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #e0e0e0;
+    padding: 12px 15px;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 60px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8b93ff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+}
+
+.send-btn {
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: fit-content;
+}
+
+.send-btn:hover {
+    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chat-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+    
+    .users-sidebar {
+        order: 2;
+    }
+    
+    .messages-area {
+        order: 1;
+        height: 500px;
+    }
+    
+    .message-form {
+        flex-direction: column;
+    }
+    
+    .send-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+// Auto-scroll vers le bas des messages
+function scrollToBottom() {
+    const container = document.getElementById('messages-container');
+    container.scrollTop = container.scrollHeight;
+}
+
+// Scroll vers le bas au chargement de la page
+window.addEventListener('load', scrollToBottom);
+
+// Scroll vers le bas après envoi de message
+document.querySelector('.message-form').addEventListener('submit', function() {
+    setTimeout(scrollToBottom, 100);
+});
+
+// Gestion de l'upload de fichier
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const fileName = document.getElementById('file-name');
+    if (e.target.files.length > 0) {
+        fileName.textContent = e.target.files[0].name;
+        fileName.style.color = '#8b93ff';
+    } else {
+        fileName.textContent = '';
+    }
+});
+
+// Validation du formulaire
+document.querySelector('.message-form').addEventListener('submit', function(e) {
+    const content = document.querySelector('textarea[name="content"]').value.trim();
+    const file = document.querySelector('input[name="file"]').files[0];
+    
+    if (!content && !file) {
+        e.preventDefault();
+        alert('Veuillez saisir un message ou sélectionner un fichier.');
+        return false;
+    }
+});
+</script>
+{% endblock %}

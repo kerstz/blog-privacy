@@ -1,0 +1,394 @@
+{% extends 'layout.html' %}
+
+{% block title %}Profil de {{ user.username }} - Blog{% endblock %}
+
+{% block content %}
+
+        <div class="profile-container">
+            <!-- Header du profil -->
+            <div class="profile-header">
+                <div class="profile-avatar">
+                    {% if user.profile_picture %}
+                        <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Photo de profil" class="profile-picture">
+                    {% else %}
+                        <span class="icon-user-circle"></span>
+                    {% endif %}
+                </div>
+                <div class="profile-info">
+                    <h2>{{ user.username }}</h2>
+                    <div class="profile-level">
+                        <span class="level-badge">Niveau {{ user.level }}</span>
+                        <div class="experience-bar">
+                            <div class="experience-fill" style="width: {{ ((user.experience_points % 100) / 100) * 100 }}%"></div>
+                        </div>
+                        <span class="experience-text">{{ user.experience_points }} XP</span>
+                    </div>
+                    <p class="member-since">Membre depuis {{ user.created_at.strftime('%B %Y') }}</p>
+                    {% if current_user.is_authenticated and current_user.id == user.id %}
+                        <a href="{{ url_for('edit_profile') }}" class="edit-profile-btn">
+                            <span class="icon-edit"></span> Modifier le profil
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Badges -->
+            <div class="badges-section">
+                <h3><span class="icon-medal"></span> Badges</h3>
+                <div class="badges-grid">
+                    {% for badge_name in user.get_badges() %}
+                        <div class="badge-item">
+                            <span class="icon-medal"></span>
+                            <span>{{ badge_name }}</span>
+                        </div>
+                    {% endfor %}
+                    {% if not user.get_badges() %}
+                        <p class="no-badges">Aucun badge obtenu pour le moment</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="stats-section">
+                <h3><span class="icon-chart-bar"></span> Statistiques</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <span class="icon-newspaper"></span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number">{{ total_posts }}</span>
+                            <span class="stat-label">Articles</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <span class="icon-comments"></span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number">{{ total_comments }}</span>
+                            <span class="stat-label">Commentaires</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <span class="icon-heart"></span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number">{{ total_likes_received }}</span>
+                            <span class="stat-label">Likes reçus</span>
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-icon">
+                            <span class="icon-star"></span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-number">{{ user.level }}</span>
+                            <span class="stat-label">Niveau</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Articles récents -->
+            {% if user_posts %}
+                <div class="recent-posts-section">
+                    <h3><span class="icon-newspaper"></span> Articles Récents</h3>
+                    <div class="posts-list">
+                        {% for post in user_posts %}
+                            <div class="post-item">
+                                <h4><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h4>
+                                <div class="post-meta">
+                                    <span><span class="icon-calendar"></span> {{ post.date_posted.strftime('%d/%m/%Y') }}</span>
+                                    <span><span class="icon-heart"></span> {{ post.likes_count }} likes</span>
+                                    <span><span class="icon-eye"></span> {{ post.views_count }} vues</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Commentaires récents -->
+            {% if user_comments %}
+                <div class="recent-comments-section">
+                    <h3><span class="icon-comments"></span> Commentaires Récents</h3>
+                    <div class="comments-list">
+                        {% for comment in user_comments %}
+                            <div class="comment-item">
+                                <p>{{ comment.content[:100] }}{% if comment.content|length > 100 %}...{% endif %}</p>
+                                <div class="comment-meta">
+                                    <span><span class="icon-calendar"></span> {{ comment.date_posted.strftime('%d/%m/%Y') }}</span>
+                                    <span><span class="icon-heart"></span> {{ comment.likes_count }} likes</span>
+                                    {% if comment.post %}
+                                        <span><span class="icon-newspaper"></span> <a href="{{ url_for('post_detail', post_id=comment.post.id) }}">{{ comment.post.title }}</a></span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+    <style>
+        .profile-container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .profile-header {
+            background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+            border-radius: 15px;
+            padding: 25px;
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            margin-bottom: 25px;
+            border: 2px solid #8b93ff;
+            box-shadow: 0 4px 15px rgba(139, 147, 255, 0.2);
+        }
+
+        .profile-avatar {
+            font-size: 6rem;
+            color: #8b93ff;
+            position: relative;
+        }
+
+        .profile-picture {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #8b93ff;
+            box-shadow: 0 4px 15px rgba(139, 147, 255, 0.3);
+        }
+
+        .profile-info h2 {
+            color: #e0e0e0;
+            font-size: 2.5rem;
+            margin: 0 0 15px 0;
+        }
+
+        .profile-level {
+            margin-bottom: 15px;
+        }
+
+        .level-badge {
+            background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .experience-bar {
+            width: 200px;
+            height: 8px;
+            background: #444;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .experience-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #8b93ff, #6f7ae6);
+            transition: width 0.3s ease;
+        }
+
+        .experience-text {
+            color: #c3c4cb;
+            font-size: 0.9rem;
+        }
+
+        .member-since {
+            color: #888;
+            margin: 0 0 15px 0;
+        }
+
+        .edit-profile-btn {
+            background: linear-gradient(135deg, #51cf66, #40c057);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .edit-profile-btn:hover {
+            background: linear-gradient(135deg, #40c057, #37b24d);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4);
+            text-decoration: none;
+            color: white;
+        }
+
+        .badges-section, .stats-section, .recent-posts-section, .recent-comments-section {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #2a2b3d;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .badges-section h3, .stats-section h3, .recent-posts-section h3, .recent-comments-section h3 {
+            color: #8b93ff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .badges-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .badge-item {
+            background: linear-gradient(135deg, #ffd43b, #ffcc00);
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .no-badges {
+            color: #c3c4cb;
+            font-style: italic;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-item {
+            background: #2a2b3d;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: transform 0.3s ease;
+            border: 1px solid #3a3b4d;
+        }
+
+        .stat-item:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(139, 147, 255, 0.2);
+            color: #8b93ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #e0e0e0;
+        }
+
+        .stat-label {
+            color: #c3c4cb;
+            font-size: 0.9rem;
+        }
+
+        .posts-list, .comments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .post-item, .comment-item {
+            background: #2a2b3d;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #8b93ff;
+            border: 1px solid #3a3b4d;
+            transition: transform 0.3s ease;
+        }
+
+        .post-item:hover, .comment-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(139, 147, 255, 0.1);
+        }
+
+        .post-item h4 {
+            margin: 0 0 10px 0;
+        }
+
+        .post-item h4 a {
+            color: #8b93ff;
+            text-decoration: none;
+        }
+
+        .post-item h4 a:hover {
+            color: #6f7ae6;
+            text-decoration: underline;
+        }
+
+        .post-meta, .comment-meta {
+            display: flex;
+            gap: 20px;
+            color: #c3c4cb;
+            font-size: 0.9rem;
+        }
+
+        .post-meta span, .comment-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .comment-item p {
+            color: #e0e0e0;
+            margin: 0 0 10px 0;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .profile-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .post-meta, .comment-meta {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+{% endblock %}

@@ -1,0 +1,349 @@
+{% extends 'admin_layout.html' %}
+
+{% block title %}Modifier l'Article - Admin{% endblock %}
+
+{% block content %}
+<div class="admin-content">
+    <div class="content-header">
+        <h2><span class="icon-edit"></span> Modifier l'Article</h2>
+        <p>Modifiez le contenu de votre article</p>
+    </div>
+
+    <div class="edit-post-section">
+        <div class="section-card">
+            <form method="POST" action="{{ url_for('edit_post', post_id=post.id) }}" class="post-form">
+                {{ form.hidden_tag() }}
+
+                <div class="form-group">
+                    <label for="title">Titre de l'article</label>
+                    {{ form.title(class="form-control", id="title", placeholder="Entrez le titre de l'article") }}
+                    {% if form.title.errors %}
+                        <div class="error-messages">
+                            {% for error in form.title.errors %}
+                                <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="content">Contenu</label>
+                    <textarea name="content" id="content" class="form-control ckeditor-textarea" required>{{ post.content }}</textarea>
+                    {% if form.content.errors %}
+                        <div class="error-messages">
+                            {% for error in form.content.errors %}
+                                <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group">
+                    <label for="scheduled_date">Date de publication programmée</label>
+                    {{ form.scheduled_date(class="form-control", id="scheduled_date") }}
+                    {% if form.scheduled_date.errors %}
+                        <div class="error-messages">
+                            {% for error in form.scheduled_date.errors %}
+                                <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <div class="checkbox-wrapper">
+                        {{ form.is_published(class="form-check-input", id="is_published") }}
+                        <label for="is_published" class="checkbox-label">
+                            <span class="icon-check"></span> Publier immédiatement
+                        </label>
+                    </div>
+                    {% if form.is_published.errors %}
+                        <div class="error-messages">
+                            {% for error in form.is_published.errors %}
+                                <span class="error">{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">
+                        <span class="icon-save"></span> {{ form.submit.label.text }}
+                    </button>
+                    <a href="{{ url_for('manage_posts') }}" class="btn-secondary">
+                        <span class="icon-arrow-left"></span> Retour
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.content-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.content-header h2 {
+    color: #8b93ff;
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.content-header p {
+    color: #c3c4cb;
+    font-size: 1.1rem;
+}
+
+.section-card {
+    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
+    border: 2px solid #8b93ff;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+}
+
+.post-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.form-control {
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    color: #e0e0e0;
+    padding: 12px 15px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #8b93ff;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+}
+
+.form-control::placeholder {
+    color: #888;
+}
+
+.checkbox-group {
+    margin-top: 10px;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-check-input {
+    width: 18px;
+    height: 18px;
+    accent-color: #8b93ff;
+}
+
+.checkbox-label {
+    color: #e0e0e0;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.error-messages {
+    margin-top: 5px;
+}
+
+.error {
+    color: #ff6b6b;
+    font-size: 0.9rem;
+    display: block;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+    text-decoration: none;
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: #8b93ff;
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: #e0e0e0;
+}
+
+/* Styles pour CKEditor */
+.ck-editor__editable {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px !important;
+    color: #e0e0e0 !important;
+    min-height: 400px !important;
+}
+
+.ck-editor__editable:focus {
+    border-color: #8b93ff !important;
+    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2) !important;
+}
+
+.ck-toolbar {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    border-bottom: none !important;
+    border-radius: 10px 10px 0 0 !important;
+}
+
+.ck-toolbar .ck-button {
+    color: #e0e0e0 !important;
+}
+
+.ck-toolbar .ck-button:hover {
+    background: rgba(139, 147, 255, 0.2) !important;
+}
+
+.ck-toolbar .ck-button.ck-on {
+    background: rgba(139, 147, 255, 0.3) !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-content {
+        padding: 15px;
+    }
+    
+    .content-header h2 {
+        font-size: 2rem;
+    }
+    
+    .section-card {
+        padding: 20px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn-primary, .btn-secondary {
+        justify-content: center;
+    }
+}
+
+.ckeditor-textarea {
+    min-height: 400px !important;
+}
+</style>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialiser CKEditor
+    ClassicEditor
+        .create(document.querySelector('#content'), {
+            toolbar: {
+                items: [
+                    'heading', '|',
+                    'bold', 'italic', 'underline', '|',
+                    'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
+                    'bulletedList', 'numberedList', '|',
+                    'alignment', '|',
+                    'link', 'insertImage', 'insertTable', '|',
+                    'blockQuote', 'codeBlock', '|',
+                    'undo', 'redo'
+                ]
+            },
+            language: 'fr',
+            fontSize: {
+                options: [9, 11, 13, 'default', 17, 19, 21, 27, 35]
+            },
+            fontFamily: {
+                options: [
+                    'default',
+                    'Arial, Helvetica, sans-serif',
+                    'Courier New, Courier, monospace',
+                    'Georgia, serif',
+                    'Lucida Sans Unicode, Lucida Grande, sans-serif',
+                    'Tahoma, Geneva, sans-serif',
+                    'Times New Roman, Times, serif',
+                    'Trebuchet MS, Helvetica, sans-serif',
+                    'Verdana, Geneva, sans-serif'
+                ]
+            }
+        })
+        .then(editor => {
+            console.log('CKEditor initialisé avec succès');
+        })
+        .catch(error => {
+            console.error('Erreur lors de l\'initialisation de CKEditor:', error);
+        });
+});
+</script>
+{% endblock %}
