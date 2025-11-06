@@ -146,6 +146,150 @@ Please format the response as copy-paste ready CSS code.
 
 ---
 
+## Changing the Blog Name
+
+To change "TechBlog" to your own blog name:
+
+### 1. In Templates (HTML files)
+
+**Main Layout** - `app/templates/layout.html`:
+```html
+<!-- Find and replace -->
+<a class="navbar-brand" href="{{ url_for('index') }}">TechBlog</a>
+<!-- With -->
+<a class="navbar-brand" href="{{ url_for('index') }}">YourBlogName</a>
+```
+
+**Page Titles** - Same file:
+```html
+<title>{% block title %}TechBlog{% endblock %}</title>
+<!-- Change to -->
+<title>{% block title %}YourBlogName{% endblock %}</title>
+```
+
+### 2. In Other Files
+
+**Index Page** - `app/templates/index.html`:
+```html
+<h1>Welcome to TechBlog</h1>
+<!-- Change to -->
+<h1>Welcome to YourBlogName</h1>
+```
+
+**About Page** - `app/templates/about.html`:
+```html
+<h1 class="about-title">🌐 About TechBlog</h1>
+<!-- Change to -->
+<h1 class="about-title">🌐 About YourBlogName</h1>
+```
+
+**Admin Dashboard** - `app/templates/admin_dashboard.html`:
+```html
+<title>Admin Panel - TechBlog</title>
+<!-- Change to -->
+<title>Admin Panel - YourBlogName</title>
+```
+
+**README.md**:
+```markdown
+# TechBlog
+<!-- Change to -->
+# YourBlogName
+```
+
+**Quick Search & Replace:**
+```bash
+# Use your text editor's "Find & Replace All" feature
+# Find: TechBlog
+# Replace: YourBlogName
+```
+
+## Customizing the Donation Section
+
+The donation button appears in the footer of every page. Here's how to customize it:
+
+### 1. Change Button Text
+
+In `app/templates/layout.html`, find:
+```html
+<a href="{{ url_for('donate') }}" class="donate-btn">
+    ❤️ Support
+</a>
+```
+
+Change to:
+```html
+<a href="{{ url_for('donate') }}" class="donate-btn">
+    ☕ Buy Me a Coffee
+</a>
+<!-- Or -->
+<a href="{{ url_for('donate') }}" class="donate-btn">
+    💝 Donate
+</a>
+<!-- Or -->
+<a href="{{ url_for('donate') }}" class="donate-btn">
+    🎁 Support This Blog
+</a>
+```
+
+### 2. Modify Donation Page Content
+
+Edit `app/templates/donate.html` to customize:
+- **Page title**: Change the `<h1>` content
+- **Description**: Update the text explaining why you need donations
+- **Cryptocurrency addresses**: Update with your own wallet addresses
+- **Payment methods**: Add PayPal, Ko-fi, Buy Me a Coffee links
+
+Example in `donate.html`:
+```html
+<h1 class="donate-title">Support My Work</h1>
+<p class="donate-description">
+    Your custom message here explaining what the donations will be used for.
+</p>
+```
+
+### 3. Change Donation Button Style
+
+In `app/static/css/style.css`, find `.donate-btn`:
+```css
+.donate-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    /* Change colors to match your theme */
+    background: linear-gradient(135deg, #YOUR_COLOR_1 0%, #YOUR_COLOR_2 100%);
+}
+```
+
+### 4. Remove Donation Section
+
+To completely remove the donation button, delete this from `layout.html`:
+```html
+<div class="footer-container">
+    <a href="{{ url_for('donate') }}" class="donate-btn">
+        ❤️ Support
+    </a>
+</div>
+```
+
+### 5. Add External Donation Links
+
+Replace the donation route with external services:
+```html
+<!-- Ko-fi -->
+<a href="https://ko-fi.com/yourusername" class="donate-btn" target="_blank">
+    ☕ Ko-fi
+</a>
+
+<!-- Buy Me a Coffee -->
+<a href="https://www.buymeacoffee.com/yourusername" class="donate-btn" target="_blank">
+    ☕ Buy Me a Coffee
+</a>
+
+<!-- PayPal -->
+<a href="https://paypal.me/yourusername" class="donate-btn" target="_blank">
+    💳 PayPal
+</a>
+```
+
 ## Pro Tips
 
 1. **Use a Color Picker Tool:** Try [Coolors.co](https://coolors.co) or [ColorHunt](https://colorhunt.co) for inspiration
@@ -184,6 +328,41 @@ This will give you a cool, professional dark blue theme!
 - Check the official CSS documentation: [MDN Web Docs](https://developer.mozilla.org/en-US/docs/Web/CSS)
 - For gradient generators: [CSS Gradient](https://cssgradient.io/)
 - For inspiration: [Dribble](https://dribbble.com/) or [Behance](https://www.behance.net/)
+
+## Adding Your GitHub Link to Footer
+
+The footer now includes a GitHub link. To update it with your repository:
+
+### Update in `app/templates/layout.html`:
+
+Find this line in the footer:
+```html
+<a href="https://github.com/yourusername/techblog" target="_blank" rel="noopener noreferrer">
+```
+
+Replace with your GitHub repository URL:
+```html
+<a href="https://github.com/YOUR_USERNAME/YOUR_REPO_NAME" target="_blank" rel="noopener noreferrer">
+```
+
+### Customize the Link Style:
+
+You can change:
+- **Text**: "View on GitHub" → "Star on GitHub" or "Check the Source Code"
+- **Icon**: Change the ⭐ emoji to any other: 🔗 📦 💻 🚀
+- **Color**: Change `color: #10b981` to any hex color
+
+Example variations:
+```html
+<!-- Minimal -->
+<a href="https://github.com/your/repo">GitHub</a>
+
+<!-- With icon -->
+<a href="https://github.com/your/repo">🔗 Source Code</a>
+
+<!-- Call to action -->
+<a href="https://github.com/your/repo">⭐ Star this project</a>
+```
 
 Happy customizing! 🎨✨
 
