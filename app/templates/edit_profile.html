@@ -1,12 +1,12 @@
 {% extends 'layout.html' %}
 
-{% block title %}Éditer le Profil - Blog{% endblock %}
+{% block title %}Edit Profile - Blog{% endblock %}
 
 {% block content %}
 <div class="edit-profile-container">
     <div class="edit-profile-header">
-        <h2><span class="icon-user-edit"></span> Éditer le Profil</h2>
-        <p>Modifiez vos informations personnelles</p>
+        <h2><span class="icon-user-edit"></span> Edit Profile</h2>
+        <p>Update your account information</p>
     </div>
 
     <div class="edit-profile-form">
@@ -14,8 +14,8 @@
             {{ form.hidden_tag() }}
             
             <div class="form-group">
-                <label for="username">Nom d'utilisateur</label>
-                {{ form.username(class="form-control", placeholder="Votre nom d'utilisateur") }}
+                <label for="username">Username (for login only)</label>
+                {{ form.username(class="form-control", placeholder="Your username") }}
                 {% if form.username.errors %}
                     <div class="error-messages">
                         {% for error in form.username.errors %}
@@ -23,35 +23,17 @@
                         {% endfor %}
                     </div>
                 {% endif %}
-            </div>
-
-            <div class="form-group">
-                <label for="profile_picture">Photo de profil</label>
-                <div class="file-upload-container">
-                    {{ form.profile_picture(class="file-input", id="profile_picture") }}
-                    <label for="profile_picture" class="file-upload-label">
-                        <span class="icon-camera"></span>
-                        <span>Choisir une photo</span>
-                    </label>
-                    <div class="file-info">
-                        <small>Formats acceptés : JPG, PNG, GIF, JPEG (max 5MB)</small>
-                    </div>
+                <div class="file-info">
+                    <small>Note: Your username is only used for login and is not displayed publicly</small>
                 </div>
-                {% if form.profile_picture.errors %}
-                    <div class="error-messages">
-                        {% for error in form.profile_picture.errors %}
-                            <span class="error">{{ error }}</span>
-                        {% endfor %}
-                    </div>
-                {% endif %}
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn-save">
-                    <span class="icon-save"></span> Sauvegarder
+                    <span class="icon-save"></span> Save
                 </button>
                 <a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="btn-cancel">
-                    <span class="icon-times"></span> Annuler
+                    <span class="icon-times"></span> Cancel
                 </a>
             </div>
         </form>
