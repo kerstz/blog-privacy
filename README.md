@@ -2,6 +2,11 @@
 
 A modern, feature-rich blogging platform built with Flask. TechBlog offers a clean and responsive interface for sharing articles, engaging with readers, and building a community around technology and programming.
 
+<img width="1220" height="697" alt="Screenshot_20251106_094244" src="https://github.com/user-attachments/assets/9171f892-1a29-4b51-bf4f-dbb18a71dee3" />
+<img width="1753" height="871" alt="Screenshot_20251106_132715" src="https://github.com/user-attachments/assets/c97b897a-adf6-4e90-b799-4cd99183ffbc" />
+<img width="1773" height="876" alt="Screenshot_20251106_132701" src="https://github.com/user-attachments/assets/0bf5e3c3-aff8-4cc3-b91f-62f9fe4b3fae" />
+
+
 ## Features
 
 - **Modern UI**: Clean, responsive design with a beautiful green/orange color scheme (fully customizable!)
