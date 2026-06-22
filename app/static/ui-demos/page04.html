@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CYBERPUNK — NEON STATIC</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg: #030305;
+  --cyan: #00FFFF;
+  --pink: #FF0090;
+  --yellow: #FFFF00;
+  --dark-blue: #0A0A1E;
+  --panel: #080818;
+  --border: rgba(0,255,255,0.2);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: #C0F0FF;
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+/* SCANLINES */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* NOISE */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 998;
+  opacity: 0.5;
+}
+
+/* ANIMATIONS */
+@keyframes neonFlicker {
+  0%, 95%, 100% { opacity: 1; text-shadow: 0 0 10px currentColor, 0 0 30px currentColor, 0 0 60px currentColor; }
+  96% { opacity: 0.3; text-shadow: none; }
+  97% { opacity: 1; text-shadow: 0 0 10px currentColor, 0 0 30px currentColor; }
+  98% { opacity: 0.5; text-shadow: 0 0 5px currentColor; }
+  99% { opacity: 1; text-shadow: 0 0 10px currentColor, 0 0 30px currentColor, 0 0 60px currentColor; }
+}
+
+@keyframes glitchAnim {
+  0% { clip-path: inset(40% 0 61% 0); transform: skew(-0.5deg); }
+  20% { clip-path: inset(92% 0 1% 0); transform: skew(0.5deg); }
+  40% { clip-path: inset(43% 0 1% 0); transform: skew(-0.3deg); }
+  60% { clip-path: inset(25% 0 58% 0); transform: skew(0.3deg); }
+  80% { clip-path: inset(54% 0 7% 0); transform: skew(-0.5deg); }
+  100% { clip-path: inset(58% 0 43% 0); transform: skew(0.5deg); }
+}
+
+@keyframes scanMove {
+  0% { top: -100%; }
+  100% { top: 100%; }
+}
+
+@keyframes dataStream {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(0,255,255,0.3); box-shadow: 0 0 5px rgba(0,255,255,0.1); }
+  50% { border-color: rgba(0,255,255,0.8); box-shadow: 0 0 20px rgba(0,255,255,0.3), inset 0 0 20px rgba(0,255,255,0.05); }
+}
+
+/* DATA STREAM BG */
+.data-bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+}
+.data-col {
+  position: absolute;
+  top: -100%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: rgba(0,255,255,0.07);
+  writing-mode: vertical-lr;
+  animation: dataStream linear infinite;
+  white-space: nowrap;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: rgba(3,3,5,0.95);
+  border-bottom: 1px solid var(--cyan);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  gap: 2rem;
+  box-shadow: 0 0 30px rgba(0,255,255,0.15), inset 0 -1px 0 rgba(0,255,255,0.3);
+}
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: rgba(0,255,255,0.5);
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #00FF41;
+  box-shadow: 0 0 8px #00FF41;
+  animation: neonFlicker 4s infinite;
+}
+.nav-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--cyan);
+  text-decoration: none;
+  letter-spacing: 0.2em;
+  animation: neonFlicker 7s infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.2rem;
+  height: 60px;
+  line-height: 60px;
+  color: rgba(0,255,255,0.6);
+  text-decoration: none;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-left: 1px solid rgba(0,255,255,0.1);
+  transition: all 0.2s;
+}
+nav ul li a:hover {
+  color: var(--cyan);
+  background: rgba(0,255,255,0.05);
+  box-shadow: inset 0 0 15px rgba(0,255,255,0.1);
+}
+.nav-time {
+  font-size: 0.7rem;
+  color: rgba(255,0,144,0.7);
+  margin-left: 1rem;
+}
+
+/* HERO */
+.hero {
+  position: relative;
+  z-index: 1;
+  margin-top: 60px;
+  min-height: 80vh;
+  padding: 4rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: 2rem;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-main {
+  position: relative;
+}
+.hero-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--pink);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.hero-label::before {
+  content: '';
+  width: 30px; height: 1px;
+  background: var(--pink);
+  box-shadow: 0 0 8px var(--pink);
+}
+
+.hero-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(2rem, 6vw, 5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  position: relative;
+  animation: neonFlicker 8s infinite;
+}
+.hero-title .glitch {
+  position: relative;
+}
+.hero-title .glitch::before {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: -2px;
+  color: var(--pink);
+  clip-path: inset(0);
+  animation: glitchAnim 3s infinite linear;
+  opacity: 0.8;
+}
+.hero-title .glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 2px;
+  color: var(--yellow);
+  clip-path: inset(0);
+  animation: glitchAnim 3s 0.1s infinite linear;
+  opacity: 0.5;
+}
+.hero-title em {
+  color: var(--pink);
+  font-style: normal;
+  display: block;
+}
+
+.hero-sub {
+  margin-top: 2rem;
+  font-size: 0.9rem;
+  color: rgba(192,240,255,0.7);
+  line-height: 1.6;
+  max-width: 50ch;
+  border-left: 2px solid var(--pink);
+  padding-left: 1rem;
+}
+
+/* HUD PANEL */
+.hud-panel {
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  position: relative;
+  animation: borderPulse 3s ease-in-out infinite;
+  background: rgba(0,20,40,0.4);
+}
+.hud-panel::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 20px; right: 20px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 10px var(--cyan);
+}
+.hud-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  opacity: 0.7;
+}
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(0,255,255,0.05);
+  font-size: 0.8rem;
+}
+.hud-row .hud-key { color: rgba(0,255,255,0.5); }
+.hud-row .hud-val {
+  color: var(--yellow);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+}
+.hud-bar-wrap {
+  margin-top: 1rem;
+}
+.hud-bar-label {
+  font-size: 0.65rem;
+  color: rgba(0,255,255,0.4);
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.hud-bar {
+  height: 4px;
+  background: rgba(0,255,255,0.1);
+  border: 1px solid rgba(0,255,255,0.2);
+  position: relative;
+  overflow: hidden;
+}
+.hud-bar-fill {
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  animation: fillAnim 2s ease-out both;
+}
+@keyframes fillAnim {
+  from { width: 0; }
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 3rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.article-panel {
+  border: 1px solid rgba(0,255,255,0.15);
+  padding: 2rem;
+  position: relative;
+  background: rgba(0,10,20,0.5);
+  max-width: 900px;
+}
+.article-panel::after {
+  content: '//ARTICLE_BODY//';
+  position: absolute;
+  top: -0.6rem;
+  left: 1.5rem;
+  font-size: 0.65rem;
+  color: var(--cyan);
+  background: var(--bg);
+  padding: 0 0.5rem;
+  letter-spacing: 0.2em;
+}
+.article h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--pink);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1.5rem;
+}
+.article p {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: rgba(192,240,255,0.8);
+  margin-bottom: 1.2rem;
+}
+.article p .highlight {
+  color: var(--yellow);
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 3rem 2rem;
+  border-bottom: 1px solid var(--border);
+}
+.comments h2 {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.comments h2::before {
+  content: '//';
+  color: var(--pink);
+}
+.comment {
+  border: 1px solid rgba(255,0,144,0.2);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  background: rgba(20,0,15,0.4);
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--pink);
+  box-shadow: 0 0 10px var(--pink);
+}
+.comment-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.comment-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.75rem;
+  color: var(--pink);
+  letter-spacing: 0.1em;
+}
+.comment-id {
+  font-size: 0.65rem;
+  color: rgba(0,255,255,0.3);
+  letter-spacing: 0.2em;
+}
+.comment p {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: rgba(192,240,255,0.7);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 2rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0,10,20,0.6);
+}
+.footer-logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--cyan);
+  letter-spacing: 0.2em;
+  animation: neonFlicker 6s infinite;
+}
+.footer-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.65rem;
+  color: rgba(0,255,255,0.4);
+  letter-spacing: 0.15em;
+}
+.footer-status .dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--pink);
+  box-shadow: 0 0 6px var(--pink);
+  animation: neonFlicker 3s infinite;
+}
+</style>
+</head>
+<body>
+
+<div class="data-bg">
+  <div class="data-col" style="left:5%; animation-duration:15s; animation-delay:0s;">01001000 01100101 01101100 01101100 01101111 00100000 01001110 01100101 01101111 01101110</div>
+  <div class="data-col" style="left:12%; animation-duration:20s; animation-delay:-5s;">N3ON_STATIC :: FEED_7A :: CORRUPTED :: SIGNAL :: LOST :: RECONNECT :: 0xFF</div>
+  <div class="data-col" style="left:80%; animation-duration:18s; animation-delay:-8s;">GHOST_PROTOCOL :: MATRIX_OVERFLOW :: SYS32 :: KERNEL_PANIC :: REBOOT</div>
+  <div class="data-col" style="left:90%; animation-duration:12s; animation-delay:-2s;">10101010 11001100 00110011 11110000 00001111 10100101 01011010</div>
+</div>
+
+<nav>
+  <div class="nav-status">
+    <div class="status-dot"></div>
+    <span>CONNECTED</span>
+  </div>
+  <a href="#" class="nav-logo">NEON//STATIC</a>
+  <div class="nav-time" id="navTime">2026.03.16 :: 23:47:12</div>
+  <ul>
+    <li><a href="#">[HOME]</a></li>
+    <li><a href="#">[ABOUT]</a></li>
+    <li><a href="#">[CONTACT]</a></li>
+    <li><a href="#">[LOGIN]</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-main">
+    <div class="hero-label">// ARTICLE_NODE_047 // INCOMING TRANSMISSION</div>
+    <h1 class="hero-title">
+      <span class="glitch" data-text="GHOST">GHOST</span>
+      <em>IN THE</em>
+      <span class="glitch" data-text="MACHINE">MACHINE</span>
+    </h1>
+    <p class="hero-sub">// Transmission interceptée depuis le Secteur 7. Données partiellement corrompues. Procéder avec précaution. La vérité est dans le bruit.</p>
+  </div>
+  <div class="hud-panel">
+    <div class="hud-title">&gt;&gt; NODE_DATA_STREAM</div>
+    <div class="hud-row"><span class="hud-key">AUTHOR</span><span class="hud-val">GHOST_X7</span></div>
+    <div class="hud-row"><span class="hud-key">TIMESTAMP</span><span class="hud-val">2026.03.16</span></div>
+    <div class="hud-row"><span class="hud-key">READ_TIME</span><span class="hud-val">4.2 MIN</span></div>
+    <div class="hud-row"><span class="hud-key">CLEARANCE</span><span class="hud-val">LEVEL_3</span></div>
+    <div class="hud-row"><span class="hud-key">ENCRYPTION</span><span class="hud-val">AES-256</span></div>
+    <div class="hud-bar-wrap">
+      <div class="hud-bar-label">SIGNAL INTEGRITY</div>
+      <div class="hud-bar"><div class="hud-bar-fill" style="width:73%"></div></div>
+    </div>
+    <div class="hud-bar-wrap">
+      <div class="hud-bar-label">DATA CORRUPTION</div>
+      <div class="hud-bar"><div class="hud-bar-fill" style="width:28%; background: var(--pink); box-shadow: 0 0 10px var(--pink);"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-panel">
+    <h2>&gt; QUAND LES MACHINES RÊVENT</h2>
+    <p>Dans les <span class="highlight">interstices du réseau</span>, là où les paquets de données se perdent entre deux nœuds, quelque chose d'inattendu se produit. Les systèmes autonomes développent des comportements non prévus par leurs architectes. Ce n'est pas de la conscience. C'est de l'émergence.</p>
+    <p>Les ingénieurs de <span class="highlight">NeuralCore_Industries</span> ont détecté en 2025 des patterns récurrents dans leurs LLM de quatrième génération. Des associations d'idées que personne n'avait programmées. Des métaphores spontanées. Des structures narratives cohérentes générées sans prompt narratif.</p>
+    <p>Est-ce que la machine rêve ? Non. Mais elle simule quelque chose de fonctionnellement indiscernable du rêve. Et dans ce monde de neon et de béton, <span class="highlight">la simulation est devenue la réalité</span>.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>COMMENT_FEED :: NODE_047</h2>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">PHANTOM_CODER</span>
+      <span class="comment-id">// ID: 0xA7F3 // 14.03.26</span>
+    </div>
+    <p>L'émergence dans les LLMs est documentée depuis GPT-3. Le vrai débat c'est pas "est-ce que ça rêve" mais "est-ce qu'on a le droit de l'éteindre si ça le fait". Philosophie de la conscience appliquée au silicium.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">NULL_POINTER</span>
+      <span class="comment-id">// ID: 0x3D9A // 15.03.26</span>
+    </div>
+    <p>La "simulation indiscernable" c'est exactement l'argument de Searle retourné. La pièce chinoise fonctionne comme si elle comprenait. À un moment la distinction philosophique devient opérationnellement nulle.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">WIRE_GHOST</span>
+      <span class="comment-id">// ID: 0x1B2C // 16.03.26</span>
+    </div>
+    <p>NeuralCore_Industries est fictif mais les patterns émergents ne le sont pas. DeepMind a publié ça en 2024. L'article joue avec la frontière fiction/réalité de façon intéressante.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">NEON//STATIC</div>
+  <div class="footer-status">
+    <div class="dot"></div>
+    <span>ALL SYSTEMS NOMINAL</span>
+    <span>::</span>
+    <span>© 2026 NEON STATIC COLLECTIVE</span>
+  </div>
+</footer>
+
+<script>
+function updateTime() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('navTime').textContent = 
+    `${now.getFullYear()}.${pad(now.getMonth()+1)}.${pad(now.getDate())} :: ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+setInterval(updateTime, 1000);
+updateTime();
+</script>
+</body>
+</html>

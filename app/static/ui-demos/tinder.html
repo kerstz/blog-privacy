@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style Picker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #09090f;
+    --surface: #12121c;
+    --border: rgba(255,255,255,.08);
+    --text: #f0f0ff;
+    --muted: #6b6b8a;
+    --keep: #22c55e;
+    --del:  #ef4444;
+    --radius: 20px;
+    --card-w: 420px;
+    --card-h: 590px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    display: flex; flex-direction: column;
+    align-items: center;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 10%, rgba(100,60,255,.12) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 45% at 85% 85%, rgba(255,60,110,.09) 0%, transparent 50%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* ── Header ── */
+  .header {
+    position: relative; z-index: 10;
+    text-align: center;
+    padding: 1rem 1rem .4rem;
+    width: 100%;
+  }
+
+  .header h1 {
+    font-size: clamp(.95rem, 2.5vw, 1.4rem);
+    font-weight: 900; letter-spacing: -.03em;
+    background: linear-gradient(135deg,#a78bfa,#f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .header p { color: var(--muted); font-size: .72rem; margin-top: .15rem; }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    position: relative; z-index: 10;
+    width: min(var(--card-w), 92vw);
+    margin: .4rem auto 0;
+    display: flex; align-items: center; gap: .7rem;
+  }
+
+  .progress-bar-bg {
+    flex: 1; height: 3px;
+    background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg,#a78bfa,#f472b6);
+    border-radius: 99px;
+    transition: width .4s ease; width: 0%;
+  }
+
+  .progress-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── Stage ── */
+  .stage {
+    position: relative; z-index: 10;
+    width: min(var(--card-w), 92vw);
+    height: min(var(--card-h), calc(100vh - 210px));
+    margin: .7rem auto 0; flex-shrink: 0;
+  }
+
+  .stage-ghost {
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    pointer-events: none;
+    background: var(--surface); border: 1px solid var(--border);
+  }
+
+  .stage-ghost:nth-child(1) { transform: scale(.95) translateY(12px); opacity:.5; z-index:1; }
+  .stage-ghost:nth-child(2) { transform: scale(.90) translateY(22px); opacity:.25; z-index:0; }
+
+  /* ── Card ── */
+  .card {
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    z-index: 2;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    cursor: grab; user-select: none; touch-action: none;
+    transform-origin: center bottom;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    will-change: transform;
+  }
+
+  .card:active { cursor: grabbing; }
+
+  .card-accent { height: 5px; width: 100%; flex-shrink: 0; }
+
+  .card-preview {
+    flex: 1; position: relative;
+    overflow: hidden; background: #000;
+  }
+
+  .card-loading {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: .5rem;
+    background: var(--surface); z-index: 5;
+    transition: opacity .3s ease;
+    font-size: .78rem; color: var(--muted);
+  }
+
+  .card-loading .spinner {
+    width: 26px; height: 26px;
+    border: 2px solid rgba(255,255,255,.08);
+    border-top-color: #a78bfa;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .card-loading.hidden { opacity: 0; pointer-events: none; }
+
+  .card-iframe {
+    position: absolute; top: 0; left: 0;
+    border: none; pointer-events: none;
+    transform-origin: top left;
+  }
+
+  /* Swipe labels */
+  .swipe-label {
+    position: absolute; top: 1.1rem;
+    font-size: 1.2rem; font-weight: 900; letter-spacing: .06em;
+    padding: .25rem .8rem; border-radius: 8px;
+    border-width: 3px; border-style: solid;
+    opacity: 0; z-index: 10; pointer-events: none;
+    text-shadow: 0 0 18px currentColor;
+  }
+
+  .swipe-label.keep { left: 1rem;  color: var(--keep); border-color: var(--keep); }
+  .swipe-label.del  { right: 1rem; color: var(--del);  border-color: var(--del); }
+
+  .card-preview-fade {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 65px;
+    background: linear-gradient(to top, var(--surface) 0%, transparent 100%);
+    pointer-events: none; z-index: 4;
+  }
+
+  .card-info {
+    flex-shrink: 0; background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: .6rem .9rem .7rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+
+  .card-info-text { flex: 1; min-width: 0; }
+
+  .card-info-name {
+    font-size: .88rem; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .card-info-tag {
+    font-size: .64rem; font-family: 'Space Mono', monospace;
+    color: var(--muted); margin-top: .08rem;
+    display: flex; align-items: center; gap: .35rem;
+  }
+
+  .card-info-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  .card-counter {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; color: var(--muted); white-space: nowrap;
+  }
+
+  .card-link {
+    font-size: .7rem; color: var(--muted); text-decoration: none;
+    border: 1px solid var(--border); padding: .18rem .6rem;
+    border-radius: 99px; white-space: nowrap;
+    transition: all .17s; flex-shrink: 0;
+  }
+
+  .card-link:hover { color: var(--text); border-color: rgba(255,255,255,.24); }
+
+  /* ── Buttons ── */
+  .buttons {
+    position: relative; z-index: 10;
+    display: flex; gap: 2.4rem;
+    margin: .7rem auto;
+    justify-content: center; align-items: center; flex-shrink: 0;
+  }
+
+  .btn-action {
+    border-radius: 50%; border: 2px solid;
+    background: var(--surface); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .2s ease; font-size: 1.35rem;
+    width: 56px; height: 56px;
+  }
+
+  .btn-del {
+    border-color: rgba(239,68,68,.35); color: var(--del);
+  }
+  .btn-del:hover {
+    background: rgba(239,68,68,.12); border-color: var(--del);
+    box-shadow: 0 0 18px rgba(239,68,68,.28); transform: scale(1.08);
+  }
+
+  .btn-keep {
+    width: 64px; height: 64px; font-size: 1.55rem;
+    border-color: rgba(34,197,94,.35); color: var(--keep);
+  }
+  .btn-keep:hover {
+    background: rgba(34,197,94,.12); border-color: var(--keep);
+    box-shadow: 0 0 22px rgba(34,197,94,.28); transform: scale(1.10);
+  }
+
+  .btn-action:active { transform: scale(.88) !important; }
+
+  .btn-wrap { display: flex; flex-direction: column; align-items: center; gap: .18rem; }
+
+  .btn-label {
+    font-size: .6rem; font-family: 'Space Mono', monospace;
+    color: var(--muted); text-align: center;
+  }
+
+  /* kept counter badge */
+  .kept-badge {
+    position: relative; z-index: 10;
+    display: flex; align-items: center; gap: .4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem; color: var(--muted);
+    justify-content: center; flex-shrink: 0;
+    padding-bottom: .3rem;
+  }
+
+  .kept-badge-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--keep); opacity: .7;
+  }
+
+  /* keyboard hints */
+  .keyboard-hint {
+    position: relative; z-index: 10;
+    display: flex; gap: 1.4rem; justify-content: center;
+    opacity: .3; font-size: .62rem;
+    font-family: 'Space Mono', monospace; color: var(--muted);
+    flex-shrink: 0; padding-bottom: .35rem;
+  }
+
+  kbd {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px; padding: .07rem .28rem; font-size: .58rem; font-family: inherit;
+  }
+
+  /* ── Animations ── */
+  .card.fly-left  { animation: flyLeft  .38s cubic-bezier(.4,0,1,1) forwards; }
+  .card.fly-right { animation: flyRight .38s cubic-bezier(.4,0,1,1) forwards; }
+  .card.enter     { animation: cardEnter .36s cubic-bezier(.2,1.1,.4,1) forwards; }
+
+  @keyframes flyLeft  { to { transform: rotate(-24deg) translateX(-120%) translateY(8%); opacity:0; } }
+  @keyframes flyRight { to { transform: rotate(24deg)  translateX(120%)  translateY(8%); opacity:0; } }
+  @keyframes cardEnter { from { transform: scale(.87) translateY(26px); opacity:0; } to { transform:none; opacity:1; } }
+
+  /* ── Results screen ── */
+  #results-screen {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: var(--bg); flex-direction: column;
+    animation: fadeIn .5s ease;
+    overflow: hidden;
+  }
+
+  #results-screen.show { display: flex; }
+
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  .results-header {
+    flex-shrink: 0; padding: 1.4rem 1.4rem .8rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-header h2 {
+    font-size: clamp(1.1rem, 4vw, 1.8rem);
+    font-weight: 900; letter-spacing: -.03em;
+    background: linear-gradient(135deg,#a78bfa,#f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: .25rem;
+  }
+
+  .results-header p { color: var(--muted); font-size: .78rem; }
+
+  .results-actions {
+    flex-shrink: 0; display: flex; gap: .6rem; justify-content: center;
+    padding: .7rem 1rem; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+
+  .btn-res {
+    padding: .48rem 1.1rem; border-radius: 99px; border: none;
+    font-family: 'Inter', sans-serif; font-size: .8rem; font-weight: 600;
+    cursor: pointer; text-decoration: none;
+    display: inline-flex; align-items: center; gap: .35rem;
+    transition: all .18s;
+  }
+
+  .btn-res.restart {
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .btn-res.restart:hover { color: var(--text); border-color: rgba(255,255,255,.22); }
+
+  /* scrollable grid */
+  .results-grid {
+    flex: 1; overflow-y: auto; padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: .8rem;
+    align-content: start;
+  }
+
+  .results-grid::-webkit-scrollbar { width: 4px; }
+  .results-grid::-webkit-scrollbar-track { background: transparent; }
+  .results-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 99px; }
+
+  /* result card */
+  .res-card {
+    border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: flex; flex-direction: column;
+    transition: transform .18s, box-shadow .18s;
+    text-decoration: none; color: inherit;
+  }
+
+  .res-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,.45);
+    border-color: rgba(255,255,255,.18);
+  }
+
+  .res-card-accent { height: 4px; flex-shrink: 0; }
+
+  .res-card-thumb {
+    height: 110px; position: relative;
+    overflow: hidden; background: #000; flex-shrink: 0;
+  }
+
+  .res-card-iframe {
+    position: absolute; top: 0; left: 0;
+    border: none; pointer-events: none;
+    transform-origin: top left;
+  }
+
+  .res-card-info {
+    padding: .5rem .65rem .6rem;
+    flex: 1;
+  }
+
+  .res-card-name {
+    font-size: .78rem; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .res-card-tag {
+    font-size: .6rem; font-family: 'Space Mono', monospace;
+    color: var(--muted); margin-top: .12rem;
+    display: flex; align-items: center; gap: .3rem;
+  }
+
+  .res-card-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* empty state */
+  .results-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: .7rem;
+    color: var(--muted); font-size: .9rem;
+  }
+
+  .results-empty .emoji { font-size: 2.8rem; }
+
+  @media (max-width: 480px) {
+    :root { --card-h: 500px; }
+    .keyboard-hint { display: none; }
+    .results-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Style Picker ✦</h1>
+  <p>← Delete &nbsp;·&nbsp; → Keep &nbsp;·&nbsp; Chaque page vue une seule fois</p>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-bar-bg">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <span class="progress-label" id="progress-label">0 / 39</span>
+</div>
+
+<div class="stage" id="stage">
+  <div class="stage-ghost" id="ghost1"></div>
+  <div class="stage-ghost" id="ghost2"></div>
+</div>
+
+<div class="buttons">
+  <div class="btn-wrap">
+    <button class="btn-action btn-del"  id="btn-del"  onclick="swipe('del')"  title="Delete">✕</button>
+    <span class="btn-label">Delete</span>
+  </div>
+  <div class="btn-wrap">
+    <button class="btn-action btn-keep" id="btn-keep" onclick="swipe('keep')" title="Keep">♥</button>
+    <span class="btn-label">Keep</span>
+  </div>
+</div>
+
+<div class="kept-badge">
+  <span class="kept-badge-dot"></span>
+  <span id="kept-count">0 gardés</span>
+</div>
+
+<div class="keyboard-hint">
+  <span><kbd>←</kbd> Delete</span>
+  <span><kbd>→</kbd> Keep</span>
+  <span><kbd>Space</kbd> Keep</span>
+</div>
+
+<!-- Results screen -->
+<div id="results-screen">
+  <div class="results-header">
+    <h2 id="results-title">Tes styles gardés ✦</h2>
+    <p id="results-subtitle"></p>
+  </div>
+  <div class="results-actions">
+    <button class="btn-res restart" onclick="restartGame()">🔄 Recommencer</button>
+  </div>
+  <div class="results-grid" id="results-grid"></div>
+  <div class="results-empty" id="results-empty" style="display:none">
+    <span class="emoji">😶</span>
+    <span>Tu as tout supprimé… Essaie encore !</span>
+  </div>
+</div>
+
+<script>
+const STYLES = [
+  { id:1,  name:'Brutaliste',             tag:'Brutal / Raw',          color:'#ff3b00' },
+  { id:2,  name:'Bauhaus Géométrique',    tag:'Geometric / Pure',      color:'#ffcc00' },
+  { id:3,  name:'Art Déco Noir/Or',       tag:'Deco / Luxe',           color:'#d4a017' },
+  { id:4,  name:'Cyberpunk Néon',         tag:'Cyber / Glitch',        color:'#00ffe5' },
+  { id:5,  name:'Minimal Japonais',       tag:'Minimal / Zen',         color:'#c8b89a' },
+  { id:6,  name:'Horror',                 tag:'Horror / Gothic',       color:'#8b0000' },
+  { id:7,  name:'Luxe Éditorial',         tag:'Magazine / Editorial',  color:'#e8d5c4' },
+  { id:8,  name:'Terminal Hacker',        tag:'Terminal / ASCII',      color:'#00ff41' },
+  { id:9,  name:'Memphis Design',         tag:'Memphis / Retro',       color:'#ff6ec7' },
+  { id:10, name:'Glassmorphism',          tag:'Glass / Blur',          color:'#7eb8f7' },
+  { id:11, name:'Neumorphism Dark',       tag:'Neomorph / Soft',       color:'#7a7acc' },
+  { id:12, name:'Psychédélique',          tag:'Psycho / Trip',         color:'#ff00ff' },
+  { id:13, name:'Synthwave 80s',          tag:'Retro / Neon',          color:'#c561f6' },
+  { id:14, name:'Comics / BD',            tag:'Comic / Pop',           color:'#ffe03e' },
+  { id:15, name:'Dark Academia',          tag:'Academic / Vintage',    color:'#c4a882' },
+  { id:16, name:'Industrial Metal',       tag:'Industrial / Steel',    color:'#b87333' },
+  { id:17, name:'Kawaii Dark',            tag:'Kawaii / Cute',         color:'#ff80b5' },
+  { id:18, name:'Abstract Expressionist', tag:'Abstract / Paint',      color:'#ff7043' },
+  { id:19, name:'Sci-Fi Spatial',         tag:'Space / HUD',           color:'#5b9bd5' },
+  { id:20, name:'Grunge Punk',            tag:'Punk / Grunge',         color:'#aaaaaa' },
+  { id:21, name:'Art Nouveau Dark',       tag:'Nouveau / Organic',     color:'#5c8a4a' },
+  { id:22, name:'Swiss International',    tag:'Swiss / Grid',          color:'#e0e0e0' },
+  { id:23, name:'Vitraux / Stained Glass',tag:'Glass / Cathedral',     color:'#e8a020' },
+  { id:24, name:'Origami',               tag:'Origami / Fold',         color:'#80cbc4' },
+  { id:25, name:'Glitch / Data Mosh',     tag:'Glitch / Error',        color:'#ff0050' },
+  { id:26, name:'Steampunk',              tag:'Steam / Victorian',     color:'#b87333' },
+  { id:27, name:'Neon Grotesque',         tag:'Neon / Bold',           color:'#ff6600' },
+  { id:28, name:'Serif Classique',        tag:'Classic / Roman',       color:'#d4c5a9' },
+  { id:29, name:'Tarot / Occulte',        tag:'Occult / Mystic',       color:'#9b59b6' },
+  { id:30, name:'Street Art / Graffiti',  tag:'Street / Spray',        color:'#ff1744' },
+  { id:31, name:'Cinéma Noir',            tag:'Noir / Film',           color:'#d4af37' },
+  { id:32, name:'Liquide / Organique',    tag:'Liquid / Blob',         color:'#26c6da' },
+  { id:33, name:'Riso Print',             tag:'Riso / Grain',          color:'#ff6b35' },
+  { id:34, name:'Pop Art Sombre',         tag:'Pop / Warhol',          color:'#ff1a8c' },
+  { id:35, name:'ASCII / Text Art',       tag:'ASCII / Terminal',      color:'#39ff14' },
+  { id:36, name:'Néo-Tribal',             tag:'Tribal / Mandala',      color:'#ffd700' },
+  { id:37, name:'Holographique Irisé',    tag:'Holo / Rainbow',        color:'#b388ff' },
+  { id:38, name:'Brutalist Swiss Punk',   tag:'Punk / Swiss',          color:'#ff4500' },
+  { id:39, name:'Velours Noir',           tag:'Sensuel / Dark',        color:'#c41e3a' },
+];
+
+function pageFile(id) { return 'page' + String(id).padStart(2,'0') + '.html'; }
+function viewerUrl(id) { return 'viewer.html?id=' + id; }
+
+// ── State ─────────────────────────────────────────────────────────────
+let queue  = [];
+let kept   = [];
+let seen   = 0;
+let total  = 0;
+let busy   = false;
+let cardEl = null;
+let isDragging = false, startX = 0, currentX = 0;
+
+// ── Init ──────────────────────────────────────────────────────────────
+function init() {
+  queue  = [...STYLES];
+  kept   = [];
+  seen   = 0;
+  total  = STYLES.length;
+  busy   = false;
+  updateKeptBadge();
+  renderCard(true);
+}
+
+// ── Render card ───────────────────────────────────────────────────────
+function renderCard(enter = false) {
+  const stage = document.getElementById('stage');
+  const old = stage.querySelector('.card');
+  if (old) old.remove();
+
+  if (queue.length === 0) { showResults(); return; }
+
+  const s = queue[0];
+  const stageRect = stage.getBoundingClientRect();
+  const cw = stageRect.width  || 420;
+  const ch = stageRect.height || 590;
+
+  const IW = 1280;
+  const scale = cw / IW;
+  const visibleH = ch - 5 - 46;
+  const iframeVisH = visibleH / scale;
+
+  const g1 = queue[1] || s;
+  const g2 = queue[2] || s;
+  document.getElementById('ghost1').style.borderColor = g1.color + '33';
+  document.getElementById('ghost2').style.borderColor = g2.color + '22';
+
+  const card = document.createElement('div');
+  card.className = 'card' + (enter ? ' enter' : '');
+  card.id = 'active-card';
+  card.innerHTML = `
+    <div class="card-accent" style="background:linear-gradient(90deg,${s.color},${accentGrad(s.color)})"></div>
+    <div class="card-preview">
+      <div class="card-loading" id="loading-${s.id}">
+        <div class="spinner"></div>
+        <span>Chargement…</span>
+      </div>
+      <span class="swipe-label keep">KEEP ♥</span>
+      <span class="swipe-label del">DELETE ✕</span>
+      <iframe
+        class="card-iframe"
+        id="iframe-${s.id}"
+        src="${pageFile(s.id)}"
+        width="${IW}"
+        height="${Math.ceil(iframeVisH + 80)}"
+        style="transform:scale(${scale.toFixed(4)});"
+        loading="eager"
+      ></iframe>
+      <div class="card-preview-fade"></div>
+    </div>
+    <div class="card-info">
+      <div class="card-info-text">
+        <div class="card-info-name">${s.name}</div>
+        <div class="card-info-tag">
+          <span class="card-info-dot" style="background:${s.color}"></span>
+          ${s.tag}
+        </div>
+      </div>
+      <span class="card-counter">${seen + 1} / ${total}</span>
+      <a class="card-link" href="${viewerUrl(s.id)}" target="_blank">Voir →</a>
+    </div>
+  `;
+
+  stage.appendChild(card);
+  cardEl = card;
+
+  const iframe  = card.querySelector(`#iframe-${s.id}`);
+  const loading = card.querySelector(`#loading-${s.id}`);
+  iframe.addEventListener('load', () => { if (loading) loading.classList.add('hidden'); }, { once: true });
+  setTimeout(() => { if (loading) loading.classList.add('hidden'); }, 5000);
+
+  // progress: pages seen so far
+  document.getElementById('progress-fill').style.width = (seen / total * 100) + '%';
+  document.getElementById('progress-label').textContent = `${seen} / ${total}`;
+
+  card.addEventListener('mousedown',  dragStart);
+  card.addEventListener('touchstart', dragStart, { passive: true });
+}
+
+// ── Drag ──────────────────────────────────────────────────────────────
+function dragStart(e) {
+  if (busy) return;
+  if (e.target.closest('a')) return;
+  isDragging = true;
+  startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
+  currentX = 0;
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('touchmove', dragMove, { passive: true });
+  document.addEventListener('mouseup',   dragEnd);
+  document.addEventListener('touchend',  dragEnd);
+}
+
+function dragMove(e) {
+  if (!isDragging || !cardEl) return;
+  const x = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
+  currentX = x - startX;
+  const rot = currentX * .06;
+  cardEl.style.transform = `translateX(${currentX}px) rotate(${rot}deg)`;
+  const thr = 70;
+  const ratio = Math.min(Math.abs(currentX) / thr, 1);
+  const kL = cardEl.querySelector('.swipe-label.keep');
+  const dL = cardEl.querySelector('.swipe-label.del');
+  if (currentX > 0) { kL.style.opacity = ratio; dL.style.opacity = 0; }
+  else               { dL.style.opacity = ratio; kL.style.opacity = 0; }
+}
+
+function dragEnd() {
+  isDragging = false;
+  document.removeEventListener('mousemove', dragMove);
+  document.removeEventListener('touchmove', dragMove);
+  document.removeEventListener('mouseup',   dragEnd);
+  document.removeEventListener('touchend',  dragEnd);
+  if (!cardEl) return;
+  if (currentX >  110) swipe('keep');
+  else if (currentX < -110) swipe('del');
+  else {
+    cardEl.style.transition = 'transform .3s cubic-bezier(.2,1.2,.4,1)';
+    cardEl.style.transform = '';
+    setTimeout(() => { if (cardEl) cardEl.style.transition = ''; }, 320);
+    const kL = cardEl.querySelector('.swipe-label.keep');
+    const dL = cardEl.querySelector('.swipe-label.del');
+    if (kL) kL.style.opacity = 0;
+    if (dL) dL.style.opacity = 0;
+  }
+  currentX = 0;
+}
+
+// ── Swipe ─────────────────────────────────────────────────────────────
+function swipe(dir) {
+  if (busy || !cardEl) return;
+  busy = true;
+
+  cardEl.style.transition = 'none';
+  cardEl.classList.add(dir === 'keep' ? 'fly-right' : 'fly-left');
+
+  const btn = dir === 'keep'
+    ? document.getElementById('btn-keep')
+    : document.getElementById('btn-del');
+  btn.style.transform = 'scale(.86)';
+  setTimeout(() => { btn.style.transform = ''; }, 180);
+
+  const current = queue.shift();
+  seen++;
+
+  if (dir === 'keep') {
+    kept.push(current);
+    updateKeptBadge();
+  }
+
+  // update progress immediately
+  document.getElementById('progress-fill').style.width = (seen / total * 100) + '%';
+  document.getElementById('progress-label').textContent = `${seen} / ${total}`;
+
+  setTimeout(() => {
+    busy = false;
+    if (queue.length === 0) showResults();
+    else                    renderCard(true);
+  }, 360);
+}
+
+function updateKeptBadge() {
+  document.getElementById('kept-count').textContent =
+    kept.length === 0 ? '0 gardés' :
+    kept.length === 1 ? '1 gardé ♥' :
+    `${kept.length} gardés ♥`;
+}
+
+// ── Results ───────────────────────────────────────────────────────────
+function showResults() {
+  // remove last card
+  const stage = document.getElementById('stage');
+  const old = stage.querySelector('.card');
+  if (old) old.remove();
+
+  const screen = document.getElementById('results-screen');
+  const grid   = document.getElementById('results-grid');
+  const empty  = document.getElementById('results-empty');
+
+  document.getElementById('results-title').textContent =
+    kept.length > 0 ? `Tes ${kept.length} styles gardés ✦` : 'Aucun style gardé';
+  document.getElementById('results-subtitle').textContent =
+    kept.length > 0
+      ? `Clique sur une carte pour ouvrir le viewer`
+      : 'Tu as tout supprimé !';
+
+  grid.innerHTML = '';
+
+  if (kept.length === 0) {
+    grid.style.display = 'none';
+    empty.style.display = 'flex';
+  } else {
+    grid.style.display = '';
+    empty.style.display = 'none';
+
+    kept.forEach(s => {
+      const a = document.createElement('a');
+      a.className = 'res-card';
+      a.href = viewerUrl(s.id);
+      a.target = '_blank';
+
+      const IW = 1280;
+      // thumb will be 180px wide by default, but use real width if possible
+      const thumbW = 180;
+      const thumbH = 110;
+      const sc = thumbW / IW;
+
+      a.innerHTML = `
+        <div class="res-card-accent" style="background:linear-gradient(90deg,${s.color},${accentGrad(s.color)})"></div>
+        <div class="res-card-thumb">
+          <iframe
+            class="res-card-iframe"
+            src="${pageFile(s.id)}"
+            width="${IW}"
+            height="${Math.ceil(thumbH / sc + 40)}"
+            style="transform:scale(${sc.toFixed(4)});"
+            loading="lazy"
+          ></iframe>
+        </div>
+        <div class="res-card-info">
+          <div class="res-card-name">${s.name}</div>
+          <div class="res-card-tag">
+            <span class="res-card-dot" style="background:${s.color}"></span>
+            ${s.tag}
+          </div>
+        </div>
+      `;
+      grid.appendChild(a);
+    });
+
+    // after grid renders, fix iframe scales based on actual card width
+    requestAnimationFrame(() => {
+      grid.querySelectorAll('.res-card').forEach(card => {
+        const thumb = card.querySelector('.res-card-thumb');
+        const iframe = card.querySelector('.res-card-iframe');
+        if (!thumb || !iframe) return;
+        const w = thumb.offsetWidth || thumbW;
+        const h = thumb.offsetHeight || thumbH;
+        const IW = 1280;
+        const sc = w / IW;
+        iframe.style.width  = IW + 'px';
+        iframe.style.height = Math.ceil(h / sc + 40) + 'px';
+        iframe.style.transform = `scale(${sc.toFixed(4)})`;
+      });
+    });
+  }
+
+  screen.classList.add('show');
+}
+
+function restartGame() {
+  document.getElementById('results-screen').classList.remove('show');
+  init();
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (document.getElementById('results-screen').classList.contains('show')) return;
+  if (e.key === 'ArrowLeft')  swipe('del');
+  if (e.key === 'ArrowRight') swipe('keep');
+  if (e.key === ' ') { e.preventDefault(); swipe('keep'); }
+});
+
+// ── Color helpers ─────────────────────────────────────────────────────
+function accentGrad(hex) {
+  const map = {
+    '#ff3b00':'#ff8800','#ffcc00':'#ff6600','#d4a017':'#c8860a',
+    '#00ffe5':'#a020f0','#c8b89a':'#9a8070','#8b0000':'#3a0000',
+    '#e8d5c4':'#c4a882','#00ff41':'#00cc33','#ff6ec7':'#ffaa00',
+    '#7eb8f7':'#a0d0ff','#7a7acc':'#a080ff','#ff00ff':'#aa00ff',
+    '#c561f6':'#f06090','#ffe03e':'#ff6600','#c4a882':'#9a7855',
+    '#b87333':'#d4944a','#ff80b5':'#c060ff','#ff7043':'#ffc107',
+    '#5b9bd5':'#a0c8ff','#aaaaaa':'#606060','#5c8a4a':'#3a6a2a',
+    '#e0e0e0':'#c0c0c0','#e8a020':'#f0c840','#80cbc4':'#4db6ac',
+    '#ff0050':'#ff4080','#ff6600':'#ff9900','#d4c5a9':'#c0a888',
+    '#9b59b6':'#6a1a8a','#ff1744':'#ff6d00','#d4af37':'#b89020',
+    '#26c6da':'#0097a7','#ff6b35':'#ff9a00','#ff1a8c':'#ff6040',
+    '#39ff14':'#00cc00','#ffd700':'#ff8c00','#b388ff':'#ea80fc',
+    '#ff4500':'#ff8c00','#c41e3a':'#8b0000',
+  };
+  return map[hex] || '#888';
+}
+
+init();
+</script>
+</body>
+</html>

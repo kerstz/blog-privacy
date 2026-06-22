@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HORROR — LA CRYPTE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Creepster&family=Crimson+Pro:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+:root {
+  --bg: #050202;
+  --blood: #8B0000;
+  --deep-blood: #4A0000;
+  --rust: #5C2000;
+  --flesh: #C17A5A;
+  --bone: #E8D5B0;
+  --dark-bone: #9A8060;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--bone);
+  font-family: 'Crimson Pro', serif;
+  font-size: 17px;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+/* VIGNETTE */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.8) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* DRIP ANIMATION */
+@keyframes drip {
+  0% { transform: scaleY(0) translateY(-50%); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: scaleY(1) translateY(0); opacity: 0.9; }
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  2% { opacity: 0.8; }
+  4% { opacity: 1; }
+  8% { opacity: 0.6; }
+  9% { opacity: 1; }
+  50% { opacity: 1; }
+  51% { opacity: 0.7; }
+  52% { opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0%, 100% { text-shadow: 2px 2px 20px rgba(139,0,0,0.5), 0 0 40px rgba(139,0,0,0.2); }
+  50% { text-shadow: 2px 2px 30px rgba(139,0,0,0.9), 0 0 80px rgba(139,0,0,0.4); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-2px) rotate(-0.5deg); }
+  20% { transform: translateX(2px) rotate(0.5deg); }
+  30% { transform: translateX(-1px); }
+  40% { transform: translateX(1px); }
+}
+
+@keyframes bloodDrip {
+  0% { height: 0; opacity: 0.8; }
+  100% { height: 80px; opacity: 0.6; }
+}
+
+/* BLOOD DRIPS */
+.drips {
+  position: relative;
+  height: 80px;
+  overflow: hidden;
+}
+.drip-line {
+  position: absolute;
+  top: 0;
+  width: 4px;
+  background: linear-gradient(to bottom, var(--blood), transparent);
+  border-radius: 0 0 50% 50%;
+  animation: bloodDrip 2s ease-in-out both;
+}
+.drip-drop {
+  position: absolute;
+  bottom: 0;
+  width: 8px; height: 10px;
+  background: var(--blood);
+  border-radius: 50% 50% 60% 60%;
+  transform: translateX(-50%);
+  animation: bloodDrip 2s ease-in-out both;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(5,2,2,0.96);
+  border-bottom: 2px solid var(--deep-blood);
+  padding: 0 2rem;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 4px 30px rgba(139,0,0,0.2);
+  animation: flicker 8s infinite;
+}
+.nav-logo {
+  font-family: 'Creepster', cursive;
+  font-size: 1.8rem;
+  color: var(--blood);
+  text-decoration: none;
+  animation: glowPulse 3s ease-in-out infinite;
+  letter-spacing: 0.05em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.2rem;
+  line-height: 60px;
+  color: var(--dark-bone);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-style: italic;
+  transition: color 0.3s;
+  position: relative;
+}
+nav ul li a::before {
+  content: '†';
+  margin-right: 0.4rem;
+  color: var(--blood);
+  font-style: normal;
+}
+nav ul li a:hover { color: var(--bone); }
+
+/* HEADER */
+header {
+  margin-top: 60px;
+  padding: 5rem 3rem 3rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(to bottom, var(--deep-blood), var(--bg));
+  border-bottom: 2px solid var(--deep-blood);
+  overflow: hidden;
+}
+header::before {
+  content: '☠';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 30vw;
+  color: rgba(139,0,0,0.04);
+  pointer-events: none;
+}
+.header-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.4em;
+  color: var(--rust);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+}
+header h1 {
+  font-family: 'Creepster', cursive;
+  font-size: clamp(3rem, 10vw, 8rem);
+  color: var(--blood);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  animation: glowPulse 4s ease-in-out infinite;
+  text-shadow: 0 0 30px rgba(139,0,0,0.6);
+}
+header h1 em {
+  font-style: normal;
+  color: var(--flesh);
+  font-size: 0.7em;
+  display: block;
+}
+.header-sub {
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--dark-bone);
+  margin-top: 1rem;
+  line-height: 1.7;
+}
+
+/* BLOOD TOP DRIPS */
+.blood-top {
+  display: flex;
+  justify-content: space-around;
+  padding: 0 2rem;
+  background: var(--blood);
+  height: 6px;
+  position: relative;
+}
+.blood-top::after {
+  content: '';
+  position: absolute;
+  top: 6px; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--blood), transparent);
+  pointer-events: none;
+}
+
+/* ARTICLE */
+.article {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+.article-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--dark-bone);
+  margin-bottom: 2rem;
+}
+.article-meta::before { content: '✦ '; color: var(--blood); }
+.article h2 {
+  font-family: 'Creepster', cursive;
+  font-size: 2.5rem;
+  color: var(--blood);
+  margin-bottom: 2rem;
+  line-height: 1.2;
+  text-shadow: 0 0 20px rgba(139,0,0,0.4);
+}
+.article p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgba(232,213,176,0.8);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+.article p:first-of-type::first-letter {
+  font-family: 'Creepster', cursive;
+  font-size: 4.5rem;
+  line-height: 0.8;
+  float: left;
+  margin-right: 0.1em;
+  color: var(--blood);
+  text-shadow: 0 0 20px rgba(139,0,0,0.8);
+}
+.article .ominous {
+  color: var(--flesh);
+  font-style: italic;
+}
+
+/* TORN DIVIDER */
+.torn {
+  margin: 2rem 0;
+  height: 20px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='20'%3E%3Cpath d='M0,10 Q5,0 10,10 Q15,20 20,10 Q25,0 30,10 Q35,20 40,10 Q45,0 50,10 Q55,20 60,10 Q65,0 70,10 Q75,20 80,10 Q85,0 90,10 Q95,20 100,10' stroke='%238B0000' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") repeat-x center;
+}
+
+/* COMMENTS */
+.comments {
+  padding: 3rem 2rem;
+  border-top: 2px solid var(--deep-blood);
+  max-width: 780px;
+  margin: 0 auto;
+  position: relative; z-index: 1;
+}
+.comments h2 {
+  font-family: 'Creepster', cursive;
+  font-size: 2rem;
+  color: var(--blood);
+  margin-bottom: 2rem;
+  text-shadow: 0 0 15px rgba(139,0,0,0.5);
+}
+.comment {
+  border: 1px solid var(--deep-blood);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  background: rgba(74,0,0,0.1);
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 2px;
+  background: linear-gradient(90deg, var(--blood), transparent);
+}
+.comment-name {
+  font-family: 'Creepster', cursive;
+  font-size: 1.2rem;
+  color: var(--flesh);
+  margin-bottom: 0.25rem;
+}
+.comment-date {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--dark-bone);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.95rem;
+  color: rgba(232,213,176,0.7);
+  line-height: 1.7;
+  font-style: italic;
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--deep-blood);
+  border-top: 2px solid var(--blood);
+  padding: 2rem 3rem;
+  text-align: center;
+}
+.footer-logo {
+  font-family: 'Creepster', cursive;
+  font-size: 2rem;
+  color: var(--bone);
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--dark-bone);
+}
+</style>
+</head>
+<body>
+
+<div class="blood-top"></div>
+
+<nav>
+  <a href="#" class="nav-logo">La Crypte</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="header-label">† Récits de l'au-delà — XIII ème édition †</div>
+  <h1>CE QUE<br><em>les morts murmurent</em><br>LA NUIT</h1>
+  <p class="header-sub">Une incursion dans les territoires où la lumière refuse de pénétrer</p>
+</header>
+
+<div class="drips">
+  <div class="drip-line" style="left:10%; animation-delay:0.2s; height:50px;"></div>
+  <div class="drip-line" style="left:23%; animation-delay:0.8s; height:30px;"></div>
+  <div class="drip-line" style="left:45%; animation-delay:0.4s; height:65px;"></div>
+  <div class="drip-line" style="left:67%; animation-delay:1.2s; height:40px;"></div>
+  <div class="drip-line" style="left:82%; animation-delay:0.1s; height:55px;"></div>
+</div>
+
+<article class="article">
+  <div class="article-meta">
+    <span>Morbidius Cravens</span>
+    <span>13 Mars 2026</span>
+    <span>6 min de terreur</span>
+  </div>
+
+  <h2>La Maison au Bout du Chemin Noir</h2>
+
+  <p>Personne ne s'approchait de cette maison après le crépuscule. <span class="ominous">Pas depuis l'affaire Moreau, il y a trente ans.</span> Les anciens du village parlaient encore de la nuit où toutes les horloges s'étaient arrêtées simultanément à 3h13 du matin, et où l'on avait retrouvé le vieux Moreau assis dans son fauteuil, souriant — alors qu'on l'avait vu entrer dans la maison voisine quatre heures plus tôt.</p>
+
+  <div class="torn"></div>
+
+  <p>Ce soir-là, je n'aurais pas dû entrer. La porte était entrouverte, comme une bouche attendant que quelque chose s'y engage. L'intérieur sentait la <span class="ominous">terre humide et quelque chose de plus ancien</span>, quelque chose qui n'avait pas de nom dans les langues modernes mais que l'espèce humaine reconnaissait instinctivement comme danger absolu.</p>
+
+  <p>Au troisième couloir, j'ai entendu le murmure. Pas une voix — plusieurs. Superposées dans une fréquence que mes oreilles n'étaient pas faites pour entendre mais que ma chair comprenait. Elles disaient un seul mot, répété à l'infini : <span class="ominous">reste.</span></p>
+</article>
+
+<section class="comments">
+  <h2>† Confessions des lecteurs †</h2>
+
+  <div class="comment">
+    <div class="comment-name">Nocturia_Pale</div>
+    <div class="comment-date">11 mars 2026</div>
+    <p>J'ai lu ça à 3h du matin. Mauvaise idée. Le murmure "reste" m'a suivi jusqu'au matin. Brillant dans sa simplicité terrifiante.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">Thanathos_VII</div>
+    <div class="comment-date">12 mars 2026</div>
+    <p>L'affaire Moreau et les horloges à 3h13 — l'heure du diable inversée (3h00 est l'antithèse de la mort du Christ à 15h). L'auteur maîtrise son symbolisme occulte.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">La_Veuve_Blanche</div>
+    <div class="comment-date">14 mars 2026</div>
+    <p>La description de l'odeur "qui n'avait pas de nom dans les langues modernes" est la meilleure ligne d'horreur que j'aie lue depuis des mois. Fear without definition — c'est là que vit la vraie terreur.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">La Crypte</div>
+  <div class="footer-copy">© 2026 — Les morts gardent leurs secrets — Pour l'instant</div>
+</footer>
+
+</body>
+</html>

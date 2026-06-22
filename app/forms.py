@@ -80,3 +80,22 @@ class ProfileEditForm(FlaskForm):
             user = User.query.filter_by(username=self.username.data).first()
             if user:
                 raise ValidationError('That username is already taken. Please choose a different one.')
+
+
+class TOTPSetupForm(FlaskForm):
+    """Confirm the first TOTP code after scanning the QR to activate 2FA."""
+    code = StringField('6-digit code', validators=[DataRequired(), Length(min=6, max=6)])
+    submit = SubmitField('Enable 2FA')
+
+
+class TOTPDisableForm(FlaskForm):
+    """Confirm current password + a valid TOTP code to disable 2FA."""
+    password = PasswordField('Current password', validators=[DataRequired()])
+    code = StringField('6-digit code', validators=[DataRequired(), Length(min=6, max=6)])
+    submit = SubmitField('Disable 2FA')
+
+
+class TOTPVerifyForm(FlaskForm):
+    """Second-step form shown at login when 2FA is enabled."""
+    code = StringField('6-digit code', validators=[DataRequired(), Length(min=6, max=6)])
+    submit = SubmitField('Verify')

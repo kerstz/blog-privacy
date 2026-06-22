@@ -1,156 +1,86 @@
-/* Icônes Unicode pour compatibilité NoScript/Tor */
+/* Line icons as CSS mask images. Monochrome (inherits color via
+   currentColor), no JS, no web-font — safe under NoScript / Tor. */
 
-/* Icônes de base - via ::before (compatible NoScript) */
-.icon-user::before { content: "👤"; }
-.icon-cog::before { content: "⚙️"; }
-.icon-bell::before { content: "🔔"; }
-.icon-sign-out::before { content: "🚪"; }
-.icon-comments::before { content: "💬"; }
-.icon-users::before { content: "👥"; }
-.icon-comment-dots::before { content: "💭"; }
-.icon-download::before { content: "⬇️"; }
-.icon-comment-slash::before { content: "💬"; }
-.icon-heart::before { content: "❤️"; }
-.icon-medal::before { content: "🏅"; }
-.icon-reply::before { content: "↩️"; }
-.icon-edit::before { content: "✏️"; }
-.icon-delete::before { content: "🗑️"; }
-.icon-plus::before { content: "➕"; }
-.icon-search::before { content: "🔍"; }
-.icon-home::before { content: "🏠"; }
-.icon-envelope::before { content: "✉️"; }
-.icon-calendar::before { content: "📅"; }
-.icon-clock::before { content: "🕐"; }
-.icon-star::before { content: "⭐"; }
-.icon-lock::before { content: "🔒"; }
-.icon-unlock::before { content: "🔓"; }
-.icon-eye::before { content: "👁️"; }
-.icon-eye-slash::before { content: "🙈"; }
-.icon-check::before { content: "✅"; }
-.icon-times::before { content: "❌"; }
-.icon-arrow-left::before { content: "⬅️"; }
-.icon-arrow-right::before { content: "➡️"; }
-.icon-arrow-up::before { content: "⬆️"; }
-.icon-arrow-down::before { content: "⬇️"; }
-.icon-image::before { content: "🖼️"; }
-.icon-video::before { content: "🎥"; }
-.icon-file::before { content: "📄"; }
-.icon-folder::before { content: "📁"; }
-.icon-link::before { content: "🔗"; }
-.icon-share::before { content: "📤"; }
-.icon-settings::before { content: "⚙️"; }
-.icon-info::before { content: "ℹ️"; }
-.icon-warning::before { content: "⚠️"; }
-.icon-error::before { content: "❌"; }
-.icon-success::before { content: "✅"; }
-.icon-newspaper::before { content: "📰"; }
-.icon-plus-circle::before { content: "➕"; }
-.icon-list::before { content: "📋"; }
-.icon-save::before { content: "💾"; }
-
-/* Masquer les icônes Font Awesome */
-.fas, .far, .fab, .fa {
-    display: none !important;
-}
-
-/* Style pour les icônes Unicode */
+[class*="icon-"] { display: inline-flex; align-items: center; justify-content: center; }
 [class*="icon-"]::before {
+    content: "";
     display: inline-block;
-    margin-right: 5px;
-    font-size: 1.1em;
-    line-height: 1;
+    width: 1.05em; height: 1.05em;
+    vertical-align: -0.16em;
+    background-color: currentColor;
+    -webkit-mask: var(--icon) center / contain no-repeat;
+    mask: var(--icon) center / contain no-repeat;
 }
 
-/* Centrage spécial pour les boutons de navigation */
-.user-btn [class*="icon-"],
-.notification-btn [class*="icon-"],
-.logout-btn [class*="icon-"],
-.panel-btn [class*="icon-"] {
-    margin: 0;
-    font-size: 1em;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-}
+.icon-user::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%228%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M5.5%2021a6.5%206.5%200%200%201%2013%200%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-user-circle::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2210%22%20r%3D%223%22%2F%3E%3Cpath%20d%3D%22M6.5%2018.5a5.6%205.6%200%200%201%2011%200%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-user-edit::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%228%22%20r%3D%223.6%22%2F%3E%3Cpath%20d%3D%22M4%2021a6%206%200%200%201%209-5%22%2F%3E%3Cpath%20d%3D%22M20%2013l-5%205-3%20.8.8-3z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-users::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%229%22%20cy%3D%228%22%20r%3D%223.4%22%2F%3E%3Cpath%20d%3D%22M3%2020a6%206%200%200%201%2012%200%22%2F%3E%3Cpath%20d%3D%22M16%205.2a3.4%203.4%200%200%201%200%206.8%22%2F%3E%3Cpath%20d%3D%22M17.5%2014.4A6%206%200%200%201%2021%2020%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-cog::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%202v3M12%2019v3M2%2012h3M19%2012h3M4.9%204.9l2.1%202.1M16.9%2016.9l2.2%202.2M19.1%204.9l-2.1%202.1M6.9%2017.1l-2%202%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-settings::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%202v3M12%2019v3M2%2012h3M19%2012h3M4.9%204.9l2.1%202.1M16.9%2016.9l2.2%202.2M19.1%204.9l-2.1%202.1M6.9%2017.1l-2%202%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-tachometer-alt::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2018a8%208%200%201%201%2016%200%22%2F%3E%3Cpath%20d%3D%22M12%2014l4-3.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2214%22%20r%3D%221.3%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-chart-bar::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%224%22%20y1%3D%2220%22%20x2%3D%2220%22%20y2%3D%2220%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2211%22%20width%3D%223%22%20height%3D%226%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%227%22%20width%3D%223%22%20height%3D%2210%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2213%22%20width%3D%223%22%20height%3D%224%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-bell::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%209a6%206%200%200%201%2012%200c0%205%202%206%202%206H4s2-1%202-6z%22%2F%3E%3Cpath%20d%3D%22M10%2020a2%202%200%200%200%204%200%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-bell-slash::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%209a6%206%200%200%201%209.5-4.8M18%2012c0%203%202%204%202%204H7M10%2020a2%202%200%200%200%204%200%22%2F%3E%3Cline%20x1%3D%223%22%20y1%3D%223%22%20x2%3D%2221%22%20y2%3D%2221%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-sign-out::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2021H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2h4%22%2F%3E%3Cpath%20d%3D%22M16%2017l5-5-5-5%22%2F%3E%3Cline%20x1%3D%2221%22%20y1%3D%2212%22%20x2%3D%229%22%20y2%3D%2212%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-sign-out-alt::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2021H5a2%202%200%200%201-2-2V5a2%202%200%200%201%202-2h4%22%2F%3E%3Cpath%20d%3D%22M16%2017l5-5-5-5%22%2F%3E%3Cline%20x1%3D%2221%22%20y1%3D%2212%22%20x2%3D%229%22%20y2%3D%2212%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-heart::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%2020S3.5%2014.5%203.5%208.8A4.5%204.5%200%200%201%2012%206a4.5%204.5%200%200%201%208.5%202.8C20.5%2014.5%2012%2020%2012%2020z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-comments::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-comment::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-comment-dots::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3Ccircle%20cx%3D%228.5%22%20cy%3D%2212%22%20r%3D%221%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%2212%22%20r%3D%221%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-comment-slash::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5%22%2F%3E%3Cline%20x1%3D%224%22%20y1%3D%224%22%20x2%3D%2220%22%20y2%3D%2220%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-chat::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-newspaper::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%205h13v14H5a1%201%200%200%201-1-1z%22%2F%3E%3Cpath%20d%3D%22M17%208h3v9a2%202%200%200%201-2%202%22%2F%3E%3Cline%20x1%3D%227%22%20y1%3D%229%22%20x2%3D%2214%22%20y2%3D%229%22%2F%3E%3Cline%20x1%3D%227%22%20y1%3D%2212%22%20x2%3D%2214%22%20y2%3D%2212%22%2F%3E%3Cline%20x1%3D%227%22%20y1%3D%2215%22%20x2%3D%2211%22%20y2%3D%2215%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-edit::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2020h4L18.5%209.5l-4-4L4%2016z%22%2F%3E%3Cline%20x1%3D%2213.5%22%20y1%3D%226.5%22%20x2%3D%2217.5%22%20y2%3D%2210.5%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-trash::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%207h16%22%2F%3E%3Cpath%20d%3D%22M9%207V5a1%201%200%200%201%201-1h4a1%201%200%200%201%201%201v2%22%2F%3E%3Cpath%20d%3D%22M6%207l1%2013a1%201%200%200%200%201%201h8a1%201%200%200%200%201-1l1-13%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-delete::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%207h16%22%2F%3E%3Cpath%20d%3D%22M9%207V5a1%201%200%200%201%201-1h4a1%201%200%200%201%201%201v2%22%2F%3E%3Cpath%20d%3D%22M6%207l1%2013a1%201%200%200%200%201%201h8a1%201%200%200%200%201-1l1-13%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-save::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%203h11l3%203v15H5z%22%2F%3E%3Cpath%20d%3D%22M8%203v5h7V3%22%2F%3E%3Crect%20x%3D%228%22%20y%3D%2212%22%20width%3D%228%22%20height%3D%227%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-list::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%228%22%20y1%3D%226%22%20x2%3D%2220%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%2212%22%20x2%3D%2220%22%20y2%3D%2212%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%2218%22%20x2%3D%2220%22%20y2%3D%2218%22%2F%3E%3Ccircle%20cx%3D%224%22%20cy%3D%226%22%20r%3D%221%22%2F%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2212%22%20r%3D%221%22%2F%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2218%22%20r%3D%221%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-info::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cline%20x1%3D%2212%22%20y1%3D%2211%22%20x2%3D%2212%22%20y2%3D%2216%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227.8%22%20r%3D%220.6%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-check::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M5%2013l4%204L19%207%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-check-double::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%2013l3.5%203.5L14%208%22%2F%3E%3Cpath%20d%3D%22M10%2015l2%202L22%206%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-times::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%226%22%20y1%3D%226%22%20x2%3D%2218%22%20y2%3D%2218%22%2F%3E%3Cline%20x1%3D%2218%22%20y1%3D%226%22%20x2%3D%226%22%20y2%3D%2218%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-calendar::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%225%22%20width%3D%2216%22%20height%3D%2216%22%20rx%3D%221.5%22%2F%3E%3Cline%20x1%3D%224%22%20y1%3D%229%22%20x2%3D%2220%22%20y2%3D%229%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%223%22%20x2%3D%228%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%2216%22%20y1%3D%223%22%20x2%3D%2216%22%20y2%3D%226%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-clock::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cpath%20d%3D%22M12%207v5l3.5%202%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-star::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203l2.6%205.6%206%20.8-4.4%204.2%201.1%206L12%2016.9%206.7%2019.6l1.1-6L3.4%209.4l6-.8z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-eye::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%2012s4-7%2010-7%2010%207%2010%207-4%207-10%207-10-7-10-7z%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-reply::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%207L4%2012l5%205%22%2F%3E%3Cpath%20d%3D%22M4%2012h10a6%206%200%200%201%206%206v1%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-paper-plane::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M21%203L3%2011l7%203%203%207z%22%2F%3E%3Cpath%20d%3D%22M21%203l-8%2011%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-paperclip::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2011l-8.5%208.5a4%204%200%200%201-6-6L13%205a3%203%200%200%201%204%204l-8%208a1.6%201.6%200%200%201-2.2-2.3l7.5-7.4%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-image::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2214%22%20rx%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2210%22%20r%3D%221.6%22%2F%3E%3Cpath%20d%3D%22M5%2018l5-5%203.5%203%202.5-2%204%204%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-file-alt::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203h8l4%204v14H6z%22%2F%3E%3Cpath%20d%3D%22M14%203v4h4%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2213%22%20x2%3D%2215%22%20y2%3D%2213%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2216%22%20x2%3D%2215%22%20y2%3D%2216%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-file::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203h8l4%204v14H6z%22%2F%3E%3Cpath%20d%3D%22M14%203v4h4%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-crown::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208l3.5%208.5h11L21%208l-5%203.8-4-6.8-4%206.8z%22%2F%3E%3Cline%20x1%3D%226.5%22%20y1%3D%2220%22%20x2%3D%2217.5%22%20y2%3D%2220%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-medal::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2214.5%22%20r%3D%225.5%22%2F%3E%3Cpath%20d%3D%22M8.5%203l3.5%206.5L15.5%203%22%2F%3E%3Cpath%20d%3D%22M12%2012l.9%201.9%202%20.3-1.5%201.4.4%202-1.8-1-1.8%201%20.4-2L9.1%2014.2l2-.3z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-download::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203v12%22%2F%3E%3Cpath%20d%3D%22M7%2011l5%205%205-5%22%2F%3E%3Cpath%20d%3D%22M4%2020h16%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-home::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2011l8-7%208%207%22%2F%3E%3Cpath%20d%3D%22M6%2010v10h12V10%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-arrow-up::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%2212%22%20y1%3D%2219%22%20x2%3D%2212%22%20y2%3D%225%22%2F%3E%3Cpath%20d%3D%22M6%2011l6-6%206%206%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-arrow-down::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%2212%22%20y1%3D%225%22%20x2%3D%2212%22%20y2%3D%2219%22%2F%3E%3Cpath%20d%3D%22M6%2013l6%206%206-6%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-arrow-left::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%2219%22%20y1%3D%2212%22%20x2%3D%225%22%20y2%3D%2212%22%2F%3E%3Cpath%20d%3D%22M11%206l-6%206%206%206%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-arrow-right::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%225%22%20y1%3D%2212%22%20x2%3D%2219%22%20y2%3D%2212%22%2F%3E%3Cpath%20d%3D%22M13%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-warning::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203l9.5%2017H2.5z%22%2F%3E%3Cline%20x1%3D%2212%22%20y1%3D%229.5%22%20x2%3D%2212%22%20y2%3D%2214%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2217.2%22%20r%3D%220.6%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-shield-alt::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%203l8%203v6c0%205-4%208-8%209-4-1-8-4-8-9V6z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-lock::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2211%22%20width%3D%2214%22%20height%3D%229%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M8%2011V8a4%204%200%200%201%208%200v3%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-unlock::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%225%22%20y%3D%2211%22%20width%3D%2214%22%20height%3D%229%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M8%2011V8a4%204%200%200%201%207.5-1.8%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-plus-circle::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%229%22%2F%3E%3Cline%20x1%3D%2212%22%20y1%3D%228%22%20x2%3D%2212%22%20y2%3D%2216%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%2212%22%20x2%3D%2216%22%20y2%3D%2212%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-plus::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%2212%22%20y1%3D%225%22%20x2%3D%2212%22%20y2%3D%2219%22%2F%3E%3Cline%20x1%3D%225%22%20y1%3D%2212%22%20x2%3D%2219%22%20y2%3D%2212%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-bolt::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M13%202L4%2014h6l-1%208%209-12h-6z%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-search::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%2211%22%20r%3D%226%22%2F%3E%3Cline%20x1%3D%2216%22%20y1%3D%2216%22%20x2%3D%2221%22%20y2%3D%2221%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-envelope::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2214%22%20rx%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M3.5%206.5L12%2013l8.5-6.5%22%2F%3E%3C%2Fsvg%3E"); }
+.icon-link::before { --icon: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2015l6-6%22%2F%3E%3Cpath%20d%3D%22M11%207l1.5-1.5a3.5%203.5%200%200%201%205%205L16%2012%22%2F%3E%3Cpath%20d%3D%22M13%2017l-1.5%201.5a3.5%203.5%200%200%201-5-5L8%2012%22%2F%3E%3C%2Fsvg%3E"); }
 
-/* Ne pas décaler l’icône dans les boutons ronds */
-.user-btn [class*="icon-"]::before,
-.notification-btn [class*="icon-"]::before,
-.logout-btn [class*="icon-"]::before,
-.panel-btn [class*="icon-"]::before {
-    margin-right: 0;
-}
+.admin-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208l3.5%208.5h11L21%208l-5%203.8-4-6.8-4%206.8z%22%2F%3E%3Cline%20x1%3D%226.5%22%20y1%3D%2220%22%20x2%3D%2217.5%22%20y2%3D%2220%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%208l3.5%208.5h11L21%208l-5%203.8-4-6.8-4%206.8z%22%2F%3E%3Cline%20x1%3D%226.5%22%20y1%3D%2220%22%20x2%3D%2217.5%22%20y2%3D%2220%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.post-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2020h4L18.5%209.5l-4-4L4%2016z%22%2F%3E%3Cline%20x1%3D%2213.5%22%20y1%3D%226.5%22%20x2%3D%2217.5%22%20y2%3D%2210.5%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2020h4L18.5%209.5l-4-4L4%2016z%22%2F%3E%3Cline%20x1%3D%2213.5%22%20y1%3D%226.5%22%20x2%3D%2217.5%22%20y2%3D%2210.5%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.comment-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.user-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%228%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M5.5%2021a6.5%206.5%200%200%201%2013%200%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%228%22%20r%3D%224%22%2F%3E%3Cpath%20d%3D%22M5.5%2021a6.5%206.5%200%200%201%2013%200%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.stats-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%224%22%20y1%3D%2220%22%20x2%3D%2220%22%20y2%3D%2220%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2211%22%20width%3D%223%22%20height%3D%226%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%227%22%20width%3D%223%22%20height%3D%2210%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2213%22%20width%3D%223%22%20height%3D%224%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cline%20x1%3D%224%22%20y1%3D%2220%22%20x2%3D%2220%22%20y2%3D%2220%22%2F%3E%3Crect%20x%3D%226%22%20y%3D%2211%22%20width%3D%223%22%20height%3D%226%22%2F%3E%3Crect%20x%3D%2211%22%20y%3D%227%22%20width%3D%223%22%20height%3D%2210%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%2213%22%20width%3D%223%22%20height%3D%224%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.banner-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2214%22%20rx%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2210%22%20r%3D%221.6%22%2F%3E%3Cpath%20d%3D%22M5%2018l5-5%203.5%203%202.5-2%204%204%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%225%22%20width%3D%2218%22%20height%3D%2214%22%20rx%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%229%22%20cy%3D%2210%22%20r%3D%221.6%22%2F%3E%3Cpath%20d%3D%22M5%2018l5-5%203.5%203%202.5-2%204%204%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.page-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203h8l4%204v14H6z%22%2F%3E%3Cpath%20d%3D%22M14%203v4h4%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2213%22%20x2%3D%2215%22%20y2%3D%2213%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2216%22%20x2%3D%2215%22%20y2%3D%2216%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203h8l4%204v14H6z%22%2F%3E%3Cpath%20d%3D%22M14%203v4h4%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2213%22%20x2%3D%2215%22%20y2%3D%2213%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2216%22%20x2%3D%2215%22%20y2%3D%2216%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
+.chat-icon::before { content: ""; display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.16em; background-color: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2523000%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%2012a7.5%206.5%200%200%201-7.5%206.5%208.5%208.5%200%200%201-3.8-.9L4%2019l1.1-3.7A6.5%206.5%200%200%201%204%2012a7.5%206.5%200%200%201%207.5-6.5A7.5%206.5%200%200%201%2020%2012z%22%2F%3E%3C%2Fsvg%3E") center / contain no-repeat; }
 
-/* Indicateur de notification (petit rond rouge) */
-.notification-btn {
-    position: relative;
-}
+.fas, .far, .fab, .fa { display: none !important; }
 
-.notification-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    background: #ff4444;
-    color: white;
-    border-radius: 50%;
-    width: 12px;
-    height: 12px;
-    font-size: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    border: 2px solid #1a1a1a;
-    z-index: 10;
-    animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-}
-
-/* Icônes spécifiques pour l'admin */
-.admin-icon::before {
-    content: "👑";
-    color: #ffd700;
-}
-
-/* Icônes pour les posts */
-.post-icon::before {
-    content: "📝";
-}
-
-/* Icônes pour les commentaires */
-.comment-icon::before {
-    content: "💬";
-}
-
-/* Icônes pour les utilisateurs */
-.user-icon::before {
-    content: "👤";
-}
-
-/* Icônes pour les statistiques */
-.stats-icon::before {
-    content: "📊";
-}
-
-/* Icônes pour les bannières */
-.banner-icon::before {
-    content: "🖼️";
-}
-
-/* Icônes pour les pages statiques */
-.page-icon::before {
-    content: "📄";
-}
-
-/* Icônes pour le chat */
-.chat-icon::before {
-    content: "💬";
+.user-btn [class*="icon-"]::before, .notification-btn [class*="icon-"]::before,
+.logout-btn [class*="icon-"]::before, .panel-btn [class*="icon-"]::before {
+    width: 1.2em; height: 1.2em; vertical-align: middle;
 }

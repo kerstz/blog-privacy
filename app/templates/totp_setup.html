@@ -1,0 +1,101 @@
+{% extends 'layout.html' %}
+
+{% block title %}Enable Two-Factor Authentication — MyBlog{% endblock %}
+
+{% block extra_css %}
+<style>
+.totp-container {
+    max-width: 480px;
+    margin: 2.5rem auto;
+}
+.totp-card {
+    background: var(--ink-850);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2.2rem;
+}
+.totp-title {
+    font-size: 1.4rem;
+    margin-bottom: .4rem;
+}
+.totp-subtitle {
+    font-size: .9rem;
+    opacity: .7;
+    margin-bottom: 1.5rem;
+}
+.totp-qr {
+    display: block;
+    margin: 1.2rem auto;
+    border-radius: 12px;
+    background: #fff;
+    padding: 10px;
+    width: 200px;
+    height: 200px;
+}
+.totp-secret-box {
+    background: var(--ink-900);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: .6rem 1rem;
+    font-family: var(--font-mono);
+    color: var(--brass-bright);
+    font-size: .85rem;
+    letter-spacing: .08em;
+    text-align: center;
+    margin: .8rem 0 1.4rem;
+    word-break: break-all;
+}
+.totp-steps {
+    padding-left: 1.2rem;
+    margin-bottom: 1.4rem;
+    font-size: .88rem;
+    opacity: .8;
+    line-height: 1.7;
+}
+.form-group {
+    margin-bottom: 1rem;
+}
+.form-group label {
+    display: block;
+    margin-bottom: .35rem;
+    font-size: .88rem;
+    opacity: .85;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="totp-container">
+    <div class="totp-card">
+        <h2 class="totp-title">Enable two-factor authentication</h2>
+        <p class="totp-subtitle">Scan the QR code with an authenticator app (Google Authenticator, Aegis, etc.) then enter the 6-digit code to confirm.</p>
+
+        <img src="{{ qr_uri }}" alt="TOTP QR code" class="totp-qr">
+
+        <p style="text-align:center;font-size:.8rem;opacity:.6;margin-bottom:.3rem;">Or enter this key manually:</p>
+        <div class="totp-secret-box">{{ totp_secret }}</div>
+
+        <ol class="totp-steps">
+            <li>Open your authenticator app.</li>
+            <li>Scan the QR code or enter the key above.</li>
+            <li>Type the 6-digit code shown in the app below.</li>
+        </ol>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.code.label }}
+                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", inputmode="numeric") }}
+                {% for error in form.code.errors %}
+                    <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
+                {% endfor %}
+            </div>
+            {{ form.submit(class="btn-submit") }}
+        </form>
+
+        <p style="margin-top:1.2rem;font-size:.82rem;opacity:.6;text-align:center;">
+            <a href="{{ url_for('edit_profile') }}">Cancel</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

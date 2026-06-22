@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KAWAII DARK — MIDNIGHT CUTE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@300;400;700;900&display=swap');
+
+:root {
+  --bg: #120820;
+  --mid: #1E1030;
+  --pink: #FFB5C8;
+  --lavender: #C9B8FF;
+  --mint: #A8F0DC;
+  --peach: #FFD4A8;
+  --star: #FFF0A0;
+  --shadow-pink: rgba(255,181,200,0.2);
+  --text: #E8D8F0;
+  --muted: rgba(200,180,220,0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* STAR FIELD */
+.stars-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.kawaii-star {
+  position: absolute;
+  animation: twinkle linear infinite;
+}
+.kawaii-star::before {
+  content: '✦';
+  color: var(--star);
+  font-size: 0.6rem;
+  opacity: 0.6;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+@keyframes sparkleIn {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+  100% { transform: scale(1) rotate(360deg); opacity: 1; }
+}
+@keyframes floatCloud {
+  0%, 100% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(10px) translateY(-5px); }
+}
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.15); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.1); }
+}
+@keyframes shimmerPink {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(18,8,32,0.95);
+  border-bottom: 2px solid rgba(255,181,200,0.2);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  backdrop-filter: blur(10px);
+}
+.nav-logo {
+  font-size: 1.1rem;
+  font-weight: 900;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.nav-logo .logo-text {
+  background: linear-gradient(135deg, var(--pink), var(--lavender), var(--mint));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 0.05em;
+}
+.nav-logo .logo-icon {
+  font-size: 1.3rem;
+  animation: heartBeat 2s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0.4rem 1rem;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+nav ul li a:hover {
+  color: var(--pink);
+  border-color: rgba(255,181,200,0.3);
+  background: rgba(255,181,200,0.05);
+}
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 64px;
+  padding: 5rem 3rem;
+  text-align: center;
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* KAWAII CHARACTERS (CSS ART) */
+.kawaii-char {
+  font-size: 5rem;
+  margin-bottom: 2rem;
+  display: inline-block;
+  animation: bounce 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(255,181,200,0.5));
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border-radius: 30px;
+  background: rgba(255,181,200,0.1);
+  border: 1px solid rgba(255,181,200,0.3);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--pink);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+}
+.hero h1 {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  font-weight: 900;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, var(--pink) 0%, var(--lavender) 50%, var(--mint) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmerPink 4s ease-in-out infinite;
+}
+.hero-sub {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 45ch;
+  margin: 0 auto 2rem;
+}
+.hero-meta {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.hero-meta .dot {
+  color: var(--pink);
+}
+
+/* DECO ELEMENTS */
+.floating-elem {
+  position: absolute;
+  animation: floatCloud 4s ease-in-out infinite;
+  font-size: 2rem;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 4rem 2rem;
+}
+.article-card {
+  background: rgba(30,16,48,0.8);
+  border: 1px solid rgba(255,181,200,0.15);
+  border-radius: 24px;
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+.article-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--pink), var(--lavender), var(--mint), var(--peach));
+  border-radius: 24px 24px 0 0;
+}
+.article-card h2 {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+}
+.article-card h2 .accent { color: var(--pink); }
+.article-card p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgba(232,216,240,0.75);
+  margin-bottom: 1.2rem;
+}
+.article-card p .highlight { color: var(--lavender); font-weight: 700; }
+.article-card p .sweet { color: var(--mint); }
+
+/* STICKER BOXES */
+.sticker-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+.sticker {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  animation: sparkleIn 0.6s ease-out both;
+}
+.sticker.pink { background: rgba(255,181,200,0.15); color: var(--pink); border: 1px solid rgba(255,181,200,0.3); }
+.sticker.lav { background: rgba(201,184,255,0.15); color: var(--lavender); border: 1px solid rgba(201,184,255,0.3); }
+.sticker.mint { background: rgba(168,240,220,0.1); color: var(--mint); border: 1px solid rgba(168,240,220,0.2); }
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+.comments-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pink);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.comments-title::after {
+  content: '♡ ♡ ♡';
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+}
+.comment {
+  background: rgba(30,16,48,0.6);
+  border: 1px solid;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin-bottom: 1.2rem;
+  position: relative;
+}
+.comment:nth-child(1) { border-color: rgba(255,181,200,0.2); }
+.comment:nth-child(2) { border-color: rgba(201,184,255,0.2); }
+.comment:nth-child(3) { border-color: rgba(168,240,220,0.2); }
+.comment-top {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.avatar.a1 { background: rgba(255,181,200,0.2); }
+.avatar.a2 { background: rgba(201,184,255,0.2); }
+.avatar.a3 { background: rgba(168,240,220,0.15); }
+.comment-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.comment:nth-child(1) .comment-name { color: var(--pink); }
+.comment:nth-child(2) .comment-name { color: var(--lavender); }
+.comment:nth-child(3) .comment-name { color: var(--mint); }
+.comment-date {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.1rem;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(232,216,240,0.65);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: rgba(18,8,32,0.9);
+  border-top: 1px solid rgba(255,181,200,0.1);
+  padding: 2.5rem 3rem;
+  text-align: center;
+}
+.footer-logo {
+  font-size: 1.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--pink), var(--lavender));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+}
+</style>
+</head>
+<body>
+
+<div class="stars-bg" id="starsEl"></div>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="logo-icon">🌙</span>
+    <span class="logo-text">Midnight Cute</span>
+  </a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <span class="floating-elem" style="top:15%;left:10%;animation-delay:0s;">🌸</span>
+  <span class="floating-elem" style="top:25%;right:12%;animation-delay:1s;animation-duration:5s;">⭐</span>
+  <span class="floating-elem" style="bottom:30%;left:8%;animation-delay:2s;animation-duration:6s;">🌙</span>
+  <span class="floating-elem" style="bottom:20%;right:15%;animation-delay:0.5s;animation-duration:4.5s;">✨</span>
+
+  <div class="kawaii-char">🌑</div>
+  <span class="hero-badge">✦ Kawaii Dark Edition ✦</span>
+  <h1>Cute mais<br>Profond</h1>
+  <p class="hero-sub">L'esthétique kawaii n'est pas incompatible avec la profondeur — les couleurs pastel peuvent coexister avec les ombres les plus denses.</p>
+  <div class="hero-meta">
+    <span>Yuki Noir</span>
+    <span class="dot">♡</span>
+    <span>16 Mars 2026</span>
+    <span class="dot">♡</span>
+    <span>4 min</span>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-card">
+    <h2>La <span class="accent">Douceur</span> comme Armure</h2>
+
+    <div class="sticker-row">
+      <span class="sticker pink" style="animation-delay:0.1s">🌸 Kawaii</span>
+      <span class="sticker lav" style="animation-delay:0.2s">✦ Dark</span>
+      <span class="sticker mint" style="animation-delay:0.3s">🌙 Philosophie</span>
+    </div>
+
+    <p>Le kawaii japonais a toujours eu une relation complexe avec l'obscurité. Contrairement à ce que suggère son image de mignonnerie innocente, le kawaii est né dans le Japon des années 70 comme une <span class="highlight">résistance culturelle</span> — des lycéennes qui écrivaient avec des stylos à encre de couleur rose pour sabotager la lisibilité, refusant ainsi la productivité attendue.</p>
+    <p>Cette subversion douce est la clé du kawaii dark : il ne rejette pas la mignonnerie, il l'arme. Les teintes pastel sur fond sombre ne sont pas une contradiction — elles sont une déclaration : <span class="sweet">la douceur peut exister dans les ténèbres. La douceur n'a pas peur.</span></p>
+    <p>Les personnages comme Kuromi, Dark Cinnamoroll, ou le mouvement Yami Kawaii explorent explicitement cette tension. Dépression, solitude, anxiété — enveloppées dans des rubans roses et des étoiles violettes. L'<span class="highlight">esthétisation de la douleur</span> non pour la nier, mais pour la rendre vivable.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <div class="comments-title">Commentaires</div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <div class="avatar a1">🌸</div>
+      <div>
+        <div class="comment-name">Pastel_Goth_K</div>
+        <div class="comment-date">13 mars 2026</div>
+      </div>
+    </div>
+    <p>La référence aux lycéennes des années 70 est peu connue mais vraie. Le kawaii comme rébellion passive-agressive, c'est une lecture qui change tout. Merci pour cette nuance.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <div class="avatar a2">⭐</div>
+      <div>
+        <div class="comment-name">DarkMochi</div>
+        <div class="comment-date">14 mars 2026</div>
+      </div>
+    </div>
+    <p>Yami Kawaii c'est surtout une communauté de soutien en santé mentale au Japon — moins une esthétique qu'un espace de parole. L'esthétique sert de code pour se reconnaître.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <div class="avatar a3">🌙</div>
+      <div>
+        <div class="comment-name">Kuromi_Fan99</div>
+        <div class="comment-date">15 mars 2026</div>
+      </div>
+    </div>
+    <p>Ce design est magnifique. Le fond sombre avec les pastels lumineux — exactement l'équilibre dont tu parles dans l'article. La forme illustre le propos parfaitement.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Midnight Cute ♡</div>
+  <div class="footer-copy">© 2026 — Doux dans l'Ombre — Tous droits réservés</div>
+</footer>
+
+<script>
+const el = document.getElementById('starsEl');
+for (let i = 0; i < 80; i++) {
+  const s = document.createElement('div');
+  s.className = 'kawaii-star';
+  s.style.left = Math.random() * 100 + '%';
+  s.style.top = Math.random() * 100 + '%';
+  s.style.animationDuration = (2 + Math.random() * 4) + 's';
+  s.style.animationDelay = Math.random() * 4 + 's';
+  el.appendChild(s);
+}
+</script>
+</body>
+</html>

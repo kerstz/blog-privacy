@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCI-FI — DEEP SPACE STATION</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100;0,300;0,700;0,900&family=Oxanium:wght@300;400;700&display=swap');
+
+:root {
+  --bg: #020408;
+  --blue: #0A4CFF;
+  --cyan: #00CFFF;
+  --glow: rgba(0,207,255,0.15);
+  --panel: rgba(10,20,40,0.8);
+  --border: rgba(0,207,255,0.2);
+  --text: #B8D8FF;
+  --muted: rgba(120,160,220,0.5);
+  --hot: #FF4466;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* STAR FIELD */
+.starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.starfield canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* NEBULA */
+.nebula {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 40% at 20% 30%, rgba(0,80,200,0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 70%, rgba(100,0,200,0.1) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 50% at 60% 20%, rgba(0,180,255,0.08) 0%, transparent 60%);
+}
+
+/* HUD SCAN LINE */
+.scanline {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,207,255,0.4), transparent);
+  animation: scan 6s linear infinite;
+  pointer-events: none;
+  z-index: 998;
+}
+@keyframes scan {
+  from { top: 0; }
+  to { top: 100vh; }
+}
+
+/* HEXAGONAL PATTERN */
+@keyframes hexPulse {
+  0%, 100% { opacity: 0.03; }
+  50% { opacity: 0.07; }
+}
+@keyframes orbitRot {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes hudBlink {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0; }
+}
+@keyframes dataLoad {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-12px) rotate(2deg); }
+}
+@keyframes signalPing {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* HEX BG */
+.hex-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  animation: hexPulse 5s ease-in-out infinite;
+}
+.hex-bg svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(2,4,8,0.95);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 2.5rem;
+  gap: 2rem;
+  box-shadow: 0 4px 30px rgba(0,207,255,0.1);
+  backdrop-filter: blur(10px);
+}
+.nav-logo {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cyan);
+  text-decoration: none;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 0 0 15px rgba(0,207,255,0.7);
+  animation: hudBlink 8s infinite;
+}
+.nav-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.status-ping {
+  position: relative;
+  width: 8px; height: 8px;
+}
+.status-ping::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #00FF88;
+  box-shadow: 0 0 6px #00FF88;
+}
+.status-ping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #00FF88;
+  animation: signalPing 2s ease-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0 1.2rem;
+  height: 64px;
+  color: var(--muted);
+  text-decoration: none;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-left: 1px solid rgba(0,207,255,0.1);
+  transition: all 0.3s;
+}
+nav ul li a::before {
+  content: '◈';
+  font-size: 0.5rem;
+  color: var(--border);
+  transition: color 0.3s;
+}
+nav ul li a:hover {
+  color: var(--cyan);
+  text-shadow: 0 0 8px rgba(0,207,255,0.5);
+}
+nav ul li a:hover::before { color: var(--cyan); }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 64px;
+  min-height: 85vh;
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  align-items: center;
+  padding: 4rem 3rem;
+  gap: 3rem;
+  border-bottom: 1px solid var(--border);
+}
+.hero-main {}
+.mission-tag {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--hot);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.mission-tag::before {
+  content: '▲';
+  font-size: 0.5rem;
+  color: var(--hot);
+  text-shadow: 0 0 8px var(--hot);
+}
+.hero-title {
+  font-family: 'Oxanium', sans-serif;
+  font-size: clamp(2rem, 6vw, 5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1.5rem;
+}
+.hero-title .cyan { color: var(--cyan); text-shadow: 0 0 20px rgba(0,207,255,0.5); }
+.hero-title .dim { color: rgba(184,216,255,0.4); }
+.hero-sub {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 50ch;
+  margin-bottom: 2rem;
+}
+.hero-tags {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.h-tag {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--border);
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  background: rgba(0,207,255,0.03);
+}
+
+/* HUD PANEL */
+.hud-display {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 1.5rem;
+  position: relative;
+  backdrop-filter: blur(5px);
+}
+.hud-display::before {
+  content: 'DEEP_SPACE_LOG :: SECTOR_7';
+  position: absolute;
+  top: -0.6rem; left: 1rem;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--cyan);
+  background: var(--bg);
+  padding: 0 0.5rem;
+}
+.hud-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  margin-bottom: 1px;
+}
+.hud-cell {
+  background: var(--panel);
+  padding: 0.75rem;
+}
+.hud-label {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+.hud-value {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+.hud-value.alert { color: var(--hot); }
+.hud-spectrum {
+  margin-top: 1.5rem;
+}
+.spec-bar {
+  height: 60px;
+  background: linear-gradient(90deg, var(--blue) 0%, var(--cyan) 30%, rgba(0,207,255,0.1) 70%, transparent 100%);
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+.spec-bar::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(0,0,0,0.3) 8px, rgba(0,0,0,0.3) 10px);
+}
+.orbit-anim {
+  position: relative;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1rem;
+}
+.orbit-center {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 20px var(--cyan);
+  animation: hudBlink 3s infinite;
+}
+.orbit-ring {
+  position: absolute;
+  border: 1px solid rgba(0,207,255,0.2);
+  border-radius: 50%;
+  animation: orbitRot linear infinite;
+}
+.orbit-ring.r1 { width: 60px; height: 60px; animation-duration: 4s; }
+.orbit-ring.r2 { width: 90px; height: 90px; animation-duration: 8s; animation-direction: reverse; }
+.orbit-dot {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+}
+.orbit-ring.r1 .orbit-dot { background: var(--hot); box-shadow: 0 0 8px var(--hot); }
+.orbit-ring.r2 .orbit-dot { background: #00FF88; box-shadow: 0 0 8px #00FF88; }
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  border-bottom: 1px solid var(--border);
+}
+.article-inner {
+  max-width: 900px;
+  margin: 0 auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 3rem;
+  backdrop-filter: blur(5px);
+  position: relative;
+}
+.article-inner::after {
+  content: 'TRANSMISSION :: CLASSIFIED_LEVEL_2';
+  position: absolute;
+  bottom: -0.6rem; right: 1rem;
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.2em;
+  color: var(--border);
+  background: var(--bg);
+  padding: 0 0.5rem;
+}
+.article-inner h2 {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--cyan);
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 15px rgba(0,207,255,0.3);
+}
+.article-inner p {
+  font-size: 0.95rem;
+  line-height: 1.85;
+  color: rgba(184,216,255,0.8);
+  margin-bottom: 1.2rem;
+}
+.article-inner .em { color: var(--cyan); font-weight: 400; }
+.article-inner .hot { color: var(--hot); }
+.loading-bar {
+  height: 2px;
+  background: rgba(0,207,255,0.1);
+  margin: 1.5rem 0;
+  overflow: hidden;
+}
+.loading-fill {
+  height: 100%;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: dataLoad 3s ease-in-out infinite;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments h2 {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  color: var(--cyan);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.comments h2::before {
+  content: '';
+  width: 24px; height: 1px;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+.comment {
+  border: 1px solid rgba(0,207,255,0.1);
+  padding: 1.5rem;
+  margin-bottom: 1.2rem;
+  background: rgba(10,20,40,0.5);
+  position: relative;
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 2px; height: 100%;
+  background: var(--blue);
+  box-shadow: 0 0 8px rgba(10,76,255,0.5);
+}
+.comment-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.comment-name {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.comment-id {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(184,216,255,0.7);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 2.5rem 3rem;
+  background: rgba(2,4,8,0.95);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 15px rgba(0,207,255,0.5);
+}
+.footer-copy {
+  font-family: 'Oxanium', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<div class="scanline"></div>
+<div class="nebula"></div>
+<div class="starfield" id="starfield"></div>
+
+<nav>
+  <a href="#" class="nav-logo">DSS-VOID</a>
+  <div class="nav-status">
+    <div class="status-ping"></div>
+    <span>SECTOR_7 ONLINE</span>
+  </div>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-main">
+    <div class="mission-tag">Mission Log :: Entry 047 :: CLASSIFIED</div>
+    <h1 class="hero-title">
+      <span class="cyan">AU-DELÀ</span><br>
+      <span>DE LA</span><br>
+      <span class="dim">SINGULARITÉ</span>
+    </h1>
+    <p class="hero-sub">// Journal de bord — Station Spatiale Void — Secteur 7 — Coordonnées : 47.2°N 199.4°W — Altitude : 385km</p>
+    <div class="hero-tags">
+      <span class="h-tag">Astrophysique</span>
+      <span class="h-tag">Singularité</span>
+      <span class="h-tag">Station Orbitale</span>
+    </div>
+  </div>
+  <div class="hud-display">
+    <div class="hud-row">
+      <div class="hud-cell">
+        <div class="hud-label">Auteur</div>
+        <div class="hud-value">CMDR_VERA</div>
+      </div>
+      <div class="hud-cell">
+        <div class="hud-label">Stardate</div>
+        <div class="hud-value">2026.076</div>
+      </div>
+    </div>
+    <div class="hud-row">
+      <div class="hud-cell">
+        <div class="hud-label">Lecture</div>
+        <div class="hud-value">6.2 MIN</div>
+      </div>
+      <div class="hud-cell">
+        <div class="hud-label">Clearance</div>
+        <div class="hud-value alert">LEVEL 2</div>
+      </div>
+    </div>
+    <div class="hud-spectrum">
+      <div class="spec-bar"></div>
+    </div>
+    <div class="orbit-anim">
+      <div class="orbit-center"></div>
+      <div class="orbit-ring r1"><div class="orbit-dot"></div></div>
+      <div class="orbit-ring r2"><div class="orbit-dot"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-inner">
+    <h2>&gt;&gt; LOG :: QUAND L'ESPACE RÉPOND</h2>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+    <p>Depuis la station, l'univers n'est pas ce qu'on nous enseigne à la surface. Là-haut, il n'y a pas de "vide" — il y a un <span class="em">tissu d'énergies intriquées</span>, de radiations cosmiques, de vents solaires qui sculptent silencieusement la forme de notre système solaire.</p>
+    <p>Le <span class="hot">paradoxe de Fermi</span> prend une autre dimension en orbite : si les intelligences extraterrestres existent et sont si nombreuses, pourquoi le silence de Ryle ? Peut-être la réponse est dans la question : les technologies suffisamment avancées ne rayonnent plus d'ondes radio. Elles utilisent des substrats énergétiques que nous n'avons pas encore identifiés.</p>
+    <p>Vue depuis ici, la Terre est une luciole dans l'immensité. Fragile, lumineuse, seule pour l'instant. Mais le "pour l'instant" pèse infiniment lourd à <span class="em">385 kilomètres d'altitude</span>.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>TRANSMISSIONS REÇUES</h2>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">ASTROPHYS_NOVA</span>
+      <span class="comment-id">ID:7A2F :: 14.03.26</span>
+    </div>
+    <p>Le paradoxe de Fermi et la réponse "technologies invisibles" c'est le "Great Filter" de Robin Hanson mais inversé — les civilisations avancées deviennent silencieuses parce qu'elles transcendent les ondes radio, pas parce qu'elles disparaissent.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">COSMONAUT_X</span>
+      <span class="comment-id">ID:3D9C :: 15.03.26</span>
+    </div>
+    <p>L'observation "la Terre est une luciole" est vraie et émotionnellement exacte. L'effet Overview — le changement de perspective ressenti par les astronautes — est documenté et profond. La relativisation planétaire est une expérience viscérale.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">DEEP_SIGNAL_9</span>
+      <span class="comment-id">ID:1A5E :: 16.03.26</span>
+    </div>
+    <p>Au-delà de la poésie : la physique du "tissu d'énergies intriquées" est réelle. Le plasma interplanétaire et les interactions magnétosphériques sont visibles depuis l'orbite. Ce n'est pas une métaphore.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">DSS-VOID // SECTOR_7</div>
+  <div class="footer-copy">© 2026 DSS-VOID — Classified Level 2 — All Rights Reserved</div>
+</footer>
+
+<script>
+// Create star canvas
+const sf = document.getElementById('starfield');
+const canvas = document.createElement('canvas');
+sf.appendChild(canvas);
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+const stars = Array.from({length: 300}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 1.5,
+  a: Math.random(),
+  da: (Math.random() - 0.5) * 0.01
+}));
+function drawStars() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.a += s.da;
+    if (s.a > 1 || s.a < 0.2) s.da *= -1;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${s.a * 0.7})`;
+    ctx.fill();
+  });
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+</script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ART DÉCO — LA GAZETTE DORÉE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+:root {
+  --bg: #080604;
+  --gold: #C9A84C;
+  --gold-light: #E8C97A;
+  --gold-dark: #8B6914;
+  --cream: #F5EDD8;
+  --deep: #1A1208;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* GOLD SHIMMER ANIMATION */
+@keyframes goldShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes lineGrow {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* ORNAMENTAL LINE */
+.ornament {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+  color: var(--gold);
+}
+.ornament::before, .ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dark), var(--gold), var(--gold-dark), transparent);
+}
+.ornament span {
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--bg);
+  border-bottom: 1px solid var(--gold-dark);
+}
+.nav-top {
+  text-align: center;
+  padding: 0.5rem;
+  border-bottom: 1px solid #2A2010;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+}
+.nav-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 3rem;
+}
+.nav-logo {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1.3rem;
+  color: var(--gold);
+  text-decoration: none;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold), var(--gold-light), var(--gold-dark));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldShimmer 4s linear infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+}
+nav ul li a {
+  color: #9A8050;
+  text-decoration: none;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  font-style: italic;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: color 0.3s;
+  position: relative;
+}
+nav ul li a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0; right: 0;
+  height: 1px;
+  background: var(--gold);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s;
+}
+nav ul li a:hover { color: var(--gold-light); }
+nav ul li a:hover::after { transform: scaleX(1); }
+.nav-deco {
+  font-size: 1.5rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.2em;
+}
+
+/* HEADER */
+header {
+  margin-top: 92px;
+  text-align: center;
+  padding: 4rem 3rem;
+  background: var(--deep);
+  border-bottom: 1px solid var(--gold-dark);
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--gold-dark), transparent);
+}
+
+/* Corner ornaments */
+header::after {
+  content: '◈';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 30vw;
+  color: rgba(201,168,76,0.03);
+  pointer-events: none;
+}
+
+.header-issue {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  margin-bottom: 2rem;
+  animation: fadeInDown 1s both;
+}
+.header-title {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: clamp(1.8rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--gold-light);
+  margin-bottom: 0.5rem;
+  animation: fadeInDown 1s 0.2s both;
+}
+.header-subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: #9A8050;
+  letter-spacing: 0.1em;
+  animation: fadeInDown 1s 0.4s both;
+}
+
+/* ART DECO FRAME */
+.deco-frame {
+  display: inline-block;
+  padding: 3rem 5rem;
+  position: relative;
+  margin-top: 1rem;
+}
+.deco-frame::before, .deco-frame::after {
+  content: '❖';
+  position: absolute;
+  font-size: 1.5rem;
+  color: var(--gold-dark);
+}
+.deco-frame::before { top: 1rem; left: 2rem; }
+.deco-frame::after { bottom: 1rem; right: 2rem; }
+
+/* ARTICLE */
+.article-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4rem 3rem;
+}
+.article-meta {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  margin-bottom: 2rem;
+  font-style: italic;
+}
+.article-meta span { position: relative; }
+.article-meta span:not(:last-child)::after {
+  content: '·';
+  position: absolute;
+  right: -1.1rem;
+  color: var(--gold);
+}
+
+.article-wrapper h2 {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1.5rem;
+  font-weight: 400;
+  text-align: center;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  line-height: 1.4;
+}
+.article-wrapper p {
+  font-size: 1.05rem;
+  line-height: 1.85;
+  color: #C8B68A;
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+.article-wrapper p:first-of-type::first-letter {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 4rem;
+  float: left;
+  line-height: 0.9;
+  margin-right: 0.15em;
+  color: var(--gold);
+}
+
+/* DIVIDER */
+.art-divider {
+  text-align: center;
+  color: var(--gold-dark);
+  font-size: 1.2rem;
+  letter-spacing: 0.5em;
+  margin: 2rem 0;
+}
+
+/* COMMENTS */
+.comments-section {
+  background: var(--deep);
+  border-top: 1px solid var(--gold-dark);
+  border-bottom: 1px solid var(--gold-dark);
+  padding: 3rem;
+}
+.comments-section h3 {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1.1rem;
+  font-weight: 400;
+  text-align: center;
+  color: var(--gold);
+  margin-bottom: 2rem;
+}
+.comment-item {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  padding: 1.5rem 2rem;
+  border: 1px solid #2A2010;
+  position: relative;
+}
+.comment-item::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 2rem; right: 2rem;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);
+}
+.comment-item::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 2rem; right: 2rem;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-dark), transparent);
+}
+.comment-author-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #2A2010;
+  padding-bottom: 0.5rem;
+}
+.comment-author {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 0.8rem;
+  color: var(--gold);
+  font-weight: 400;
+}
+.comment-date {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--gold-dark);
+  letter-spacing: 0.1em;
+}
+.comment-item p {
+  font-style: italic;
+  font-size: 0.95rem;
+  color: #9A8050;
+  line-height: 1.7;
+}
+
+/* FOOTER */
+footer {
+  background: var(--deep);
+  border-top: 1px solid var(--gold-dark);
+  text-align: center;
+  padding: 3rem;
+}
+.footer-emblem {
+  font-size: 2rem;
+  color: var(--gold-dark);
+  letter-spacing: 0.5em;
+  margin-bottom: 1rem;
+}
+.footer-name {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1.5rem;
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light), var(--gold), var(--gold-light), var(--gold-dark));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldShimmer 5s linear infinite;
+}
+.footer-copy {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold-dark);
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-top">◆ La Gazette Dorée — Revue d'Arts & de Lettres ◆</div>
+  <div class="nav-main">
+    <div class="nav-deco">❧</div>
+    <a href="#" class="nav-logo">La Gazette Dorée</a>
+    <ul>
+      <li><a href="#">Accueil</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#">Contact</a></li>
+      <li><a href="#">Login</a></li>
+    </ul>
+    <div class="nav-deco">❧</div>
+  </div>
+</nav>
+
+<header>
+  <div class="header-issue">Volume XII — Numéro 4 — Mars MMXXVI</div>
+  <div class="ornament"><span>◆ ◆ ◆</span></div>
+  <div class="deco-frame">
+    <div class="header-title">L'Âge d'Or<br>du Silence</div>
+    <div class="header-subtitle">Méditation sur la beauté disparue des années folles</div>
+  </div>
+  <div class="ornament"><span>◆ ◆ ◆</span></div>
+</header>
+
+<div class="article-wrapper">
+  <div class="article-meta">
+    <span>Isadora Vane</span>
+    <span>15 Mars 2026</span>
+    <span>6 minutes</span>
+  </div>
+
+  <h2>Les Fantômes Géométriques<br>des Années Vingt</h2>
+
+  <div class="ornament"><span>— ✦ —</span></div>
+
+  <p>Il existe dans l'Art Déco une tension magnifique que nous avons perdu le goût de ressentir. Entre l'ornement et la structure, entre la richesse et la rigueur, les maîtres des années vingt marchaient sur un fil de soie. Leurs façades de marbre noir et d'or disaient à la fois : "Regardez comme nous maîtrisons la matière" et "Regardez comme la matière nous échappe encore".</p>
+
+  <p>Les architectures de Chrysler, les affiches de Cassandre, les bijoux de Cartier — chaque œuvre Art Déco est une déclaration d'intention sur la modernité. Non pas la modernité froide du Bauhaus ou l'épure distillée du De Stijl, mais une modernité sensuelle, opulente, qui embrassait la machine tout en la couvrant d'ivoire.</p>
+
+  <div class="art-divider">◈ &nbsp; ◈ &nbsp; ◈</div>
+
+  <p>Ce que nous nommons "Art Déco" aujourd'hui ne fut jamais un mouvement conscient. Ce fut une convergence de esprits qui partageaient la même foi : que la beauté formelle est une forme de vérité morale. Que choisir l'or sur le gris n'est pas de la vanité — c'est une affirmation de la dignité humaine.</p>
+</div>
+
+<section class="comments-section">
+  <div class="ornament"><span>◆</span></div>
+  <h3>Correspondances des Lecteurs</h3>
+  <div class="ornament"><span>— ✦ —</span></div>
+
+  <div class="comment-item">
+    <div class="comment-author-line">
+      <span class="comment-author">Édouard Fontaine-Merly</span>
+      <span class="comment-date">13 Mars 2026</span>
+    </div>
+    <p>L'analyse de la tension entre ornement et structure est d'une précision rare. On retrouve cette même dialectique chez Hector Guimard, bien que son registre soit davantage Art Nouveau. Votre plume fait honneur au sujet.</p>
+  </div>
+
+  <div class="comment-item">
+    <div class="comment-author-line">
+      <span class="comment-author">Séraphine D.</span>
+      <span class="comment-date">14 Mars 2026</span>
+    </div>
+    <p>La référence à Cassandre est bienvenue. Ses affiches pour le Normandie restent parmi les sommets absolus de la communication visuelle. La modernité opulente que vous décrivez : c'est exactement ce terme qu'il manquait à mon vocabulaire critique.</p>
+  </div>
+
+  <div class="comment-item">
+    <div class="comment-author-line">
+      <span class="comment-author">Valerian Koch</span>
+      <span class="comment-date">15 Mars 2026</span>
+    </div>
+    <p>Magnifique article. Je nuancerais cependant : l'Art Déco fut aussi une esthétique de classe. Accessible aux seuls riches dans sa forme originale. Sa démocratisation contemporaine via le digital est un paradoxe délicieux.</p>
+  </div>
+
+  <div class="ornament"><span>◆ ◆ ◆</span></div>
+</section>
+
+<footer>
+  <div class="footer-emblem">◆ ◈ ◆</div>
+  <div class="footer-name">La Gazette Dorée</div>
+  <div class="ornament"><span>— ✦ —</span></div>
+  <div class="footer-copy">© MMXXVI — Tous droits réservés — Beauté & Vérité</div>
+</footer>
+
+</body>
+</html>

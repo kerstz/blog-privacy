@@ -1,7 +1,8 @@
 # app/utils.py
 from app import db
 from functools import wraps
-from flask import session, redirect, url_for, flash, request
+from flask import redirect, url_for, flash, request
+from flask_login import current_user
 from app.models import Post
 from datetime import datetime
 from flask_bcrypt import Bcrypt, check_password_hash, generate_password_hash
@@ -198,23 +199,6 @@ def rate_limit(key_prefix: str, max_calls: int, window_seconds: int):
         return wrapper
     return decorator
 
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('user_id'):
-            flash('You need to be logged in to access this page.', 'danger')
-            return redirect(url_for('login'))
-
-        if not session.get('is_admin'):
-            flash('You do not have permission to access this page.', 'danger')
-            print("User ID:", session.get('user_id'))  # Ajout pour le débogage
-            print("Is Admin:", session.get('is_admin'))  # Ajout pour le débogage
-            return redirect(url_for('index'))
-
-        return f(*args, **kwargs)
-
-    return decorated_function
 
 def admin_required(f):
     @wraps(f)
