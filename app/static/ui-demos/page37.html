@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HOLOGRAPHIQUE IRISÉ — SPECTRE INVISIBLE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;700&family=Syncopate:wght@400;700&display=swap');
+
+:root {
+  --bg: #030508;
+  --deep: #010203;
+  --holo1: #FF0080;
+  --holo2: #8000FF;
+  --holo3: #0080FF;
+  --holo4: #00FFCC;
+  --holo5: #FFFF00;
+  --text: #E0ECF8;
+  --muted: rgba(200,220,248,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  font-weight: 400;
+}
+
+/* DARK BASE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 20%, rgba(128,0,255,0.04) 0%, transparent 50%),
+              radial-gradient(ellipse at 70% 80%, rgba(0,128,255,0.03) 0%, transparent 50%),
+              radial-gradient(ellipse at 60% 30%, rgba(255,0,128,0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* HOLOGRAPHIC ANIMATIONS */
+@keyframes irisate {
+  0% { filter: hue-rotate(0deg) saturate(2) brightness(1); }
+  16% { filter: hue-rotate(60deg) saturate(2.5) brightness(1.05); }
+  33% { filter: hue-rotate(120deg) saturate(2) brightness(1); }
+  50% { filter: hue-rotate(180deg) saturate(2.5) brightness(1.05); }
+  66% { filter: hue-rotate(240deg) saturate(2) brightness(1); }
+  83% { filter: hue-rotate(300deg) saturate(2.5) brightness(1.05); }
+  100% { filter: hue-rotate(360deg) saturate(2) brightness(1); }
+}
+@keyframes holoShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes prismaFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); filter: hue-rotate(0deg); }
+  33% { transform: translateY(-15px) rotate(2deg); filter: hue-rotate(120deg); }
+  66% { transform: translateY(8px) rotate(-1deg); filter: hue-rotate(240deg); }
+}
+@keyframes rainbowText {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes glimmer {
+  0%, 100% { opacity: 0.3; transform: translateX(-100%) skewX(-15deg); }
+  50% { opacity: 0.7; transform: translateX(400%) skewX(-15deg); }
+}
+@keyframes depthPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(128,0,255,0.15), 0 0 60px rgba(0,128,255,0.05); }
+  33% { box-shadow: 0 0 30px rgba(255,0,128,0.2), 0 0 80px rgba(0,255,204,0.08); }
+  66% { box-shadow: 0 0 25px rgba(0,128,255,0.2), 0 0 70px rgba(255,0,128,0.06); }
+}
+@keyframes scanLine {
+  0% { top: -5%; }
+  100% { top: 105%; }
+}
+
+/* HOLOGRAPHIC LAYER */
+.holo-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: repeating-linear-gradient(
+    105deg,
+    transparent 0px,
+    rgba(255,255,255,0.006) 1px,
+    transparent 2px,
+    transparent 10px
+  );
+}
+
+/* SCAN LINE */
+.holo-scan {
+  position: fixed;
+  left: 0; right: 0;
+  height: 150px;
+  background: linear-gradient(to bottom, transparent, rgba(0,200,255,0.015), transparent);
+  pointer-events: none;
+  z-index: 2;
+  animation: scanLine 12s linear infinite;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: rgba(3,5,8,0.92);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(90deg, var(--holo1), var(--holo3), var(--holo4), var(--holo1)) 1;
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--holo1), var(--holo2), var(--holo3), var(--holo4), var(--holo1));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowText 4s linear infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  transition: color 0.4s;
+  position: relative;
+}
+nav ul li a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--holo1), var(--holo3), var(--holo4));
+  transform: scaleX(0);
+  transition: transform 0.4s;
+}
+nav ul li a:hover { color: var(--text); }
+nav ul li a:hover::after { transform: scaleX(1); }
+
+/* HERO */
+.hero {
+  margin-top: 60px;
+  position: relative; z-index: 3;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 5rem 3rem;
+  text-align: center;
+}
+
+/* HOLOGRAPHIC SPHERE */
+.holo-sphere {
+  position: absolute;
+  width: 500px; height: 500px;
+  border-radius: 50%;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from 0deg,
+    rgba(255,0,128,0.06),
+    rgba(128,0,255,0.06),
+    rgba(0,128,255,0.06),
+    rgba(0,255,204,0.06),
+    rgba(255,255,0,0.06),
+    rgba(255,0,128,0.06)
+  );
+  animation: irisate 8s linear infinite;
+  pointer-events: none;
+}
+.holo-sphere::before {
+  content: '';
+  position: absolute;
+  inset: 15%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 180deg,
+    rgba(0,255,204,0.08),
+    rgba(255,0,128,0.08),
+    rgba(128,0,255,0.08),
+    rgba(0,255,204,0.08)
+  );
+  animation: irisate 6s linear infinite reverse;
+}
+.holo-sphere::after {
+  content: '';
+  position: absolute;
+  inset: 35%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.08), rgba(0,200,255,0.04));
+  animation: prismaFloat 8s ease-in-out infinite;
+}
+
+/* HERO CONTENT */
+.hero-content {
+  position: relative; z-index: 4;
+}
+
+.hero-tag {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--holo4), var(--holo3), var(--holo4));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowText 5s linear infinite;
+  margin-bottom: 2rem;
+}
+
+.hero-title {
+  font-family: 'Syncopate', sans-serif;
+  font-weight: 700;
+  font-size: clamp(2.5rem, 8vw, 7rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  background: linear-gradient(135deg, var(--holo1) 0%, var(--holo2) 20%, var(--holo3) 40%, var(--holo4) 60%, var(--holo5) 80%, var(--holo1) 100%);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: holoShift 6s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+.hero-title::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 60px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: glimmer 4s ease-in-out infinite;
+}
+
+.hero-rule {
+  width: 200px;
+  height: 1px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(90deg, transparent, var(--holo3), var(--holo1), transparent);
+  background-size: 200% auto;
+  animation: holoShift 4s ease infinite;
+}
+
+.hero-sub {
+  font-size: 0.95rem;
+  font-weight: 300;
+  line-height: 1.9;
+  color: var(--muted);
+  max-width: 500px;
+  margin: 0 auto 2rem;
+  letter-spacing: 0.05em;
+}
+.hero-meta {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,220,248,0.25);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 3;
+  padding: 6rem 3rem;
+  max-width: 780px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(0,200,255,0.08);
+}
+.article::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 300px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--holo3), transparent);
+}
+.article-label {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--holo3), var(--holo1));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 2rem;
+}
+.article h2 {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 2.5rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+.article p {
+  font-size: 0.95rem;
+  line-height: 2.1;
+  font-weight: 300;
+  color: rgba(224,236,248,0.65);
+  margin-bottom: 2rem;
+  letter-spacing: 0.03em;
+}
+.article p em {
+  font-style: normal;
+  background: linear-gradient(90deg, var(--holo4), var(--holo3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.holo-divider {
+  text-align: center;
+  margin: 2.5rem 0;
+  background: linear-gradient(90deg, var(--holo1), var(--holo2), var(--holo3), var(--holo4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  background-size: 200% auto;
+  animation: rainbowText 4s linear infinite;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+}
+
+/* CARD */
+.holo-card {
+  padding: 2rem;
+  border: 1px solid transparent;
+  border-image: linear-gradient(135deg, var(--holo1), var(--holo2), var(--holo3), var(--holo4)) 1;
+  margin: 2rem 0;
+  position: relative;
+  animation: depthPulse 6s ease-in-out infinite;
+  background: rgba(255,255,255,0.02);
+}
+.holo-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,0,128,0.03), rgba(0,128,255,0.03));
+  pointer-events: none;
+}
+.holo-card p {
+  margin-bottom: 0 !important;
+  font-style: italic;
+  color: rgba(224,236,248,0.8) !important;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 3;
+  padding: 5rem 3rem;
+  max-width: 780px;
+  margin: 0 auto;
+}
+.comments-title {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  margin-bottom: 3rem;
+  background: linear-gradient(90deg, var(--holo1), var(--holo4));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.comment {
+  padding: 2rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+}
+.comment:last-child { border-bottom: none; }
+.comment::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 2.5rem;
+  width: 3px; height: 20px;
+  background: linear-gradient(to bottom, var(--holo1), var(--holo3), var(--holo4));
+  border-radius: 3px;
+}
+.comment-inner { padding-left: 1.5rem; }
+.comment-name {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+  margin-bottom: 0.3rem;
+}
+.comment-date {
+  font-size: 0.65rem;
+  color: rgba(200,220,248,0.25);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.85rem;
+  line-height: 1.9;
+  font-weight: 300;
+  color: rgba(200,220,248,0.55);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 3;
+  background: rgba(1,2,3,0.95);
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, var(--holo2), var(--holo3), var(--holo1)) 1;
+  padding: 3rem;
+  text-align: center;
+}
+.footer-title {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--holo1), var(--holo2), var(--holo3), var(--holo4), var(--holo1));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowText 5s linear infinite;
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+}
+</style>
+</head>
+<body>
+<div class="holo-layer" aria-hidden="true"></div>
+<div class="holo-scan" aria-hidden="true"></div>
+
+<nav>
+  <a href="#" class="nav-logo">Spectre</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="holo-sphere" aria-hidden="true"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Spectre Lumineux — Édition Irisée</div>
+    <h1 class="hero-title">INVISIBLE<br>SPECTRUM</h1>
+    <div class="hero-rule"></div>
+    <p class="hero-sub">La lumière blanche cache toutes les couleurs. Ce qui semble neutre est en réalité la superposition de toutes les fréquences visibles — et de certaines que l'œil ne peut pas voir.</p>
+    <div class="hero-meta">
+      <span>Nova Celeste</span>
+      <span>·</span>
+      <span>19 Mars 2026</span>
+      <span>·</span>
+      <span>5 min</span>
+    </div>
+  </div>
+</section>
+
+<article class="article">
+  <div class="article-label">Optique &amp; Perception</div>
+  <h2>La Physique de l'Iridescence</h2>
+
+  <p>L'hologramme ne stocke pas une image — il stocke les <em>interférences lumineuses</em> qui permettent de reconstruire une image. Chaque point de la plaque holographique contient l'information de l'ensemble de la scène, vue depuis un angle légèrement différent. Cassez une plaque holographique en deux — vous obtenez deux hologrammes légèrement moins précis, pas deux demi-images.</p>
+
+  <div class="holo-card">
+    <p>"La réalité n'est pas ce que nous voyons — c'est la structure d'interférence dont notre perception extrait une image cohérente."</p>
+  </div>
+
+  <div class="holo-divider">— · · ◇ · · —</div>
+
+  <p>L'iridescence naturelle (ailes de papillons Morpho, plumes de colibri, nacre) ne provient pas de pigments mais de <em>structures nanométriques</em> qui font interférer les longueurs d'onde lumineuses. Ces structures diffractent différemment selon l'angle d'observation — d'où le changement de couleur en bougeant. Un matériau structurellement coloré plutôt que chimiquement coloré.</p>
+
+  <p>La fascination contemporaine pour l'esthétique holographique et irisée est peut-être une intuition vers cette réalité plus profonde : que la <em>couleur n'est pas dans les objets</em>, elle est dans la relation entre la lumière, la matière et l'œil. L'irisé nous rappelle que notre perception construit la couleur — elle ne la découvre pas.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">Résonances Spectrales</div>
+
+  <div class="comment">
+    <div class="comment-inner">
+      <div class="comment-name">Lior Prism</div>
+      <div class="comment-date">17 mars 2026</div>
+      <p>La propriété des hologrammes (chaque fragment contient l'ensemble) est réelle mais nuancée. La résolution diminue avec la taille du fragment. Il n'y a pas de magie — juste de la physique ondulatoire. L'idée philosophique qu'on en tire ("tout est dans tout") est une extrapolation poétique, pas une déduction.</p>
+    </div>
+  </div>
+
+  <div class="comment">
+    <div class="comment-inner">
+      <div class="comment-name">Céleste Vega</div>
+      <div class="comment-date">18 mars 2026</div>
+      <p>La distinction couleur de structure vs couleur chimique est fondamentale et peu connue. Les pigments dégradent dans le temps (voir les fresques romaines). Les structures nanométriques sont stables pendant des millions d'années — c'est pour ça qu'on retrouve des fossiles de scarabées avec leur iridescence intacte.</p>
+    </div>
+  </div>
+
+  <div class="comment">
+    <div class="comment-inner">
+      <div class="comment-name">Ray Spectrum</div>
+      <div class="comment-date">19 mars 2026</div>
+      <p>La conclusion sur "la couleur n'est pas dans les objets" est un vieux débat philosophique (Locke vs direct realism). En physique, c'est plus précis : les propriétés physiques de surface existent objectivement, mais la "couleur" comme qualia subjective est construite par le cerveau. Deux niveaux distincts à ne pas confondre.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-title">Spectre Invisible</div>
+  <div class="footer-copy">© 2026 — Toutes les fréquences visibles et au-delà</div>
+</footer>
+
+</body>
+</html>

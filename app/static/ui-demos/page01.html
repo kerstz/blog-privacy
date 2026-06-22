@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRUTALISTE — VOID SIGNAL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Space+Grotesk:wght@300;700&display=swap');
+
+:root {
+  --black: #000000;
+  --white: #FFFFFF;
+  --red: #FF0000;
+  --yellow: #FFFF00;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-x: hidden;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 56px;
+  border-bottom: 4px solid var(--white);
+}
+nav .logo {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.8rem;
+  color: var(--black);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+}
+nav ul li a {
+  display: block;
+  padding: 0.4rem 1.2rem;
+  color: var(--black);
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border-left: 3px solid var(--black);
+  transition: background 0.1s;
+}
+nav ul li a:hover {
+  background: var(--black);
+  color: var(--red);
+}
+
+/* HERO */
+.hero {
+  margin-top: 56px;
+  padding: 0;
+  background: var(--black);
+  min-height: 70vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 8px solid var(--white);
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '01';
+  position: absolute;
+  bottom: -0.2em;
+  right: -0.05em;
+  font-family: 'Anton', sans-serif;
+  font-size: 40vw;
+  color: #111;
+  line-height: 1;
+  z-index: 0;
+  pointer-events: none;
+}
+.hero-left {
+  padding: 4rem 3rem;
+  border-right: 8px solid var(--white);
+  position: relative;
+  z-index: 1;
+}
+.hero-left .tag {
+  display: inline-block;
+  background: var(--yellow);
+  color: var(--black);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 2rem;
+}
+.hero-left h1 {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  animation: brutSlam 0.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+@keyframes brutSlam {
+  0% { transform: translateY(-80px) skewY(-5deg); opacity: 0; }
+  60% { transform: translateY(10px) skewY(1deg); }
+  100% { transform: translateY(0) skewY(0); opacity: 1; }
+}
+.hero-left h1 em {
+  font-style: normal;
+  color: var(--red);
+  display: block;
+  -webkit-text-stroke: 2px var(--white);
+  text-stroke: 2px var(--white);
+}
+.hero-right {
+  padding: 4rem 3rem;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.hero-right .meta {
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 1rem;
+}
+.hero-right p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  border-left: 4px solid var(--red);
+  padding-left: 1.5rem;
+}
+
+/* ARTICLE */
+.article {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  border-bottom: 8px solid var(--white);
+}
+.article-body {
+  padding: 4rem 3rem;
+  border-right: 8px solid var(--white);
+}
+.article-body h2 {
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 2rem;
+}
+.article-body h2 span {
+  -webkit-text-stroke: 2px var(--white);
+  color: transparent;
+}
+.article-body p {
+  font-size: 1rem;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+  max-width: 65ch;
+}
+.article-body p::first-letter {
+  font-family: 'Anton', sans-serif;
+  font-size: 4rem;
+  line-height: 1;
+  float: left;
+  margin-right: 0.2em;
+  color: var(--red);
+}
+
+.article-sidebar {
+  padding: 4rem 2rem;
+  background: var(--white);
+  color: var(--black);
+}
+.article-sidebar h3 {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  border-bottom: 4px solid var(--black);
+  padding-bottom: 0.5rem;
+}
+.article-sidebar .stat {
+  margin-bottom: 1.5rem;
+}
+.article-sidebar .stat .num {
+  font-family: 'Anton', sans-serif;
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--red);
+}
+.article-sidebar .stat .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+}
+
+/* COMMENTS */
+.comments {
+  padding: 4rem 3rem;
+  border-bottom: 8px solid var(--white);
+}
+.comments h2 {
+  font-family: 'Anton', sans-serif;
+  font-size: 2.5rem;
+  text-transform: uppercase;
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+.comments h2::after {
+  content: attr(data-count);
+  font-size: 1rem;
+  background: var(--red);
+  color: var(--white);
+  padding: 0.2rem 0.8rem;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+}
+.comment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border: 4px solid var(--white);
+}
+.comment {
+  padding: 2rem;
+  border-right: 4px solid var(--white);
+  position: relative;
+}
+.comment:last-child { border-right: none; }
+.comment:nth-child(2) { background: var(--yellow); color: var(--black); }
+.comment-author {
+  font-family: 'Anton', sans-serif;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+.comment-date {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  opacity: 0.6;
+  margin-bottom: 1rem;
+}
+.comment p { font-size: 0.9rem; line-height: 1.6; }
+.comment::before {
+  content: '"';
+  position: absolute;
+  top: 1rem; right: 1.5rem;
+  font-family: 'Anton', sans-serif;
+  font-size: 4rem;
+  opacity: 0.15;
+  line-height: 1;
+}
+
+/* FOOTER */
+footer {
+  padding: 3rem;
+  background: var(--white);
+  color: var(--black);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  border-top: 8px solid var(--black);
+}
+footer .footer-brand {
+  font-family: 'Anton', sans-serif;
+  font-size: 3rem;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+footer .footer-brand span { color: var(--red); }
+footer .footer-copy {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* BROKEN ELEMENT */
+.rupture {
+  background: var(--red);
+  color: var(--white);
+  padding: 2rem 3rem;
+  font-family: 'Anton', sans-serif;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  border-bottom: 8px solid var(--white);
+  animation: bgPulse 3s ease-in-out infinite;
+}
+@keyframes bgPulse {
+  0%, 100% { background: var(--red); }
+  50% { background: #cc0000; }
+}
+
+/* SCROLL REVEAL */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: reveal 0.7s forwards;
+  animation-delay: 0.2s;
+}
+@keyframes reveal {
+  to { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">VOID/SIGNAL</div>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <span class="tag">Design Brutaliste — N°01</span>
+    <h1>BRISER<br>LE<br><em>SILENCE</em></h1>
+  </div>
+  <div class="hero-right">
+    <p class="meta">16 Mars 2026 &nbsp;·&nbsp; 4 min de lecture</p>
+    <p>Le brutalisme numérique refuse de se cacher derrière l'esthétique. Il expose sa structure à nu, sans vergogne, sans ornement superflu.</p>
+  </div>
+</section>
+
+<div class="rupture">LE DESIGN QUI NE S'EXCUSE PAS — FORME SUIT FONCTION — VÉRITÉ BRUTE</div>
+
+<section class="article">
+  <div class="article-body reveal">
+    <h2>POURQUOI LE BEAU <span>NOUS MENT</span></h2>
+    <p>Le brutalisme digital n'est pas un accident. C'est une réponse viscérale à un internet saturé de courbes douces, d'ombres portées et de gradients inutiles. On a trop poli, trop arrondi, trop facilité. Le résultat : une uniformité aseptisée où chaque site ressemble au précédent.</p>
+    <p>Ici, les grilles se cassent. Les typographies débordent. Les couleurs mordent. Chaque élément revendique sa présence sans demander permission. Ce n'est pas de la laideur — c'est une honnêteté formelle que peu de designers ont le courage d'assumer.</p>
+    <p>Le web brutaliste hérite du mouvement architectural des années 50-70 : le Béton Brut de Le Corbusier, la rudesse fonctionnelle des bâtiments universitaires britanniques. Transposé au digital, il dit la même chose : voici la structure, voici la fonction, rien ne se cache.</p>
+  </div>
+  <div class="article-sidebar reveal">
+    <h3>Données</h3>
+    <div class="stat"><div class="num">847</div><div class="label">Lecteurs aujourd'hui</div></div>
+    <div class="stat"><div class="num">03</div><div class="label">Minutes de lecture</div></div>
+    <div class="stat"><div class="num">∞</div><div class="label">Impacte visuel</div></div>
+  </div>
+</section>
+
+<section class="comments">
+  <h2 data-count="3 COMMENTAIRES">RÉACTIONS</h2>
+  <div class="comment-grid">
+    <div class="comment">
+      <div class="comment-author">RAW_USER_X</div>
+      <div class="comment-date">14 Mars 2026</div>
+      <p>Enfin quelqu'un qui dit ce qu'il pense. Le web est devenu un musée de cartes vierges. Cette page fait mal aux yeux mais au moins elle existe vraiment.</p>
+    </div>
+    <div class="comment">
+      <div class="comment-author">DESIGNKILL</div>
+      <div class="comment-date">15 Mars 2026</div>
+      <p>Oui mais NON. Le brutalisme mal exécuté c'est juste de la paresse. Ici c'est réfléchi donc ok. La rupture rouge est légendaire.</p>
+    </div>
+    <div class="comment">
+      <div class="comment-author">VOIDWALKER</div>
+      <div class="comment-date">16 Mars 2026</div>
+      <p>Le text-stroke en CSS, l'utilisation du jaune comme interruption — c'est du vrai travail. Ce blog comprend ce qu'il fait.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">VOID<span>SIGNAL</span></div>
+  <div class="footer-copy">© 2026 — Tous droits réservés — Aucune excuse</div>
+</footer>
+
+</body>
+</html>

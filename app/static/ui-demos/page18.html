@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABSTRACT — CANVAS VOID</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Abril+Fatface&family=DM+Sans:wght@300;400&display=swap');
+
+:root {
+  --bg: #0A0A0A;
+  --canvas: #111111;
+  --red: #CC2200;
+  --ochre: #C8820A;
+  --cobalt: #1540C8;
+  --white: #F0EDE8;
+  --black: #000000;
+  --cream: #E8E0D0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* CANVAS TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%230A0A0A'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23111' opacity='0.5'/%3E%3Crect x='2' y='2' width='1' height='1' fill='%23111' opacity='0.3'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* PAINT STROKES (CSS) */
+@keyframes strokeReveal {
+  from { transform: scaleX(0) skewX(-10deg); opacity: 0; }
+  to { transform: scaleX(1) skewX(0deg); opacity: 1; }
+}
+@keyframes splatIn {
+  0% { transform: scale(0) rotate(var(--rot, 0deg)); opacity: 0; }
+  60% { transform: scale(1.1) rotate(calc(var(--rot, 0deg) + 5deg)); }
+  100% { transform: scale(1) rotate(var(--rot, 0deg)); opacity: 1; }
+}
+@keyframes gestureFloat {
+  0%, 100% { transform: translate(0, 0) rotate(var(--rot, 0deg)); }
+  33% { transform: translate(5px, -8px) rotate(calc(var(--rot, 0deg) + 2deg)); }
+  66% { transform: translate(-3px, 5px) rotate(calc(var(--rot, 0deg) - 1deg)); }
+}
+@keyframes brushSlide {
+  from { clip-path: inset(0 100% 0 0); opacity: 1; }
+  to { clip-path: inset(0 0% 0 0); opacity: 1; }
+}
+@keyframes drip {
+  from { transform: scaleY(0); transform-origin: top; }
+  to { transform: scaleY(1); transform-origin: top; }
+}
+
+/* PAINT SPLATS */
+.splat {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 50% 40% 60% 35% / 50% 60% 40% 55%;
+  filter: blur(0.5px);
+  animation: gestureFloat linear infinite;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: var(--black);
+  border-bottom: 3px solid var(--red);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1.5rem;
+  color: var(--cream);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  position: relative;
+}
+.nav-logo::after {
+  content: '';
+  position: absolute;
+  bottom: -4px; left: 0;
+  width: 100%; height: 3px;
+  background: var(--red);
+  transform-origin: left;
+  transform: scaleX(1);
+  animation: strokeReveal 1s both;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.5rem;
+  height: 64px;
+  line-height: 64px;
+  color: rgba(240,237,232,0.5);
+  text-decoration: none;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  transition: color 0.3s;
+  position: relative;
+}
+nav ul li a:hover { color: var(--cream); }
+nav ul li a::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 1.5rem; right: 1.5rem;
+  height: 3px;
+  background: var(--ochre);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+nav ul li a:hover::after { transform: scaleX(1); }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 64px;
+  min-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 4rem 3rem;
+}
+
+/* ABSTRACT STRIPES */
+.abstract-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.stripe {
+  position: absolute;
+  height: 120px;
+  transform-origin: left center;
+  animation: strokeReveal 1.5s ease-out both;
+}
+.stripe.s1 { top: 10%; left: -5%; width: 50%; background: var(--red); opacity: 0.15; transform: rotate(-8deg) skewX(-5deg); animation-delay: 0.1s; }
+.stripe.s2 { top: 30%; right: -5%; width: 40%; background: var(--cobalt); opacity: 0.12; transform: rotate(5deg) skewX(3deg); animation-delay: 0.3s; }
+.stripe.s3 { bottom: 20%; left: 20%; width: 60%; background: var(--ochre); opacity: 0.1; transform: rotate(-3deg); animation-delay: 0.5s; }
+.stripe.s4 { top: 60%; left: 0; width: 30%; height: 60px; background: var(--white); opacity: 0.05; transform: rotate(10deg); animation-delay: 0.7s; }
+
+.hero-inner {
+  max-width: 800px;
+  position: relative;
+}
+.hero-type {
+  font-family: 'Bebas Neue', cursive;
+  font-size: clamp(4rem, 12vw, 10rem);
+  line-height: 0.9;
+  color: var(--cream);
+  position: relative;
+  z-index: 1;
+}
+.hero-type .r { color: var(--red); }
+.hero-type .o { color: var(--ochre); }
+.hero-type .b { color: var(--cobalt); }
+
+/* BRUSHSTROKE UNDERLINE */
+.brush-line {
+  height: 20px;
+  background: var(--red);
+  border-radius: 50% 40% 60% 30% / 40% 60% 40% 50%;
+  transform: rotate(-1deg) skewX(-3deg);
+  margin: -0.5rem 0 1.5rem;
+  animation: strokeReveal 1s 0.8s both;
+  max-width: 400px;
+}
+
+.hero-desc {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: rgba(232,224,208,0.7);
+  max-width: 50ch;
+  position: relative;
+  z-index: 1;
+}
+
+/* PAINT DROPS */
+.drop {
+  position: absolute;
+  border-radius: 50% 50% 40% 40%;
+  animation: splatIn 0.8s ease-out both;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 4rem;
+  border-top: 2px solid rgba(240,237,232,0.1);
+}
+.article-main h2 {
+  font-family: 'Abril Fatface', cursive;
+  font-size: 2.2rem;
+  line-height: 1.2;
+  color: var(--cream);
+  margin-bottom: 2rem;
+}
+.article-main p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgba(232,224,208,0.75);
+  margin-bottom: 1.5rem;
+}
+.article-main p .red { color: var(--red); font-weight: 400; }
+.article-main p .gold { color: var(--ochre); }
+.article-main p .blue { color: #6090FF; }
+.article-num {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 8rem;
+  line-height: 1;
+  color: rgba(240,237,232,0.06);
+  position: relative;
+  z-index: 0;
+}
+.article-date {
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(232,224,208,0.4);
+  margin-top: 1rem;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  border-top: 2px solid rgba(240,237,232,0.1);
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments h2 {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 2rem;
+  letter-spacing: 0.1em;
+  color: var(--cream);
+  margin-bottom: 2rem;
+}
+.comment {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(240,237,232,0.08);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.comment-mark {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 2rem;
+  line-height: 1;
+  color: rgba(240,237,232,0.15);
+}
+.comment:nth-child(1) .comment-mark { color: rgba(204,34,0,0.3); }
+.comment:nth-child(2) .comment-mark { color: rgba(200,130,10,0.3); }
+.comment:nth-child(3) .comment-mark { color: rgba(21,64,200,0.3); }
+.comment-name {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  color: var(--cream);
+  margin-bottom: 0.25rem;
+}
+.comment-date {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(232,224,208,0.3);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(232,224,208,0.65);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 3rem;
+  background: var(--black);
+  border-top: 3px solid var(--red);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--cream);
+}
+.footer-logo .red { color: var(--red); }
+.footer-copy {
+  font-size: 0.75rem;
+  color: rgba(232,224,208,0.3);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<div class="splat" style="width:200px;height:120px;background:rgba(204,34,0,0.08);top:20%;left:5%;--rot:-5deg;animation-duration:12s;animation-delay:0s;"></div>
+<div class="splat" style="width:150px;height:90px;background:rgba(200,130,10,0.06);top:60%;right:8%;--rot:8deg;animation-duration:15s;animation-delay:-3s;"></div>
+<div class="splat" style="width:100px;height:70px;background:rgba(21,64,200,0.07);bottom:15%;left:30%;--rot:-12deg;animation-duration:10s;animation-delay:-6s;"></div>
+
+<nav>
+  <a href="#" class="nav-logo">Canvas Void</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="abstract-bg">
+    <div class="stripe s1"></div>
+    <div class="stripe s2"></div>
+    <div class="stripe s3"></div>
+    <div class="stripe s4"></div>
+  </div>
+  <div class="drop" style="width:40px;height:50px;background:var(--red);opacity:0.4;top:30%;right:20%;--rot:10deg;animation-delay:0.2s;"></div>
+  <div class="drop" style="width:25px;height:35px;background:var(--cobalt);opacity:0.3;top:55%;right:35%;--rot:-8deg;animation-delay:0.5s;"></div>
+  <div class="drop" style="width:15px;height:25px;background:var(--ochre);opacity:0.5;bottom:35%;right:15%;--rot:15deg;animation-delay:0.8s;"></div>
+  <div class="hero-inner">
+    <div class="hero-type">
+      <span class="r">CHAOS</span><br>
+      <span class="o">CON</span><span>TRÔLÉ</span>
+    </div>
+    <div class="brush-line"></div>
+    <p class="hero-desc">L'expressionnisme abstrait n'est pas de l'improvisation pure. C'est une improvisation entraînée — des années de maîtrise technique au service du geste spontané.</p>
+  </div>
+</section>
+
+<div class="article">
+  <div class="article-main">
+    <h2>Le Geste Comme Signature du Vivant</h2>
+    <p>Pollock n'était pas ivre de hasard. Ses drip paintings résultent d'une technique physique précise — la trajectoire du corps, la viscosité de la peinture, la hauteur du geste. Ce qui semblait <span class="red">chaos pur</span> était en réalité un dialogue avec les forces physiques.</p>
+    <p>De Kooning appelait ça "le contenu de l'action" — l'œuvre n'est pas ce qu'elle représente, mais le <span class="gold">témoignage physique de sa création</span>. Chaque trace de pinceau est une signature biométrique : la pression, la vitesse, l'angle, l'hésitation.</p>
+    <p>Dans l'ère du <span class="blue">design algorithmique</span>, cette dimension charnelle retrouve une valeur paradoxale. Ce que la machine ne peut pas simuler (encore), c'est le tremblement spécifique d'une main fatiguée un mardi matin. L'imperfection humaine comme authenticité.</p>
+  </div>
+  <div>
+    <div class="article-num">18</div>
+    <div class="article-date">16 Mars 2026<br>Abel Krstić<br>5 min de lecture</div>
+  </div>
+</div>
+
+<section class="comments">
+  <h2>Réponses</h2>
+
+  <div class="comment">
+    <div class="comment-mark">01</div>
+    <div>
+      <div class="comment-name">Vera Abstract</div>
+      <div class="comment-date">12 mars 2026</div>
+      <p>La technique physique de Pollock est effectivement documentée — il variait la hauteur, la vitesse, la viscosité délibérément. Mais l'effet chaos est bien l'intention, même s'il est contrôlé. C'est la différence entre ordre et désordre calculé.</p>
+    </div>
+  </div>
+
+  <div class="comment">
+    <div class="comment-mark">02</div>
+    <div>
+      <div class="comment-name">Brush Theory</div>
+      <div class="comment-date">14 mars 2026</div>
+      <p>L'argument sur "l'imperfection humaine comme authenticité" est beau mais risqué — ça mène rapidement au naturalism fallacy. Ce n'est pas parce que c'est humain que c'est authentique.</p>
+    </div>
+  </div>
+
+  <div class="comment">
+    <div class="comment-mark">03</div>
+    <div>
+      <div class="comment-name">MotionCapture_K</div>
+      <div class="comment-date">15 mars 2026</div>
+      <p>Les IA commencent à simuler le "tremblement biométrique" — les modèles diffusion récents peuvent générer des brushstrokes avec imperfections organiques. La frontière se ferme vite.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Canvas<span class="red"> Void</span></div>
+  <div class="footer-copy">© 2026 — Geste & Vide</div>
+</footer>
+
+</body>
+</html>

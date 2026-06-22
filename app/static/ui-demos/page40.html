@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INDEX — 40 DESIGNS SOMBRES</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #080808;
+  --surface: #101010;
+  --border: rgba(255,255,255,0.08);
+  --text: #E8E8E8;
+  --muted: rgba(230,230,230,0.4);
+  --accent: #FFFFFF;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lineIn { from { transform: scaleX(0); transform-origin: left; } to { transform: scaleX(1); } }
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hoverGlow {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: var(--card-glow, 0 0 0 transparent); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 52px;
+  background: rgba(8,8,8,0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+  letter-spacing: 0.1em;
+}
+.nav-count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* HERO */
+.hero {
+  margin-top: 52px;
+  padding: 7rem 4rem 5rem;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 1s both;
+}
+.hero::before {
+  content: '40';
+  position: absolute;
+  right: -0.1em;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 35vw;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(255,255,255,0.02);
+  letter-spacing: -0.05em;
+  pointer-events: none;
+}
+.hero-kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+.hero-title {
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  margin-bottom: 2rem;
+  max-width: 700px;
+}
+.hero-subtitle {
+  font-size: 1rem;
+  font-weight: 300;
+  line-height: 1.8;
+  color: var(--muted);
+  max-width: 560px;
+  margin-bottom: 3rem;
+}
+.hero-rule {
+  width: 60px;
+  height: 2px;
+  background: var(--text);
+  animation: lineIn 1s 0.5s both;
+}
+
+/* FILTER BAR */
+.filter-bar {
+  padding: 1.5rem 4rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background: var(--surface);
+  position: sticky;
+  top: 52px;
+  z-index: 90;
+}
+.filter-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-right: 1rem;
+  letter-spacing: 0.1em;
+}
+.filter-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: all 0.2s;
+  border-radius: 2px;
+  text-decoration: none;
+}
+.filter-tag:hover { border-color: var(--text); color: var(--text); }
+.filter-tag.all { border-color: var(--text); color: var(--text); }
+
+/* GRID */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-top: 1px solid var(--border);
+}
+
+/* CARD */
+.card {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem 2rem 2rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: background 0.3s, transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  min-height: 160px;
+  --card-glow: none;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 3px;
+  background: var(--card-accent, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s ease;
+}
+.card:hover { background: var(--surface); }
+.card:hover::before { transform: scaleX(1); }
+
+.card-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.1em;
+}
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+  color: var(--card-color, var(--text));
+  transition: color 0.3s;
+}
+.card-style {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  flex: 1;
+  margin-bottom: 1rem;
+}
+.card-arrow {
+  align-self: flex-end;
+  font-size: 0.8rem;
+  color: var(--muted);
+  transition: transform 0.3s, color 0.3s;
+}
+.card:hover .card-arrow {
+  transform: translate(3px, -3px);
+  color: var(--card-color, var(--text));
+}
+
+/* EACH PAGE COLOR */
+.c01 { --card-accent: #FF2200; --card-color: #FF4422; }
+.c02 { --card-accent: #FF6600; --card-color: #FF8822; }
+.c03 { --card-accent: #C8A028; --card-color: #D4B040; }
+.c04 { --card-accent: #00FFCC; --card-color: #00FFCC; }
+.c05 { --card-accent: #E8DCC8; --card-color: #F0E8D8; }
+.c06 { --card-accent: #880000; --card-color: #AA2222; }
+.c07 { --card-accent: #E8C040; --card-color: #F0CC50; }
+.c08 { --card-accent: #33FF00; --card-color: #44FF11; }
+.c09 { --card-accent: #FF00AA; --card-color: #FF22BB; }
+.c10 { --card-accent: rgba(255,255,255,0.5); --card-color: rgba(255,255,255,0.8); }
+.c11 { --card-accent: #404060; --card-color: #6060A0; }
+.c12 { --card-accent: #AA00FF; --card-color: #BB22FF; }
+.c13 { --card-accent: #FF44CC; --card-color: #FF66DD; }
+.c14 { --card-accent: #FFCC00; --card-color: #FFD822; }
+.c15 { --card-accent: #8B5A2B; --card-color: #A06830; }
+.c16 { --card-accent: #888888; --card-color: #AAAAAA; }
+.c17 { --card-accent: #FF88BB; --card-color: #FFAAD0; }
+.c18 { --card-accent: #4488FF; --card-color: #66AAFF; }
+.c19 { --card-accent: #0044CC; --card-color: #2266EE; }
+.c20 { --card-accent: #556B2F; --card-color: #6B8B3F; }
+.c21 { --card-accent: #228833; --card-color: #33AA44; }
+.c22 { --card-accent: #CCCCCC; --card-color: #E0E0E0; }
+.c23 { --card-accent: #FF6600; --card-color: #FF8822; }
+.c24 { --card-accent: #FFFFFF; --card-color: #E8E4D8; }
+.c25 { --card-accent: #00FF41; --card-color: #22FF60; }
+.c26 { --card-accent: #B87333; --card-color: #CC9044; }
+.c27 { --card-accent: #C6FF00; --card-color: #D8FF22; }
+.c28 { --card-accent: #C8A84A; --card-color: #D8BC60; }
+.c29 { --card-accent: #8800CC; --card-color: #AA22EE; }
+.c30 { --card-accent: #FF6600; --card-color: #FF8822; }
+.c31 { --card-accent: #C8A028; --card-color: #D4B040; }
+.c32 { --card-accent: #00C5A8; --card-color: #22D8BC; }
+.c33 { --card-accent: #FF4D00; --card-color: #FF6622; }
+.c34 { --card-accent: #FF0066; --card-color: #FF2288; }
+.c35 { --card-accent: #33FF00; --card-color: #44FF22; }
+.c36 { --card-accent: #C8A020; --card-color: #D8B030; }
+.c37 { --card-accent: #FF0080; --card-color: #FF22AA; }
+.c38 { --card-accent: #E80000; --card-color: #FF2222; }
+.c39 { --card-accent: #8B0000; --card-color: #CC2233; }
+.c40 { --card-accent: #FFFFFF; --card-color: #FFFFFF; }
+
+/* STATS BAR */
+.stats {
+  padding: 3rem 4rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+}
+.stat {
+  text-align: center;
+}
+.stat-num {
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: var(--text);
+  display: block;
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+.stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+/* FOOTER */
+footer {
+  padding: 3rem 4rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.footer-brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.footer-copy {
+  font-size: 0.7rem;
+  color: rgba(230,230,230,0.2);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">UI_DEMOS/</span>
+  <span class="nav-count">40 pages · dark themes</span>
+</nav>
+
+<header class="hero">
+  <div class="hero-kicker">// Index — Collection Complète</div>
+  <h1 class="hero-title">40 Designs<br>Sombres</h1>
+  <p class="hero-subtitle">Quarante pages autonomes, zéro ressemblance. Du brutalisme brut au boudoir velours, chaque page explore une esthétique unique dans le spectre du dark design.</p>
+  <div class="hero-rule"></div>
+</header>
+
+<div class="filter-bar">
+  <span class="filter-label">// FILTER</span>
+  <a href="#" class="filter-tag all">Tous (40)</a>
+  <a href="#" class="filter-tag">Typographie</a>
+  <a href="#" class="filter-tag">Minimaliste</a>
+  <a href="#" class="filter-tag">Rétro</a>
+  <a href="#" class="filter-tag">Organique</a>
+  <a href="#" class="filter-tag">Glitch</a>
+  <a href="#" class="filter-tag">Luxe</a>
+</div>
+
+<main class="grid">
+
+  <a href="page01.html" class="card c01">
+    <div class="card-num">01 /</div>
+    <div class="card-title">BRUTALISTE</div>
+    <div class="card-style">Typographie massive · Grids cassées · Contraste brut</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page02.html" class="card c02">
+    <div class="card-num">02 /</div>
+    <div class="card-title">BAUHAUS GÉOMÉTRIQUE</div>
+    <div class="card-style">Formes pures · Asymétrie contrôlée · Orange</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page03.html" class="card c03">
+    <div class="card-num">03 /</div>
+    <div class="card-title">ART DÉCO NOIR/OR</div>
+    <div class="card-style">Ornements fins · Typo condensée · Or antique</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page04.html" class="card c04">
+    <div class="card-num">04 /</div>
+    <div class="card-title">CYBERPUNK/NÉON</div>
+    <div class="card-style">Glitch · Scanlines · Interface HUD · Cyan</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page05.html" class="card c05">
+    <div class="card-num">05 /</div>
+    <div class="card-title">MINIMAL JAPONAIS</div>
+    <div class="card-style">Espaces vides · Haiku vibes · Encre sèche</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page06.html" class="card c06">
+    <div class="card-num">06 /</div>
+    <div class="card-title">HORROR/GORE</div>
+    <div class="card-style">Textures corrosion · Éléments dégoulinants · Sang</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page07.html" class="card c07">
+    <div class="card-num">07 /</div>
+    <div class="card-title">LUXE ÉDITORIAL</div>
+    <div class="card-style">Magazine Vogue sombre · Grandes photos · Chic</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page08.html" class="card c08">
+    <div class="card-num">08 /</div>
+    <div class="card-title">TERMINAL HACKER</div>
+    <div class="card-style">Monospace pur · ASCII art · Vert phosphore</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page09.html" class="card c09">
+    <div class="card-num">09 /</div>
+    <div class="card-title">MEMPHIS SOMBRE</div>
+    <div class="card-style">Formes géométriques colorées · Fond noir · Rétro</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page10.html" class="card c10">
+    <div class="card-num">10 /</div>
+    <div class="card-title">GLASSMORPHISM</div>
+    <div class="card-style">Tout transparent/blur · Verre dépoli · Profondeur</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page11.html" class="card c11">
+    <div class="card-num">11 /</div>
+    <div class="card-title">NEUMORPHISM DARK</div>
+    <div class="card-style">Reliefs subtils · Fond presque noir · Matière</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page12.html" class="card c12">
+    <div class="card-num">12 /</div>
+    <div class="card-title">PSYCHÉDÉLIQUE/TRIP</div>
+    <div class="card-style">Couleurs acides · Swirls · Acid violet</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page13.html" class="card c13">
+    <div class="card-num">13 /</div>
+    <div class="card-title">RÉTRO 80s SYNTHWAVE</div>
+    <div class="card-style">Violets · Roses · Grilles perspective</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page14.html" class="card c14">
+    <div class="card-num">14 /</div>
+    <div class="card-title">BANDE DESSINÉE</div>
+    <div class="card-style">Bordures épaisses · Onomatopées · Comics</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page15.html" class="card c15">
+    <div class="card-num">15 /</div>
+    <div class="card-title">DARK ACADEMIA</div>
+    <div class="card-style">Parchemin sombre · Serif old style · Chandelles</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page16.html" class="card c16">
+    <div class="card-num">16 /</div>
+    <div class="card-title">INDUSTRIAL/METAL</div>
+    <div class="card-style">Rivets · Plaques métal · Rouille industrielle</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page17.html" class="card c17">
+    <div class="card-num">17 /</div>
+    <div class="card-title">KAWAII DARK</div>
+    <div class="card-style">Pastel sombre · Cute mais dark · Rose poudré</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page18.html" class="card c18">
+    <div class="card-num">18 /</div>
+    <div class="card-title">ABSTRACT EXPRESSIONIST</div>
+    <div class="card-style">Taches · Brushstrokes · Chaos contrôlé</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page19.html" class="card c19">
+    <div class="card-num">19 /</div>
+    <div class="card-title">SCI-FI SPATIAL</div>
+    <div class="card-style">Étoiles · Nébuleuses · Interface holographique</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page20.html" class="card c20">
+    <div class="card-num">20 /</div>
+    <div class="card-title">GRUNGE PUNK</div>
+    <div class="card-style">Déchirures · Textures sale · Typo rebelle</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page21.html" class="card c21">
+    <div class="card-num">21 /</div>
+    <div class="card-title">ART NOUVEAU DARK</div>
+    <div class="card-style">Courbes organiques · Floral sombre · Vert profond</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page22.html" class="card c22">
+    <div class="card-num">22 /</div>
+    <div class="card-title">SWISS INTERNATIONAL</div>
+    <div class="card-style">Grille stricte · Minimalisme suisse · Monochrome</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page23.html" class="card c23">
+    <div class="card-num">23 /</div>
+    <div class="card-title">VITRAUX/STAINED GLASS</div>
+    <div class="card-style">Fragments colorés · Fond noir · Lumière brisée</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page24.html" class="card c24">
+    <div class="card-num">24 /</div>
+    <div class="card-title">ORIGAMI/PLIÉ</div>
+    <div class="card-style">CSS 3D · Formes géométriques · Papier froissé</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page25.html" class="card c25">
+    <div class="card-num">25 /</div>
+    <div class="card-title">GLITCH/DATA MOSHING</div>
+    <div class="card-style">Artefacts visuels · Pixels corrompus · Vert glitch</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page26.html" class="card c26">
+    <div class="card-num">26 /</div>
+    <div class="card-title">STEAMPUNK</div>
+    <div class="card-style">Engrenages · Cuivre · Vapeur · Victorien</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page27.html" class="card c27">
+    <div class="card-num">27 /</div>
+    <div class="card-title">NEON GROTESQUE</div>
+    <div class="card-style">Sans-serif massive · Lime fluo unique · Noir pur</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page28.html" class="card c28">
+    <div class="card-num">28 /</div>
+    <div class="card-title">SERIF CLASSIQUE</div>
+    <div class="card-style">Élégance romaine · Colonnes · Or antique</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page29.html" class="card c29">
+    <div class="card-num">29 /</div>
+    <div class="card-title">TAROT/OCCULT</div>
+    <div class="card-style">Symboles mystiques · Runes · Violet mystère</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page30.html" class="card c30">
+    <div class="card-num">30 /</div>
+    <div class="card-title">STREET ART/GRAFFITI</div>
+    <div class="card-style">Spray · Tags · Mur béton sombre</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page31.html" class="card c31">
+    <div class="card-num">31 /</div>
+    <div class="card-title">CINÉMA NOIR</div>
+    <div class="card-style">Grain de film · Noir et blanc + or accent</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page32.html" class="card c32">
+    <div class="card-num">32 /</div>
+    <div class="card-title">LIQUIDE/ORGANIQUE</div>
+    <div class="card-style">Formes blob · Bordures fluides · Teal morphique</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page33.html" class="card c33">
+    <div class="card-num">33 /</div>
+    <div class="card-title">RISO PRINT</div>
+    <div class="card-style">Halftone · Encres limitées · Grain orange/bleu</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page34.html" class="card c34">
+    <div class="card-num">34 /</div>
+    <div class="card-title">POP ART SOMBRE</div>
+    <div class="card-style">Warhol sur fond noir · Benday dots · Sérigraphie</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page35.html" class="card c35">
+    <div class="card-num">35 /</div>
+    <div class="card-title">ASCII/TEXT ART</div>
+    <div class="card-style">Caractères typographiques visuels · Terminal vert</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page36.html" class="card c36">
+    <div class="card-num">36 /</div>
+    <div class="card-title">NÉO-TRIBAL</div>
+    <div class="card-style">Patterns géométriques répétitifs · Noir + or</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page37.html" class="card c37">
+    <div class="card-num">37 /</div>
+    <div class="card-title">HOLOGRAPHIQUE IRISÉ</div>
+    <div class="card-style">Reflets rainbow · Fond très sombre · Spectre</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page38.html" class="card c38">
+    <div class="card-num">38 /</div>
+    <div class="card-title">BRUTALIST SWISS PUNK</div>
+    <div class="card-style">Bauhaus + punk + grille · Rouge vif · Typo brute</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page39.html" class="card c39">
+    <div class="card-num">39 /</div>
+    <div class="card-title">VELOURS NOIR</div>
+    <div class="card-style">Boudoir underground · Latex · Velours · Rouge profond</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+  <a href="page40.html" class="card c40" style="border: 1px solid rgba(255,255,255,0.1);">
+    <div class="card-num">40 /</div>
+    <div class="card-title">INDEX</div>
+    <div class="card-style">Cette page · Liste complète · Navigation</div>
+    <div class="card-arrow">↗</div>
+  </a>
+
+</main>
+
+<div class="stats">
+  <div class="stat">
+    <span class="stat-num">40</span>
+    <span class="stat-label">Pages créées</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">40</span>
+    <span class="stat-label">Styles distincts</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">0</span>
+    <span class="stat-label">Ressemblances</span>
+  </div>
+  <div class="stat">
+    <span class="stat-num">∞</span>
+    <span class="stat-label">Possibilités CSS</span>
+  </div>
+</div>
+
+<footer>
+  <span class="footer-brand">// ui-demos/ · dark theme collection</span>
+  <span class="footer-copy">© 2026 · 40 pages standalone · Aucune dépendance CDN · Tout dark</span>
+</footer>
+
+</body>
+</html>

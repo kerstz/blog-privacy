@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEON GROTESQUE — LIME SIGNAL</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Bebas+Neue&family=DM+Sans:wght@300;400&display=swap');
+
+:root {
+  --bg: #000000;
+  --lime: #C6FF00;
+  --dark-lime: #8AB000;
+  --off-black: #0A0A0A;
+  --text: rgba(198,255,0,0.7);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--lime);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* MINIMAL NOISE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at 0% 0%, rgba(198,255,0,0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes neonFlicker {
+  0%, 97%, 100% { opacity: 1; text-shadow: 0 0 20px var(--lime), 0 0 60px rgba(198,255,0,0.4); }
+  98% { opacity: 0.5; text-shadow: none; }
+  99% { opacity: 0.9; }
+}
+@keyframes lineSlide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(198,255,0,0.2), inset 0 0 20px rgba(198,255,0,0.05); }
+  50% { box-shadow: 0 0 40px rgba(198,255,0,0.4), inset 0 0 30px rgba(198,255,0,0.08); }
+}
+@keyframes typeIn {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(198,255,0,0.2);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+  overflow: hidden;
+}
+nav::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0;
+  width: 30%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--lime), transparent);
+  animation: lineSlide 3s ease-in-out infinite;
+}
+.nav-logo {
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: 1.4rem;
+  color: var(--lime);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  animation: neonFlicker 8s infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.5rem;
+  height: 64px;
+  line-height: 64px;
+  color: rgba(198,255,0,0.4);
+  text-decoration: none;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-left: 1px solid rgba(198,255,0,0.1);
+  transition: color 0.2s;
+}
+nav ul li a:hover { color: var(--lime); }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 64px;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  padding: 4rem 3rem;
+  border-bottom: 1px solid rgba(198,255,0,0.1);
+}
+.hero-inner {
+  max-width: 900px;
+}
+.hero-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(198,255,0,0.4);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.hero-kicker::before {
+  content: '';
+  width: 40px; height: 1px;
+  background: var(--lime);
+  box-shadow: 0 0 8px var(--lime);
+}
+.hero-title {
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: clamp(4rem, 15vw, 14rem);
+  line-height: 0.9;
+  color: var(--lime);
+  text-shadow: 0 0 30px rgba(198,255,0,0.4), 0 0 80px rgba(198,255,0,0.2);
+  animation: neonFlicker 10s infinite;
+  letter-spacing: -0.02em;
+  word-break: break-word;
+}
+.hero-title .outline {
+  -webkit-text-stroke: 2px var(--lime);
+  color: transparent;
+  display: block;
+}
+.hero-side {
+  position: absolute;
+  right: 3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  color: rgba(198,255,0,0.2);
+  text-transform: uppercase;
+}
+
+/* MARQUEE LINE */
+.marquee-wrap {
+  position: relative; z-index: 1;
+  background: var(--lime);
+  padding: 0.5rem 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border-top: 1px solid var(--dark-lime);
+  border-bottom: 1px solid var(--dark-lime);
+}
+.marquee-inner {
+  display: inline-block;
+  animation: marqueeMove 20s linear infinite;
+}
+@keyframes marqueeMove {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-inner span {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  color: var(--bg);
+  margin-right: 3rem;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 5rem 3rem;
+  border-bottom: 1px solid rgba(198,255,0,0.1);
+}
+.article-layout {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 5rem;
+}
+.article-main h2 {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 3rem;
+  color: var(--lime);
+  letter-spacing: 0.05em;
+  margin-bottom: 2rem;
+  line-height: 1;
+  text-shadow: 0 0 20px rgba(198,255,0,0.3);
+}
+.article-main p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgba(198,255,0,0.65);
+  margin-bottom: 1.5rem;
+}
+.article-main p .em { color: var(--lime); font-weight: 400; }
+.article-stat {
+  border: 1px solid rgba(198,255,0,0.2);
+  padding: 2rem;
+  animation: glowPulse 4s ease-in-out infinite;
+}
+.stat-big {
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: 5rem;
+  color: var(--lime);
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(198,255,0,0.5);
+  animation: neonFlicker 6s infinite;
+}
+.stat-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(198,255,0,0.4);
+  margin-top: 0.5rem;
+}
+
+/* PROGRESS BARS */
+.bar-row {
+  margin-top: 2rem;
+}
+.bar-item {
+  margin-bottom: 1rem;
+}
+.bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(198,255,0,0.4);
+  margin-bottom: 0.3rem;
+}
+.bar-track {
+  height: 2px;
+  background: rgba(198,255,0,0.1);
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  background: var(--lime);
+  box-shadow: 0 0 8px var(--lime);
+  animation: barFill 2s ease-out both;
+}
+@keyframes barFill { from { width: 0; } }
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+.comments-header {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 2rem;
+  color: var(--lime);
+  letter-spacing: 0.05em;
+  margin-bottom: 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.comments-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(198,255,0,0.15);
+}
+.comment {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(198,255,0,0.08);
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 2rem;
+}
+.comment-left .name {
+  font-family: 'Bebas Neue', cursive;
+  font-size: 1.1rem;
+  color: var(--lime);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 0 10px rgba(198,255,0,0.3);
+}
+.comment-left .date {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: rgba(198,255,0,0.3);
+  text-transform: uppercase;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(198,255,0,0.55);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--off-black);
+  border-top: 1px solid rgba(198,255,0,0.15);
+  padding: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Black Han Sans', sans-serif;
+  font-size: 2rem;
+  color: var(--lime);
+  animation: neonFlicker 7s infinite;
+}
+.footer-copy {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(198,255,0,0.3);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">LIME SIGNAL</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-inner">
+    <p class="hero-kicker">Neon Grotesque — Vol.27</p>
+    <h1 class="hero-title">
+      MAXI
+      <span class="outline">SIGNAL</span>
+    </h1>
+  </div>
+  <div class="hero-side">Lime Signal — 16 Mars 2026 — Article 027</div>
+</section>
+
+<div class="marquee-wrap">
+  <div class="marquee-inner">
+    <span>NEON GROTESQUE</span>
+    <span>UNE COULEUR</span>
+    <span>MAXIMUM IMPACT</span>
+    <span>BLACK & LIME</span>
+    <span>TYPOGRAPHIE MASSIVE</span>
+    <span>NEON GROTESQUE</span>
+    <span>UNE COULEUR</span>
+    <span>MAXIMUM IMPACT</span>
+    <span>BLACK & LIME</span>
+    <span>TYPOGRAPHIE MASSIVE</span>
+  </div>
+</div>
+
+<section class="article">
+  <div class="article-layout">
+    <div class="article-main">
+      <h2>LA MONOCHROMIE COMME PUISSANCE</h2>
+      <p>Le Neon Grotesque pousse à l'extrême un principe que peu de designers osent appliquer : <span class="em">une seule couleur</span>, portée à son paroxysme. Pas de palette, pas de dégradé subtil, pas de couleur d'accent secondaire. Une seule fréquence lumineuse contre le noir absolu.</p>
+      <p>Cette austérité chromatique libère paradoxalement toute l'énergie typographique. Sans hiérarchie de couleur à gérer, la <span class="em">taille, le poids, la forme</span> des lettres portent l'intégralité du message visuel. Le Bebas Neue ou Black Han Sans à 14rem de haut — ça ne demande pas l'attention, ça la prend.</p>
+      <p>L'inspiration vient des enseignes au néon des années 60-80 : une seule couleur de tube, une seule police de lettre découpée, un message direct. L'économie maximale de moyens pour un impact maximum d'attention. Dans un web saturé d'informations, cette radicalité sensorielle est elle-même <span class="em">un acte politique.</span></p>
+    </div>
+    <div>
+      <div class="article-stat">
+        <div class="stat-big">27</div>
+        <div class="stat-label">Numéro de l'article</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-item">
+          <div class="bar-label"><span>Impact visuel</span><span>99%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:99%"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label"><span>Économie chromatique</span><span>100%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:100%;animation-delay:0.3s;"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label"><span>Lisibilité WCAG</span><span>94%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:94%;animation-delay:0.6s;"></div></div>
+        </div>
+        <div class="bar-item">
+          <div class="bar-label"><span>Mémorabilité</span><span>88%</span></div>
+          <div class="bar-track"><div class="bar-fill" style="width:88%;animation-delay:0.9s;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="comments">
+  <div class="comments-header">RÉPONSES</div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="name">MONO_INK</div>
+      <div class="date">14.03.2026</div>
+    </div>
+    <p>La palette mono est un défi de UX accessibility. Le lime sur noir est WCAG AAA (contrast ratio 15:1) — l'un des seuls "neons" qui passe les standards. La plupart des verts fluo échouent à 3:1.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="name">TYPO_BRUTAL</div>
+      <div class="date">15.03.2026</div>
+    </div>
+    <p>Black Han Sans pour le coréen + Bebas Neue pour le latin — cette page fait exactement ça. Le choix de police est aussi important que la couleur dans l'identité Neon Grotesque.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="name">LESS_IS_MORE</div>
+      <div class="date">16.03.2026</div>
+    </div>
+    <p>"Acte politique" — mot fort mais juste. Se refuser à l'over-design dans un contexte de "plus c'est plus" est une décision esthétique et éthique simultanément.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">LIME SIGNAL</div>
+  <div class="footer-copy">© 2026 — Une couleur. Tout l'impact.</div>
+</footer>
+
+</body>
+</html>

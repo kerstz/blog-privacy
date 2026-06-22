@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SERIF CLASSIQUE — COLUMNAE OBSCURAE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Cormorant:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+:root {
+  --bg: #070507;
+  --marble: #0E0B0E;
+  --gold: #C8A84A;
+  --gold-light: #E4C870;
+  --ivory: #EDE5D4;
+  --stone: #6A6260;
+  --deep: #1A141A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ivory);
+  font-family: 'Cormorant', serif;
+  font-weight: 300;
+  font-size: 17px;
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* MARBLE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    linear-gradient(170deg, transparent 49.5%, rgba(200,168,74,0.03) 49.5%, rgba(200,168,74,0.03) 50.5%, transparent 50.5%),
+    linear-gradient(80deg, transparent 29.5%, rgba(200,168,74,0.02) 29.5%, rgba(200,168,74,0.02) 30.5%, transparent 30.5%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* COLUMN LINES */
+.columns-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 5%;
+}
+.col-line {
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(200,168,74,0.06), transparent);
+}
+
+@keyframes revealFade {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes goldGlow {
+  0%, 100% { color: var(--gold); }
+  50% { color: var(--gold-light); }
+}
+@keyframes underlineGrow {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 72px;
+  background: var(--bg);
+  border-bottom: 1px solid rgba(200,168,74,0.15);
+  display: flex;
+  align-items: center;
+  padding: 0 6%;
+}
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+}
+.nav-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(200,168,74,0.1), rgba(200,168,74,0.3), rgba(200,168,74,0.1));
+  margin: 0 2rem;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+}
+nav ul li a {
+  font-family: 'Cormorant', serif;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--stone);
+  text-decoration: none;
+  transition: color 0.4s;
+  position: relative;
+}
+nav ul li a:hover { color: var(--ivory); }
+
+/* HEADER */
+header {
+  margin-top: 72px;
+  padding: 8rem 6% 5rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid rgba(200,168,74,0.1);
+}
+
+/* COLUMN CAPITALS */
+.capitals {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  margin-bottom: 3rem;
+  font-size: 2rem;
+  color: rgba(200,168,74,0.2);
+  letter-spacing: 0.5em;
+}
+
+.header-issue {
+  font-family: 'Cormorant', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin-bottom: 2.5rem;
+}
+header h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.15;
+  color: var(--ivory);
+  margin-bottom: 1.5rem;
+  animation: revealFade 1.5s both;
+}
+header h1 em {
+  font-style: normal;
+  color: var(--gold);
+}
+header h1 small {
+  display: block;
+  font-size: 0.4em;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--stone);
+  margin-bottom: 0.5em;
+}
+.header-lead {
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--stone);
+  max-width: 55ch;
+  margin: 0 auto;
+  line-height: 1.9;
+}
+
+/* ORNAMENTAL RULE */
+.ornamental-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 3rem 0;
+  color: rgba(200,168,74,0.3);
+}
+.ornamental-rule::before, .ornamental-rule::after {
+  content: '';
+  flex: 1;
+  max-width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(200,168,74,0.3));
+}
+.ornamental-rule::after {
+  background: linear-gradient(90deg, rgba(200,168,74,0.3), transparent);
+}
+
+/* ARTICLE — THREE COLUMNS */
+.three-col {
+  position: relative; z-index: 1;
+  padding: 5rem 6%;
+  display: grid;
+  grid-template-columns: 1fr 2px 2.5fr 2px 1fr;
+  gap: 0;
+  border-bottom: 1px solid rgba(200,168,74,0.1);
+  max-width: 1300px;
+  margin: 0 auto;
+}
+.col-divider {
+  background: linear-gradient(to bottom, transparent, rgba(200,168,74,0.15), transparent);
+}
+.col-left {
+  padding: 0 3rem 0 0;
+}
+.col-center {
+  padding: 0 3rem;
+}
+.col-right {
+  padding: 0 0 0 3rem;
+}
+.col-header {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(200,168,74,0.15);
+  animation: goldGlow 5s ease-in-out infinite;
+}
+.col-center .col-header { font-size: 0.7rem; }
+.col-text {
+  font-family: 'Cormorant', serif;
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(237,229,212,0.75);
+  text-align: justify;
+  hyphens: auto;
+}
+.col-text p { margin-bottom: 1.2rem; }
+.col-text p em { color: var(--gold-light); font-style: italic; }
+.col-text p:first-child::first-letter {
+  font-family: 'Playfair Display', serif;
+  font-size: 3.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.1em;
+  color: var(--gold);
+  font-weight: 700;
+  padding-top: 0.1em;
+}
+.side-note {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: rgba(106,98,96,0.8);
+  line-height: 1.8;
+  margin-bottom: 1.2rem;
+  border-left: 1px solid rgba(200,168,74,0.2);
+  padding-left: 1rem;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 5rem 3rem;
+  border-bottom: 1px solid rgba(200,168,74,0.1);
+}
+.comments h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+}
+.comment {
+  padding: 2rem 0;
+  border-bottom: 1px solid rgba(200,168,74,0.07);
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 3rem;
+}
+.comment:last-child { border-bottom: none; }
+.comment-info {
+  text-align: right;
+  border-right: 1px solid rgba(200,168,74,0.1);
+  padding-right: 3rem;
+}
+.comment-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--ivory);
+  margin-bottom: 0.25rem;
+}
+.comment-date {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--stone);
+  letter-spacing: 0.05em;
+}
+.comment p {
+  font-family: 'Cormorant', serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.85;
+  color: rgba(237,229,212,0.6);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 4rem 6%;
+  text-align: center;
+  background: var(--deep);
+}
+.footer-columns {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 1.5rem;
+  color: rgba(200,168,74,0.15);
+  margin-bottom: 1.5rem;
+  letter-spacing: 1em;
+}
+.footer-name {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-style: italic;
+  color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--stone);
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<div class="columns-bg">
+  <div class="col-line"></div>
+  <div class="col-line"></div>
+  <div class="col-line"></div>
+  <div class="col-line"></div>
+  <div class="col-line"></div>
+</div>
+
+<nav>
+  <a href="#" class="nav-logo">Columnae Obscurae</a>
+  <div class="nav-rule"></div>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="capitals">Ϡ ⬡ Ϡ</div>
+  <div class="header-issue">Revue de Lettres & Philosophie · Volume XXVIII · Mars MMXXVI</div>
+  <h1>
+    <small>De la Nature</small>
+    De la <em>Beauté Grave</em>
+  </h1>
+  <div class="ornamental-rule"><span>✦</span></div>
+  <p class="header-lead">Méditation sur l'esthétique sombre de la tradition classique — ces colonnes qui portent le ciel sans jamais céder à la lumière facile.</p>
+</header>
+
+<div class="three-col">
+  <div class="col-left">
+    <div class="col-header">Préambule</div>
+    <div class="col-text">
+      <p class="side-note">L'auteur est professeur de philosophie esthétique à l'Université de la Sorbonne.</p>
+      <p class="side-note">Article extrait du Cahier XXVIII — Mars 2026.</p>
+      <p class="side-note">Durée de lecture estimée : 6 minutes.</p>
+    </div>
+  </div>
+
+  <div class="col-divider"></div>
+
+  <div class="col-center">
+    <div class="col-header">Article Principal — Isadora Grimaldi</div>
+    <div class="col-text">
+      <p>Les colonnes doriques ne portent pas le toit. Elles portent le ciel. Cette différence n'est pas rhétorique — elle désigne la vocation fondamentale de l'architecture classique : <em>élever le regard vers ce qui transcende la matière même qui le rend possible.</em></p>
+      <p>Nous avons perdu l'habitude du sublime grave. L'esthétique contemporaine préfère l'efficacité du light mode, la clarté du flat design, la bienveillance des couleurs pastel. Tout cela est vrai et utile. Mais quelque chose manque : la beauté qui pèse.</p>
+      <p>L'obscurité classique — le marbre noir de Michelangelo, les ombres calculées du Panthéon romain, le nocturne de Caspar David Friedrich — n'est pas absence de lumière. C'est <em>présence de la profondeur.</em> Ce que les anciens appelaient le sublime sublimis, le haut qui écrase et élève simultanément.</p>
+    </div>
+  </div>
+
+  <div class="col-divider"></div>
+
+  <div class="col-right">
+    <div class="col-header">Références</div>
+    <div class="col-text">
+      <p class="side-note">Burke, "A Philosophical Enquiry into the Origin of Our Ideas of the Sublime and Beautiful", 1757.</p>
+      <p class="side-note">Kant, "Critique de la faculté de juger", 1790 — §23-29 sur l'analytique du sublime.</p>
+      <p class="side-note">Lyotard, "Le Sublime et l'Avant-garde", 1984.</p>
+    </div>
+  </div>
+</div>
+
+<section class="comments">
+  <h2>Correspondances · III</h2>
+  <div class="ornamental-rule"><span>✦</span></div>
+
+  <div class="comment">
+    <div class="comment-info">
+      <div class="comment-name">Prof. Bertrand T.</div>
+      <div class="comment-date">12 mars 2026</div>
+    </div>
+    <p>La distinction entre "porter le toit" et "porter le ciel" est superbe rhétoriquement mais philosophiquement fragile — elle suppose une intentionnalité dans l'architecture ancienne qu'aucun texte de commanditaire dorique ne documente.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-info">
+      <div class="comment-name">C. Mercier</div>
+      <div class="comment-date">14 mars 2026</div>
+    </div>
+    <p>La "beauté qui pèse" comme catégorie esthétique à côté du beau et du sublime — c'est une proposition intéressante. Peut-être le Schwermut hegelien, ce mélange de gravité et de beauté mélancolique.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-info">
+      <div class="comment-name">M. Vidal-Blanc</div>
+      <div class="comment-date">15 mars 2026</div>
+    </div>
+    <p>La mise en page en colonnes sert le propos : l'œil se retrouve dans un espace organisé comme une page incunable, respiration longue et déployée. La forme parle avant le contenu.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-columns">Ϡ ⬡ ✦ ⬡ Ϡ</div>
+  <div class="footer-name">Columnae Obscurae</div>
+  <div class="footer-copy">© MMXXVI — Lettres & Philosophie — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

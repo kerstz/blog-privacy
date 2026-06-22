@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BAUHAUS — FORME & FONCTION</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@200;400;700&family=DM+Sans:wght@300;400&display=swap');
+
+:root {
+  --bg: #0A0A0A;
+  --primary: #F5C800;
+  --red: #D62828;
+  --blue: #0D47A1;
+  --white: #F0F0F0;
+  --gray: #2A2A2A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* GEOMETRIC BG */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: 
+    radial-gradient(circle at 80% 20%, rgba(13,71,161,0.15) 0%, transparent 50%),
+    radial-gradient(circle at 10% 80%, rgba(214,40,40,0.1) 0%, transparent 40%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid #333;
+  background: var(--bg);
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  border-right: 1px solid #333;
+  gap: 1rem;
+}
+.nav-logo .circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  flex-shrink: 0;
+  animation: spinSlow 8s linear infinite;
+}
+@keyframes spinSlow {
+  to { transform: rotate(360deg); }
+}
+.nav-logo span {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--white);
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  margin-left: auto;
+}
+nav ul li a {
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  height: 64px;
+  color: #888;
+  text-decoration: none;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 200;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  border-left: 1px solid #333;
+  transition: color 0.3s, background 0.3s;
+}
+nav ul li a:hover {
+  color: var(--primary);
+  background: rgba(245,200,0,0.05);
+}
+
+/* HERO */
+.hero {
+  margin-top: 64px;
+  min-height: calc(100vh - 64px);
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  position: relative;
+  z-index: 1;
+}
+
+.hero-number {
+  grid-row: 1 / 3;
+  background: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: var(--bg);
+  text-transform: uppercase;
+}
+
+.hero-title-block {
+  grid-column: 2;
+  grid-row: 1;
+  padding: 4rem 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border-right: 1px solid #333;
+  border-bottom: 1px solid #333;
+}
+.hero-title-block h1 {
+  font-family: 'Oswald', sans-serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.hero-title-block h1 .accent { color: var(--primary); }
+
+.hero-shapes {
+  grid-column: 3;
+  grid-row: 1;
+  padding: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid #333;
+  position: relative;
+  overflow: hidden;
+}
+.shape-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+}
+.shape {
+  position: absolute;
+  animation: shapeFloat 6s ease-in-out infinite;
+}
+.shape.circle {
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: var(--red);
+  top: 0; left: 0;
+  animation-delay: 0s;
+}
+.shape.square {
+  width: 80px; height: 80px;
+  background: var(--primary);
+  bottom: 0; right: 0;
+  animation-delay: -2s;
+}
+.shape.triangle {
+  width: 0; height: 0;
+  border-left: 50px solid transparent;
+  border-right: 50px solid transparent;
+  border-bottom: 86px solid var(--blue);
+  background: transparent;
+  bottom: 20px; left: 20px;
+  animation-delay: -4s;
+}
+@keyframes shapeFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(10deg); }
+}
+
+.hero-text {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 2rem 3rem 4rem;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 1rem;
+}
+.tag {
+  display: inline-block;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  width: fit-content;
+}
+.hero-text p {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #aaa;
+  max-width: 50ch;
+}
+
+.hero-meta {
+  grid-column: 3;
+  grid-row: 2;
+  padding: 2rem 3rem 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.meta-item {
+  border-top: 1px solid #333;
+  padding-top: 1rem;
+}
+.meta-item .label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 0.25rem;
+}
+.meta-item .value {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+/* ARTICLE */
+.article {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 60px 1fr 320px;
+  border-top: 1px solid #333;
+}
+.article-index {
+  background: var(--red);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 2rem;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 0.75rem;
+  color: var(--white);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  writing-mode: vertical-rl;
+}
+.article-content {
+  padding: 4rem 3rem;
+  border-right: 1px solid #333;
+}
+.article-content h2 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2rem;
+  line-height: 1;
+}
+.article-content h2::before {
+  content: '—— ';
+  color: var(--primary);
+}
+.article-content p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: #bbb;
+  margin-bottom: 1.5rem;
+  max-width: 65ch;
+}
+.article-aside {
+  padding: 4rem 2rem;
+}
+.aside-block {
+  border: 1px solid #333;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+.aside-block::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: var(--primary);
+}
+.aside-block .aside-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #555;
+  margin-bottom: 0.75rem;
+}
+.aside-block p {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #999;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  border-top: 1px solid #333;
+  padding: 4rem 0 4rem 60px;
+}
+.comments-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  margin-bottom: 3rem;
+  padding-right: 3rem;
+}
+.comments-header h2 {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 200;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.comments-header .count {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--blue);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--white);
+}
+.comment-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: #333;
+  border: 1px solid #333;
+  margin-right: 3rem;
+}
+.comment {
+  background: var(--bg);
+  padding: 2rem;
+}
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.comment-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.comment-avatar.a1 { background: var(--primary); }
+.comment-avatar.a2 { background: var(--red); }
+.comment-avatar.a3 { background: var(--blue); }
+.comment-name {
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+}
+.comment-date {
+  font-size: 0.75rem;
+  color: #555;
+  margin-top: 0.1rem;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: #999;
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid #333;
+  display: grid;
+  grid-template-columns: 60px 1fr 1fr;
+  min-height: 120px;
+}
+.footer-stripe {
+  background: var(--primary);
+}
+.footer-left {
+  padding: 2rem 3rem;
+  border-right: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.footer-brand {
+  font-family: 'Oswald', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.footer-brand span { color: var(--primary); }
+.footer-desc {
+  font-size: 0.8rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+.footer-right {
+  padding: 2rem 3rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  font-size: 0.8rem;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="circle"></div>
+    <span>Bauhaus</span>
+  </div>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-number">Article — 02 — 2026</div>
+  <div class="hero-title-block">
+    <h1>FORME &<br><span class="accent">FONCTION</span><br>D'ABORD</h1>
+  </div>
+  <div class="hero-shapes">
+    <div class="shape-container">
+      <div class="shape circle"></div>
+      <div class="shape square"></div>
+      <div class="shape triangle"></div>
+    </div>
+  </div>
+  <div class="hero-text">
+    <span class="tag">Design · Théorie · Bauhaus</span>
+    <p>L'école Bauhaus de 1919 a posé les fondations d'un design moderne. Un siècle plus tard, ses principes résonnent encore dans chaque pixel, chaque grille, chaque interface que nous créons.</p>
+  </div>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <div class="label">Auteur</div>
+      <div class="value">Walter G.</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Date</div>
+      <div class="value">14.03.26</div>
+    </div>
+    <div class="meta-item">
+      <div class="label">Lecture</div>
+      <div class="value">4 min</div>
+    </div>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-index">Contenu — Principal</div>
+  <div class="article-content">
+    <h2>LA GÉOMÉTRIE COMME LANGAGE</h2>
+    <p>Le Bauhaus n'était pas une école de style. C'était une école de pensée. Gropius, Klee, Kandinsky — ils ne cherchaient pas à créer beau. Ils cherchaient à créer juste. La différence est abyssale et encore aujourd'hui incomprise de la plupart des designers qui s'en revendiquent.</p>
+    <p>La forme géométrique pure — cercle, carré, triangle — n'est pas un choix esthétique arbitraire. C'est le vocabulaire minimal d'une communication visuelle universelle. Sans culture, sans contexte, le cercle dit "doux, complet, cyclique". Le carré dit "stable, fiable, construit". Le triangle dit "tension, direction, danger".</p>
+    <p>Appliquez cela à votre prochain projet UI. Pas comme décoration. Comme fondation. Chaque composant a une forme sous-jacente qui communique avant même que l'utilisateur ne lise un mot.</p>
+  </div>
+  <div class="article-aside">
+    <div class="aside-block">
+      <div class="aside-title">Citation</div>
+      <p>"L'art et la technique — une nouvelle unité." — Walter Gropius, 1923</p>
+    </div>
+    <div class="aside-block">
+      <div class="aside-title">Concept clé</div>
+      <p>Gesamtkunstwerk : l'œuvre d'art totale qui fusionne tous les arts et l'artisanat.</p>
+    </div>
+    <div class="aside-block">
+      <div class="aside-title">Influence moderne</div>
+      <p>Material Design de Google s'est directement inspiré des principes Bauhaus pour créer son système visuel.</p>
+    </div>
+  </div>
+</section>
+
+<section class="comments">
+  <div class="comments-header">
+    <h2>Commentaires</h2>
+    <div class="count">3</div>
+  </div>
+  <div class="comment-list">
+    <div class="comment">
+      <div class="comment-header">
+        <div class="comment-avatar a1"></div>
+        <div>
+          <div class="comment-name">Klein_Architecte</div>
+          <div class="comment-date">12 Mars 2026</div>
+        </div>
+      </div>
+      <p>La distinction entre "beau" et "juste" est exactement ce qui manque dans les briefs clients. Je leur enverrai cet article systématiquement désormais.</p>
+    </div>
+    <div class="comment">
+      <div class="comment-header">
+        <div class="comment-avatar a2"></div>
+        <div>
+          <div class="comment-name">TypoNerd_89</div>
+          <div class="comment-date">13 Mars 2026</div>
+        </div>
+      </div>
+      <p>Oswald comme police ici — choix fort et cohérent. Mais le vrai Bauhaus utilisait une Grotesk sans serif. L'intention compte plus que la lettre cependant.</p>
+    </div>
+    <div class="comment">
+      <div class="comment-header">
+        <div class="comment-avatar a3"></div>
+        <div>
+          <div class="comment-name">DataDrivenDesign</div>
+          <div class="comment-date">14 Mars 2026</div>
+        </div>
+      </div>
+      <p>L'interprétation sur Material Design est un peu réductrice mais l'idée est là. Google s'est aussi beaucoup inspiré d'IBM Design Language des années 80.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-stripe"></div>
+  <div class="footer-left">
+    <div class="footer-brand">BAUS<span>HAUS</span></div>
+    <div class="footer-desc">Forme & Fonction — Journal de Design</div>
+  </div>
+  <div class="footer-right">© 2026 — Forme suit fonction</div>
+</footer>
+
+</body>
+</html>

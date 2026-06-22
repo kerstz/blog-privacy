@@ -34,11 +34,10 @@
     {% macro render_comment(comment, level=0) %}
     <div class="comment {% if level > 0 %}comment-reply{% endif %}" style="margin-left: {{ level * 20 }}px;">
         <div class="comment-header">
-            <span class="comment-author"
-                style="color: {% if comment.author and comment.author.is_admin %}#f59e0b{% else %}#10b981{% endif %};">
-                {% if comment.author %}User{% else %}[deleted]{% endif %}
+            <span class="comment-author {% if comment.author and comment.author.is_admin %}admin{% else %}user{% endif %}">
+                {% if comment.author %}{{ comment.author.username }}{% else %}[deleted]{% endif %}
             </span>
-            <span class="comment-date"> • {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}</span>
+            <span class="comment-date"> · {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}</span>
         </div>
 
         <div class="comment-content">
@@ -58,7 +57,7 @@
                             <span class="icon-heart"></span> {{ comment.likes_count }}
                         </button>
                     </form>
-                    <a href="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}" class="btn-reply">💬 Reply</a>
+                    <a href="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}" class="btn-reply"><span class="icon-reply"></span> Reply</a>
                 {% else %}
                     <span class="comment-likes">
                         <span class="icon-heart"></span> {{ comment.likes_count }}
@@ -69,17 +68,17 @@
                 {% if current_user.is_authenticated and current_user.is_admin %}
                     <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
                         {{ form.hidden_tag() }}
-                        <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> Delete</button>
                     </form>
-                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm">✏ Edit</a>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> Edit</a>
 
                 <!-- User can edit and delete ONLY THEIR comments -->
                 {% elif current_user.is_authenticated and current_user.id == comment.author_id %}
                     <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
                         {{ form.hidden_tag() }}
-                        <button type="submit" class="btn btn-danger btn-sm">🗑 Delete</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> Delete</button>
                     </form>
-                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm">✏ Edit</a>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> Edit</a>
                 {% endif %}
             </div>
 
@@ -113,7 +112,7 @@
     <button type="submit" class="btn-submit">Add Comment</button>
 </form>
 {% else %}
-    <p class="alert-text text-muted">🔒 You must be logged in to leave a comment.</p>
+    <p class="alert-text text-muted"><span class="icon-lock"></span> You must be logged in to leave a comment.</p>
     <a href="{{ url_for('login') }}" class="btn-login">Log in</a>
 {% endif %}
 

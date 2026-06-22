@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STEAMPUNK — THE CLOCKWORK HERALD</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Spectral:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+
+:root {
+  --bg: #100800;
+  --dark-brown: #1A0E00;
+  --copper: #B87333;
+  --brass: #C5A028;
+  --bronze: #8B6914;
+  --rust: #7A3000;
+  --leather: #4A2800;
+  --cream: #E8D8A8;
+  --light-copper: #D4904A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'Spectral', serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* GEAR ANIMATIONS */
+@keyframes gearCW {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes gearCCW {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+@keyframes steamRise {
+  0% { opacity: 0.6; transform: translateY(0) scaleX(1); }
+  100% { opacity: 0; transform: translateY(-60px) scaleX(1.5); }
+}
+@keyframes copperShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes pistonMove {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes pressureWobble {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+/* GEAR CSS */
+.gear {
+  position: absolute;
+  pointer-events: none;
+}
+.gear svg {
+  fill: none;
+  stroke: var(--copper);
+  stroke-opacity: 0.12;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 72px;
+  background: linear-gradient(to bottom, #200E00, var(--bg));
+  border-bottom: 3px solid var(--copper);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+  box-shadow: 0 4px 20px rgba(184,115,51,0.2);
+}
+.nav-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: var(--brass);
+  text-decoration: none;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--bronze), var(--brass), var(--light-copper), var(--brass), var(--bronze));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: copperShimmer 5s linear infinite;
+}
+.nav-ornament { color: var(--copper); margin: 0 1.5rem; opacity: 0.5; }
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: rgba(232,216,168,0.5);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  transition: color 0.3s;
+}
+nav ul li a::before { content: '⚙ '; color: var(--copper); opacity: 0.5; font-style: normal; font-size: 0.7rem; }
+nav ul li a:hover { color: var(--light-copper); }
+
+/* HEADER */
+header {
+  margin-top: 72px;
+  background: linear-gradient(135deg, var(--dark-brown) 0%, #0A0600 100%);
+  border-bottom: 3px solid var(--copper);
+  padding: 5rem 3rem 4rem;
+  position: relative;
+  overflow: hidden;
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+}
+
+/* GEARS */
+.bg-gear {
+  position: absolute;
+  opacity: 0.06;
+}
+
+.header-content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+}
+.header-issue {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--copper);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.header-issue::before, .header-issue::after {
+  content: '';
+  flex: 1;
+  max-width: 60px;
+  height: 1px;
+  background: var(--copper);
+  opacity: 0.4;
+}
+header h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--cream);
+  margin-bottom: 1rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+header h1 em {
+  font-style: normal;
+  color: var(--brass);
+  font-weight: 400;
+}
+header p {
+  font-size: 1rem;
+  font-style: italic;
+  color: rgba(232,216,168,0.6);
+  max-width: 55ch;
+  line-height: 1.8;
+}
+.header-meta {
+  margin-top: 2rem;
+  display: flex;
+  gap: 2rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--copper);
+  text-transform: uppercase;
+  font-family: 'Cinzel', serif;
+}
+
+/* STEAM PIPES */
+.pipes {
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 300px;
+  pointer-events: none;
+  overflow: hidden;
+}
+.pipe-h {
+  position: absolute;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--leather), var(--copper), var(--leather));
+  border-radius: 3px;
+  border: 2px solid var(--bronze);
+}
+.pipe-v {
+  position: absolute;
+  width: 20px;
+  background: linear-gradient(to right, var(--leather), var(--copper), var(--leather));
+  border-radius: 3px;
+  border: 2px solid var(--bronze);
+}
+.steam {
+  position: absolute;
+  width: 20px; height: 30px;
+  background: rgba(200,180,150,0.2);
+  border-radius: 50%;
+  filter: blur(4px);
+  animation: steamRise 3s ease-out infinite;
+}
+.valve {
+  position: absolute;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--light-copper), var(--copper), var(--leather));
+  border: 3px solid var(--bronze);
+  animation: pressureWobble 5s ease-in-out infinite;
+}
+
+/* DIVIDER */
+.brass-divider {
+  height: 6px;
+  background: linear-gradient(90deg, var(--leather), var(--copper), var(--brass), var(--copper), var(--leather));
+  position: relative;
+  z-index: 1;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 4rem 3rem;
+  gap: 4rem;
+}
+.article-main h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--brass);
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.article-main p {
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(232,216,168,0.75);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+.article-main p:first-of-type::first-letter {
+  font-family: 'Cinzel', serif;
+  font-size: 4rem;
+  float: left;
+  line-height: 0.85;
+  margin-right: 0.1em;
+  color: var(--brass);
+}
+.article-main p .copper-word { color: var(--light-copper); }
+
+.article-aside {}
+.cog-box {
+  border: 2px solid var(--copper);
+  border-radius: 4px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(26,14,0,0.5);
+  position: relative;
+}
+.cog-box::before {
+  content: '⚙';
+  position: absolute;
+  top: -0.7rem; left: 1rem;
+  font-size: 1rem;
+  color: var(--copper);
+  background: var(--bg);
+  padding: 0 0.3rem;
+}
+.cog-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--copper);
+  margin-bottom: 0.75rem;
+}
+.cog-text {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: rgba(232,216,168,0.6);
+  line-height: 1.7;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 3rem 5rem;
+  border-top: 2px solid var(--leather);
+}
+.comments-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--brass);
+  padding: 2.5rem 0 2rem;
+}
+.comment {
+  border-left: 3px solid var(--copper);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(26,14,0,0.3);
+  position: relative;
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, var(--copper), transparent);
+  opacity: 0.3;
+}
+.comment-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  color: var(--light-copper);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.comment-date {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--bronze);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.8;
+  color: rgba(232,216,168,0.65);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--dark-brown);
+  border-top: 3px solid var(--copper);
+  padding: 2.5rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
+}
+.footer-brand {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--bronze), var(--brass), var(--light-copper), var(--brass), var(--bronze));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: copperShimmer 5s linear infinite;
+}
+.footer-copy {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--bronze);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">The Clockwork Herald</a>
+  <span class="nav-ornament">⚙</span>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<header>
+  <!-- Background gears -->
+  <div class="bg-gear" style="bottom:-50px;left:-50px;">
+    <svg width="300" height="300" viewBox="0 0 100 100" style="animation:gearCW 20s linear infinite;stroke-width:2;">
+      <circle cx="50" cy="50" r="30"/>
+      <circle cx="50" cy="50" r="15"/>
+      <!-- Gear teeth approximation -->
+      <rect x="46" y="16" width="8" height="8" transform="rotate(0 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(30 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(60 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(90 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(120 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(150 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(180 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(210 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(240 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(270 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(300 50 50)"/>
+      <rect x="46" y="16" width="8" height="8" transform="rotate(330 50 50)"/>
+    </svg>
+  </div>
+  <div class="bg-gear" style="top:0;right:200px;">
+    <svg width="200" height="200" viewBox="0 0 100 100" style="animation:gearCCW 15s linear infinite;stroke-width:2;stroke-opacity:0.08;">
+      <circle cx="50" cy="50" r="25"/><circle cx="50" cy="50" r="12"/>
+    </svg>
+  </div>
+
+  <div class="pipes">
+    <div class="pipe-h" style="top:30px;left:0;right:0;"></div>
+    <div class="pipe-h" style="top:80px;left:50px;right:0;"></div>
+    <div class="pipe-v" style="left:80px;top:0;height:200px;"></div>
+    <div class="valve" style="left:70px;top:20px;"></div>
+    <div class="steam" style="left:80px;top:0;animation-delay:0s;"></div>
+    <div class="steam" style="left:85px;top:0;animation-delay:1s;"></div>
+    <div class="steam" style="left:75px;top:0;animation-delay:2s;"></div>
+  </div>
+
+  <div class="header-content">
+    <div class="header-issue">⚙ Vol. XXVI — 16 Mars 2026 — Édition du Soir ⚙</div>
+    <h1>L'ère de la<br><em>Vapeur Éternelle</em></h1>
+    <p>Dans les ateliers mécaniques de la cité basse, les ingénieurs forgent encore les rêves du XIXème siècle avec les matériaux du XXIème.</p>
+    <div class="header-meta">
+      <span>Aldous Fergusson-Vane</span>
+      <span>⚙</span>
+      <span>6 minutes</span>
+    </div>
+  </div>
+</header>
+
+<div class="brass-divider"></div>
+
+<section class="article">
+  <div class="article-main">
+    <h2>⚙ La Philosophie de la Machine Visible</h2>
+    <p>Le steampunk n'est pas une nostalgie de l'ère victorienne. C'est une nostalgie de <span class="copper-word">l'honnêteté mécanique</span> de cette époque. Les machines à vapeur montrent leurs entrailles — engrenages exposés, tuyaux apparents, soupapes de sécurité ostensiblement visibles. Contrairement aux technologies modernes qui dissimulent leur fonctionnement derrière des boîtiers hermétiques, la machine victorienne dit : "Voici comment je fonctionne."</p>
+    <p>Cette lisibilité mécanique a une valeur épistémique profonde. Quand on peut voir les engrenages tourner, on comprend intuitivement la relation entre cause et effet, entre mouvement transmis et travail accompli. La <span class="copper-word">complexité visible</span> crée une intimité avec la machine impossible avec les boîtes noires numériques.</p>
+    <p>Le steampunk contemporain réclame ce retour à la lisibilité — pas nécessairement de la vapeur et du cuivre, mais de la transparence fonctionnelle. Des interfaces qui exposent leur logique plutôt que de la dissimuler derrière des métaphores accueillantes.</p>
+  </div>
+  <div class="article-aside">
+    <div class="cog-box">
+      <div class="cog-title">Citation du Jour</div>
+      <div class="cog-text">"Ce qui est bien construit n'a pas besoin de se cacher." — Isambard K. Brunel</div>
+    </div>
+    <div class="cog-box">
+      <div class="cog-title">Métriques</div>
+      <div class="cog-text">Lectures : 2,847<br>Durée moy. : 5m 30s<br>Réponses : 3</div>
+    </div>
+    <div class="cog-box">
+      <div class="cog-title">Références</div>
+      <div class="cog-text">· VanderMeer, "The Steampunk Bible"<br>· Verne, "De la Terre à la Lune"<br>· Wells, "La Machine à Explorer le Temps"</div>
+    </div>
+  </div>
+</section>
+
+<section class="comments">
+  <div class="comments-title">⚙ Courrier des Lecteurs</div>
+
+  <div class="comment">
+    <div class="comment-name">Dr. Pemberton-Cross</div>
+    <div class="comment-date">13 Mars 2026</div>
+    <p>L'argument sur la "lisibilité mécanique" est excellent mais demande nuance : les machines victorienne étaient lisibles pour les ingénieurs, pas pour les travailleurs d'usine. La compréhension était réservée à une caste.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">Mme. Blackwood-Hart</div>
+    <div class="comment-date">14 Mars 2026</div>
+    <p>J'ajoute que le steampunk comme esthétique ignore souvent les conditions de travail réelles des forges victoriennes. Romanticiser le cuivre sans mentionner l'exploitation est intellectuellement malhonnête.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">Fergusson-Kaine</div>
+    <div class="comment-date">15 Mars 2026</div>
+    <p>Ces critiques sont valables mais distinctes du point philosophique central. On peut aimer l'esthétique de la transparence mécanique sans idéaliser l'économie victorienne. Le steampunk est un filtre esthétique, pas un programme politique.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">The Clockwork Herald</div>
+  <div class="footer-copy">© MMXXVI — Forge & Vapeur — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

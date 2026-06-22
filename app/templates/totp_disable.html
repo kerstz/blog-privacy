@@ -1,0 +1,54 @@
+{% extends 'layout.html' %}
+
+{% block title %}Disable Two-Factor Authentication — MyBlog{% endblock %}
+
+{% block extra_css %}
+<style>
+.totp-container {
+    max-width: 440px;
+    margin: 2.5rem auto;
+}
+.totp-card {
+    background: var(--ink-850);
+    border: 1px solid rgba(177, 80, 63, 0.4);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2.2rem;
+}
+.totp-title { font-size: 1.4rem; margin-bottom: .4rem; }
+.totp-subtitle { font-size: .9rem; opacity: .7; margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; margin-bottom: .35rem; font-size: .88rem; opacity: .85; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="totp-container">
+    <div class="totp-card">
+        <h2 class="totp-title">Disable two-factor authentication</h2>
+        <p class="totp-subtitle">Enter your current password and a valid code from your authenticator app to turn off 2FA.</p>
+
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-group">
+                {{ form.password.label }}
+                {{ form.password(class="form-control", placeholder="Current password") }}
+                {% for error in form.password.errors %}
+                    <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ form.code.label }}
+                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", inputmode="numeric") }}
+                {% for error in form.code.errors %}
+                    <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
+                {% endfor %}
+            </div>
+            {{ form.submit(class="btn btn-danger") }}
+        </form>
+
+        <p style="margin-top:1.2rem;font-size:.82rem;opacity:.6;text-align:center;">
+            <a href="{{ url_for('edit_profile') }}">Cancel</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

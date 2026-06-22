@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORIGAMI — PAPER VOID</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@100;200;300;700&family=Klee+One&display=swap');
+
+:root {
+  --bg: #0D1520;
+  --paper1: #1E2D40;
+  --paper2: #152030;
+  --paper3: #0A1828;
+  --fold: rgba(100,160,220,0.15);
+  --accent: #4A9AE8;
+  --gold: #C8A84A;
+  --text: #C0D8F0;
+  --muted: rgba(160,200,240,0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Raleway', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* PAPER FOLD ANIMATIONS */
+@keyframes unfold {
+  from { transform: rotateX(90deg) scaleY(0); opacity: 0; transform-origin: top; }
+  to { transform: rotateX(0) scaleY(1); opacity: 1; transform-origin: top; }
+}
+@keyframes foldIn {
+  0% { transform: rotateY(-90deg); opacity: 0; }
+  100% { transform: rotateY(0); opacity: 1; }
+}
+@keyframes creaseShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes paperFloat {
+  0%, 100% { transform: translateY(0) rotateX(2deg); }
+  50% { transform: translateY(-8px) rotateX(-2deg); }
+}
+@keyframes shadow {
+  0%, 100% { box-shadow: 15px 15px 30px rgba(0,0,0,0.4), -5px -5px 15px rgba(30,45,64,0.3); }
+  50% { box-shadow: 20px 20px 40px rgba(0,0,0,0.5), -8px -8px 20px rgba(30,45,64,0.4); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(13,21,32,0.97);
+  border-bottom: 1px solid var(--fold);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+  backdrop-filter: blur(10px);
+}
+.nav-logo {
+  font-family: 'Klee One', cursive;
+  font-size: 1.2rem;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.nav-logo .crane {
+  font-size: 1.5rem;
+  animation: paperFloat 4s ease-in-out infinite;
+  display: inline-block;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  transition: color 0.3s;
+}
+nav ul li a:hover { color: var(--text); }
+
+/* HERO — 3D ORIGAMI SCENE */
+.hero {
+  position: relative;
+  margin-top: 64px;
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  perspective: 1200px;
+  overflow: hidden;
+  padding: 4rem 3rem;
+}
+/* Background paper planes */
+.bg-papers {
+  position: absolute;
+  inset: 0;
+  perspective: 800px;
+  pointer-events: none;
+}
+.bg-plane {
+  position: absolute;
+  width: 60px; height: 40px;
+  animation: foldIn 1s ease-out both, paperFloat ease-in-out infinite;
+  opacity: 0.12;
+}
+.bg-plane::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--paper1), var(--paper2));
+  clip-path: polygon(0 0, 100% 50%, 50% 100%, 0 50%);
+}
+
+/* ORIGAMI CRANE (CSS) */
+.crane-scene {
+  width: 300px;
+  height: 300px;
+  margin-right: 5rem;
+  position: relative;
+  flex-shrink: 0;
+}
+.paper-fold {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+.fold-body {
+  width: 180px; height: 180px;
+  background: linear-gradient(135deg, var(--paper1) 0%, var(--paper2) 50%, var(--paper3) 100%);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  position: absolute;
+  top: 60px; left: 60px;
+  animation: paperFloat 5s ease-in-out infinite, shadow 5s ease-in-out infinite;
+  box-shadow: 15px 15px 30px rgba(0,0,0,0.4);
+}
+.fold-wing1 {
+  width: 120px; height: 80px;
+  background: linear-gradient(45deg, var(--paper1), var(--paper3));
+  clip-path: polygon(0 100%, 100% 0, 100% 100%);
+  position: absolute;
+  top: 40px; left: 10px;
+  transform: rotateZ(-20deg);
+  animation: paperFloat 6s 0.5s ease-in-out infinite;
+}
+.fold-wing2 {
+  width: 120px; height: 80px;
+  background: linear-gradient(135deg, var(--paper1), var(--paper3));
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+  position: absolute;
+  top: 40px; right: 10px;
+  transform: rotateZ(20deg);
+  animation: paperFloat 6s 1s ease-in-out infinite;
+}
+/* Fold crease lines */
+.fold-body::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%;
+  width: 1px; height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--accent), transparent);
+  opacity: 0.3;
+}
+
+/* HERO TEXT */
+.hero-text {
+  max-width: 500px;
+  animation: unfold 1s 0.5s both;
+}
+.hero-tag {
+  font-size: 0.65rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.5rem;
+  display: block;
+}
+h1 {
+  font-family: 'Klee One', cursive;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  font-weight: 400;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-sub {
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: var(--muted);
+  max-width: 45ch;
+}
+
+/* FOLD STATS */
+.fold-stats {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+}
+.f-stat {
+  text-align: center;
+}
+.f-num {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+.f-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* PAPER CARDS */
+.paper-section {
+  padding: 4rem 3rem;
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--fold);
+}
+.paper-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.paper-card {
+  background: linear-gradient(135deg, var(--paper1) 0%, var(--paper3) 100%);
+  padding: 2.5rem;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.4s;
+  animation: shadow 6s ease-in-out infinite;
+}
+/* Fold corner */
+.paper-card::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 30px 30px 0;
+  border-color: transparent var(--bg) transparent transparent;
+  z-index: 2;
+}
+/* Crease line */
+.paper-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--fold), transparent);
+  transform: rotate(135deg) translate(-15px, 15px);
+  transform-origin: right center;
+}
+.paper-card:hover { transform: translateY(-4px) rotateX(2deg); }
+.card-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+.card-title {
+  font-family: 'Klee One', cursive;
+  font-size: 1.3rem;
+  color: var(--text);
+  margin-bottom: 1rem;
+  line-height: 1.3;
+}
+.card-body {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* COMMENTS */
+.comments {
+  padding: 4rem 3rem;
+  border-top: 1px solid var(--fold);
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments h2 {
+  font-family: 'Klee One', cursive;
+  font-size: 1.3rem;
+  color: var(--text);
+  margin-bottom: 2rem;
+}
+.comment {
+  background: linear-gradient(135deg, var(--paper1), var(--paper3));
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  animation: shadow 5s ease-in-out infinite;
+}
+.comment:nth-child(1) { animation-delay: 0s; }
+.comment:nth-child(2) { animation-delay: 1s; }
+.comment:nth-child(3) { animation-delay: 2s; }
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 20px 20px 0;
+  border-color: transparent var(--bg) transparent transparent;
+}
+.comment-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.comment-name {
+  font-family: 'Klee One', cursive;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.comment-date {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(192,216,240,0.7);
+}
+
+/* FOOTER */
+footer {
+  background: var(--paper3);
+  border-top: 1px solid var(--fold);
+  padding: 2.5rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Klee One', cursive;
+  font-size: 1.1rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="crane">🕊</span>
+    <span>Paper Void</span>
+  </a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="bg-papers">
+    <div class="bg-plane" style="top:10%;left:5%;animation-duration:4s,8s;animation-delay:0.2s,0s;"></div>
+    <div class="bg-plane" style="top:40%;right:8%;animation-duration:4s,7s;animation-delay:0.5s,1s;"></div>
+    <div class="bg-plane" style="bottom:20%;left:15%;animation-duration:4s,9s;animation-delay:0.8s,2s;"></div>
+    <div class="bg-plane" style="top:25%;left:40%;animation-duration:4s,6s;animation-delay:0.3s,0.5s;"></div>
+    <div class="bg-plane" style="bottom:35%;right:20%;animation-duration:4s,10s;animation-delay:1s,3s;"></div>
+  </div>
+
+  <div class="crane-scene">
+    <div class="fold-wing1"></div>
+    <div class="fold-wing2"></div>
+    <div class="fold-body paper-fold"></div>
+  </div>
+
+  <div class="hero-text">
+    <span class="hero-tag">Origami Digital — Vol. 24</span>
+    <h1>Plié,<br>non <em>brisé</em></h1>
+    <p class="hero-sub">L'art de plier le papier enseigne une vérité fondamentale : les contraintes ne détruisent pas la matière — elles la révèlent.</p>
+    <div class="fold-stats">
+      <div class="f-stat"><div class="f-num">1000</div><div class="f-label">Pliages</div></div>
+      <div class="f-stat"><div class="f-num">4 min</div><div class="f-label">Lecture</div></div>
+      <div class="f-stat"><div class="f-num">24</div><div class="f-label">Article</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="paper-section">
+  <div class="paper-cards">
+    <div class="paper-card">
+      <div class="card-label">Concept Principal</div>
+      <div class="card-title">La Contrainte comme Révélation</div>
+      <div class="card-body">Le pliage ne crée pas la forme — il révèle ce que le papier peut devenir. Chaque pli est une décision qui ferme une infinité de possibilités pour en ouvrir une précise.</div>
+    </div>
+    <div class="paper-card">
+      <div class="card-label">Application Design</div>
+      <div class="card-title">Interfaces à Géométrie Variable</div>
+      <div class="card-body">Les systèmes de design qui permettent le "repli" — des composants qui changent de forme selon le contexte — héritent de cette logique origami. La flexibilité comme philosophie.</div>
+    </div>
+  </div>
+
+  <div style="max-width:900px;margin:2rem auto 0;padding:0;">
+    <div class="paper-card">
+      <div class="card-label">Article — Mars 2026 — Yuki Tanaka</div>
+      <div class="card-title">L'Art du Pli dans le Design Numérique</div>
+      <div class="card-body" style="font-size:1rem;line-height:1.85;color:rgba(192,216,240,0.8);">
+        <p style="margin-bottom:1rem;">L'origami japonais enseigne une vérité paradoxale : le papier, matière fragile, devient structure résistante par l'accumulation des plis. Chaque pli augmente la rigidité locale. Le même principe gouverne les composants d'interface bien conçus.</p>
+        <p>Un système de design qui se "plie" à ses contraintes — responsive, accessible, multilingue — ne se fragilise pas. Il se renforce. La grâce du geste origami réside dans sa précision économique : un nombre minimum de plis pour un résultat maximum d'expressivité.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>Pliages de Pensée</h2>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">Kenji H.</span>
+      <span class="comment-date">13 mars 2026</span>
+    </div>
+    <p>La métaphore pli/composant est juste mais va plus loin : Miura-ori (le pli du satellite japonais) est utilisé pour les panneaux solaires car il se déploie d'un seul geste. Le design "un geste = état déployé" est exactement ça.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">Ines F.</span>
+      <span class="comment-date">14 mars 2026</span>
+    </div>
+    <p>Le parallèle CSS avec transform: fold() n'existe pas encore mais devrait exister. Le Houdini CSS API permettrait de créer des effets origami sans WebGL. Quelqu'un travaille là-dessus.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-top">
+      <span class="comment-name">Marc L.</span>
+      <span class="comment-date">15 mars 2026</span>
+    </div>
+    <p>Les corner folds CSS de ce design (les coins repliés) sont une excellente métaphore visuelle qui sert l'article. Design et contenu mutuellement illustratifs — rare et précieux.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">
+    <span>🕊</span>
+    <span>Paper Void</span>
+  </div>
+  <div class="footer-copy">© 2026 — Plié, non brisé — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

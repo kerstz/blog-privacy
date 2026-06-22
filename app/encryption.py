@@ -10,15 +10,15 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 class MessageEncryption:
     def __init__(self, password: str = None):
         """
-        Initialise le système de chiffrement
-        Si password est None, utilise une clé par défaut
+        Initialise le système de chiffrement.
+        Password is read from ENCRYPTION_KEY env variable; falls back to a default
+        that should be overridden in production.
         """
         if password is None:
-            # Clé par défaut pour le blog (en production, utiliser une clé plus sécurisée)
-            password = "blog_secure_key_2024"
-        
-        # Génère une clé à partir du mot de passe
-        salt = b'blog_salt_2024'  # En production, utiliser un salt unique
+            password = os.environ.get('ENCRYPTION_KEY', 'blog_secure_key_2024')
+
+        salt_str = os.environ.get('ENCRYPTION_SALT', 'blog_salt_2024')
+        salt = salt_str.encode()
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,

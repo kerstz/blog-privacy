@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STREET ART — BÉTON VIVANT</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Boogaloo&family=Special+Elite&display=swap');
+
+:root {
+  --bg: #111111;
+  --concrete: #1A1A1A;
+  --spray-red: #E82020;
+  --spray-yellow: #FFD700;
+  --spray-blue: #1A5AFF;
+  --spray-orange: #FF6600;
+  --spray-pink: #FF1493;
+  --spray-green: #00C040;
+  --white: #F0F0F0;
+  --gray: #3A3A3A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'Special Elite', cursive;
+  overflow-x: hidden;
+}
+
+/* CONCRETE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* CONCRETE CRACKS */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    linear-gradient(170deg, transparent 49%, rgba(255,255,255,0.01) 49%, rgba(255,255,255,0.01) 51%, transparent 51%),
+    linear-gradient(60deg, transparent 30%, rgba(255,255,255,0.008) 30%, rgba(255,255,255,0.008) 32%, transparent 32%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SPRAY PAINT EFFECT */
+@keyframes sprayIn {
+  0% { opacity: 0; transform: scale(0.5) rotate(var(--rot,0deg)); filter: blur(5px); }
+  50% { filter: blur(2px); }
+  100% { opacity: 1; transform: scale(1) rotate(var(--rot,0deg)); filter: blur(0); }
+}
+@keyframes tagFlicker {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0.8; }
+  95% { opacity: 1; }
+}
+@keyframes drip {
+  0% { height: 0; opacity: 1; }
+  100% { height: 30px; opacity: 0.7; }
+}
+@keyframes markerSlide {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0% 0 0); }
+}
+@keyframes wobble {
+  0%, 100% { transform: rotate(-1deg) translateX(0); }
+  50% { transform: rotate(1deg) translateX(3px); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: rgba(17,17,17,0.95);
+  border-bottom: 3px solid var(--spray-red);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  gap: 2rem;
+  backdrop-filter: blur(5px);
+}
+.nav-logo {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.4rem;
+  color: var(--spray-yellow);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  text-shadow: 2px 2px 0 var(--spray-red);
+  animation: tagFlicker 8s infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0.3rem 0.8rem;
+  color: var(--white);
+  text-decoration: none;
+  font-family: 'Boogaloo', cursive;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  border: 2px solid;
+  transition: all 0.2s;
+  transform: rotate(var(--rot, 0deg));
+}
+nav ul li:nth-child(1) a { border-color: var(--spray-red); --rot: -1.5deg; }
+nav ul li:nth-child(2) a { border-color: var(--spray-yellow); --rot: 1deg; }
+nav ul li:nth-child(3) a { border-color: var(--spray-blue); --rot: -0.5deg; }
+nav ul li:nth-child(4) a { border-color: var(--spray-green); --rot: 2deg; }
+nav ul li a:hover { background: rgba(255,255,255,0.1); transform: rotate(0deg) scale(1.05); }
+
+/* WALL HERO */
+.wall-hero {
+  position: relative; z-index: 1;
+  margin-top: 60px;
+  min-height: 80vh;
+  background: var(--concrete);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 3rem;
+  border-bottom: 5px solid var(--gray);
+}
+
+/* SPRAY BACKGROUND SHAPES */
+.spray-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* LARGE GRAFFITI TITLE */
+.graffiti-title {
+  font-family: 'Permanent Marker', cursive;
+  font-size: clamp(4rem, 15vw, 12rem);
+  line-height: 0.9;
+  position: relative;
+  z-index: 2;
+  letter-spacing: -0.02em;
+  animation: sprayIn 1s both;
+}
+.graffiti-title .line1 {
+  color: var(--spray-red);
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.5), -1px -1px 0 rgba(232,32,32,0.5);
+  display: block;
+}
+.graffiti-title .line2 {
+  color: var(--spray-yellow);
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  display: block;
+  margin-left: 1rem;
+  animation-delay: 0.2s;
+}
+
+/* TAGS */
+.tag-cluster {
+  position: absolute;
+  z-index: 1;
+}
+.tag {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.5rem;
+  display: inline-block;
+  animation: wobble 5s ease-in-out infinite;
+}
+.tag.t1 { color: var(--spray-blue); transform: rotate(-15deg); top: 20%; right: 5%; font-size: 2rem; animation-delay: 0; }
+.tag.t2 { color: var(--spray-pink); transform: rotate(8deg); bottom: 25%; right: 12%; animation-delay: 1s; }
+.tag.t3 { color: var(--spray-green); transform: rotate(-5deg); bottom: 15%; left: 5%; animation-delay: 2s; }
+.tag.t4 { color: var(--spray-orange); transform: rotate(12deg); top: 15%; left: 40%; font-size: 1rem; animation-delay: 0.5s; }
+
+/* DRIP DECORATIONS */
+.drip {
+  position: absolute;
+  width: 5px;
+  background: var(--spray-red);
+  top: 0;
+  border-radius: 0 0 5px 5px;
+  animation: drip 3s ease-in both;
+  opacity: 0.6;
+}
+
+/* DATE STAMP */
+.date-stamp {
+  position: relative; z-index: 2;
+  margin-top: 2rem;
+  font-family: 'Boogaloo', cursive;
+  font-size: 0.9rem;
+  color: rgba(240,240,240,0.5);
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+  border-bottom: 3px solid var(--gray);
+}
+.article-tag {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 2rem;
+  color: var(--spray-yellow);
+  margin-bottom: 1.5rem;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  display: inline-block;
+  transform: rotate(-1.5deg);
+  animation: markerSlide 1.5s 0.5s both;
+}
+.article p {
+  font-size: 1rem;
+  line-height: 1.9;
+  color: rgba(240,240,240,0.8);
+  margin-bottom: 1.5rem;
+}
+.article p .spray { color: var(--spray-red); font-family: 'Boogaloo', cursive; font-style: normal; }
+.article p .tag-word { 
+  font-family: 'Permanent Marker', cursive;
+  color: var(--spray-yellow);
+  font-size: 1.1em;
+}
+
+/* QUOTE BLOCK */
+.wall-quote {
+  border-left: 5px solid var(--spray-red);
+  padding: 1rem 2rem;
+  margin: 2rem 0;
+  transform: rotate(-0.5deg);
+  background: rgba(232,32,32,0.05);
+}
+.wall-quote p {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.1rem;
+  color: var(--white);
+  line-height: 1.5;
+}
+.wall-quote .attr {
+  font-family: 'Special Elite', cursive;
+  font-size: 0.75rem;
+  color: var(--spray-red);
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments-title {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.8rem;
+  color: var(--spray-blue);
+  margin-bottom: 2rem;
+  transform: rotate(-1deg);
+  display: inline-block;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+.comment {
+  border: 2px solid;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  transform: rotate(var(--crot, 0deg));
+  transition: transform 0.3s;
+  position: relative;
+}
+.comment:nth-child(1) { border-color: var(--spray-red); --crot: -0.5deg; }
+.comment:nth-child(2) { border-color: var(--spray-orange); --crot: 0.8deg; }
+.comment:nth-child(3) { border-color: var(--spray-pink); --crot: -0.3deg; }
+.comment:hover { transform: rotate(0deg) scale(1.01); }
+.comment-name {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.2rem;
+  margin-bottom: 0.25rem;
+}
+.comment:nth-child(1) .comment-name { color: var(--spray-red); }
+.comment:nth-child(2) .comment-name { color: var(--spray-orange); }
+.comment:nth-child(3) .comment-name { color: var(--spray-pink); }
+.comment-date {
+  font-family: 'Boogaloo', cursive;
+  font-size: 0.75rem;
+  color: rgba(240,240,240,0.4);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(240,240,240,0.75);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--concrete);
+  border-top: 3px solid var(--gray);
+  padding: 2rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-tag {
+  font-family: 'Permanent Marker', cursive;
+  font-size: 1.5rem;
+  color: var(--spray-yellow);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+}
+.footer-copy {
+  font-family: 'Special Elite', cursive;
+  font-size: 0.8rem;
+  color: rgba(240,240,240,0.3);
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">BÉTON VIVANT</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="wall-hero">
+  <div class="spray-blob" style="width:400px;height:300px;background:var(--spray-red);top:-100px;right:-100px;"></div>
+  <div class="spray-blob" style="width:300px;height:400px;background:var(--spray-blue);bottom:-100px;left:10%;"></div>
+  <div class="spray-blob" style="width:200px;height:200px;background:var(--spray-yellow);top:40%;right:30%;"></div>
+
+  <!-- Drips -->
+  <div class="drip" style="left:10%;animation-delay:0.2s;height:45px;"></div>
+  <div class="drip" style="left:22%;animation-delay:0.7s;height:25px;background:var(--spray-blue);"></div>
+  <div class="drip" style="left:65%;animation-delay:1.2s;height:55px;background:var(--spray-yellow);"></div>
+
+  <!-- Tags scattered -->
+  <div class="tag t1">FTS</div>
+  <div class="tag t2">VOID_ONE</div>
+  <div class="tag t3">BLK_TAG</div>
+  <div class="tag t4">est. 1985</div>
+
+  <h1 class="graffiti-title">
+    <span class="line1">BÉTON</span>
+    <span class="line2">VIVANT</span>
+  </h1>
+
+  <div class="date-stamp">
+    <span>Nkosi Adeleke</span>
+    <span>·</span>
+    <span>16 Mars 2026</span>
+    <span>·</span>
+    <span>5 min</span>
+    <span>·</span>
+    <span>Street Art & Culture</span>
+  </div>
+</section>
+
+<article class="article">
+  <div class="article-tag">Le Mur Parle</div>
+
+  <p>Le graffiti n'est pas du vandalisme. C'est la <span class="tag-word">résistance</span> de ceux qui n'ont pas accès aux murs officiels — les galeries, les musées, les espaces publicitaires. Quand le système vous ferme ses murs, vous prenez ses murs.</p>
+
+  <div class="wall-quote">
+    <p>Le mur appartient à celui qui y écrit.</p>
+    <p class="attr">— Bansky, "Wall and Piece"</p>
+  </div>
+
+  <p>Les grandes villes font face à un paradoxe : elles criminalisent le graffiti sauvage tout en payant des artistes pour <span class="spray">murales autorisées</span>. Le même geste créatif, la même compétence — légale ou illégale selon le formulaire signé. Cette hypocrisie institutionnelle dit quelque chose sur ce que le pouvoir tolère : l'art qui ne dérange pas.</p>
+
+  <p>Basquiat a commencé avec des tags dans le métro de New York. Banksy était anonyme et poursuivi avant d'être célébré. Le circuit de légitimation de l'art institutionnel <span class="tag-word">récupère</span> ce qu'il ne peut pas ignorer — mais toujours trop tard, toujours après avoir tenté de l'effacer.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">Tags des Lecteurs</div>
+
+  <div class="comment">
+    <div class="comment-name">WALL_QUEEN</div>
+    <div class="comment-date">14 Mars 2026</div>
+    <p>Avoir participé à la scène graffiti des années 90 : la distinction légal/illégal n'est pas qu'administrative — elle change la dynamique créative. L'adrénaline du risque fait partie de l'expérience esthétique.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">ART_MUSEUM_M</div>
+    <div class="comment-date">15 Mars 2026</div>
+    <p>La récupération institutionnelle est double : elle légitime ET neutralise. Le Basquiat en musée est différent du SAMO du métro — pas seulement de contexte mais de sens politique. La question est : qu'est-ce qu'on préfère ?</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">CREWKID_NYC</div>
+    <div class="comment-date">16 Mars 2026</div>
+    <p>Banksy "anonyme et poursuivi" — nuance importante. Il a toujours contrôlé sa communication, utilisé des agents, vendu cher. L'anonymat de Banksy est performatif, différent du vrai graffeur qui risque vraiment.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-tag">BÉTON VIVANT</div>
+  <div class="footer-copy">© 2026 — Les murs parlent pour ceux qu'on fait taire</div>
+</footer>
+
+</body>
+</html>

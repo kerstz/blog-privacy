@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #09090f; font-family: 'Inter', sans-serif; }
+
+  /* ── Toolbar ── */
+  #toolbar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 60px;
+    background: rgba(9,9,15,.94);
+    border-top: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    display: flex;
+    align-items: center;
+    padding: 0 .8rem;
+    z-index: 9999;
+    gap: .5rem;
+  }
+
+  #toolbar::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent, linear-gradient(90deg,#a78bfa,#f472b6));
+  }
+
+  /* sections */
+  .tb-nav   { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
+  .tb-mid   { flex: 1; min-width: 0; text-align: center; padding: 0 .4rem; }
+  .tb-right { display: flex; align-items: center; gap: .35rem; flex-shrink: 0; }
+
+  .tb-name {
+    font-size: .84rem; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: #f0f0ff;
+  }
+
+  .tb-tag {
+    font-family: 'Space Mono', monospace; font-size: .6rem; color: #6b6b8a; margin-top: .05rem;
+    display: flex; align-items: center; justify-content: center; gap: .35rem;
+  }
+
+  .tb-tag-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  /* small buttons (nav, open, picker) */
+  .tb-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: #f0f0ff; border-radius: 8px;
+    padding: .3rem .6rem; cursor: pointer;
+    font-family: 'Inter', sans-serif; font-size: .75rem; font-weight: 600;
+    display: flex; align-items: center; gap: .28rem;
+    transition: all .16s; white-space: nowrap; text-decoration: none;
+  }
+
+  .tb-btn:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.22); }
+  .tb-btn:active { transform: scale(.91); }
+
+  .tb-btn.picker {
+    background: linear-gradient(135deg,rgba(167,139,250,.18),rgba(244,114,182,.18));
+    border-color: rgba(167,139,250,.35); color: #d8b4fe;
+  }
+
+  .tb-btn.picker:hover {
+    background: linear-gradient(135deg,rgba(167,139,250,.3),rgba(244,114,182,.3));
+  }
+
+  .tb-btn.open { color: #6b6b8a; font-size: .7rem; }
+  .tb-btn.open:hover { color: #f0f0ff; }
+
+  .tb-arrow {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1); color: #f0f0ff;
+    border-radius: 8px; width: 32px; height: 32px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: .95rem; transition: all .16s; flex-shrink: 0;
+  }
+
+  .tb-arrow:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.25); }
+  .tb-arrow:active { transform: scale(.88); }
+  .tb-arrow:disabled { opacity: .22; cursor: not-allowed; }
+
+  /* ── Keep / Delete buttons ── */
+  .tb-del, .tb-keep {
+    border-radius: 99px; border: 2px solid; cursor: pointer;
+    display: flex; align-items: center; gap: .3rem;
+    font-family: 'Inter', sans-serif; font-size: .8rem; font-weight: 700;
+    padding: .32rem .85rem; transition: all .18s; white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tb-del {
+    background: rgba(239,68,68,.08);
+    border-color: rgba(239,68,68,.35); color: #ef4444;
+  }
+
+  .tb-del:hover {
+    background: rgba(239,68,68,.18); border-color: #ef4444;
+    box-shadow: 0 0 14px rgba(239,68,68,.3); transform: scale(1.04);
+  }
+
+  .tb-keep {
+    background: rgba(34,197,94,.08);
+    border-color: rgba(34,197,94,.35); color: #22c55e;
+  }
+
+  .tb-keep:hover {
+    background: rgba(34,197,94,.18); border-color: #22c55e;
+    box-shadow: 0 0 14px rgba(34,197,94,.3); transform: scale(1.04);
+  }
+
+  .tb-del.active  { background: rgba(239,68,68,.25); border-color: #ef4444; box-shadow: 0 0 18px rgba(239,68,68,.4); }
+  .tb-keep.active { background: rgba(34,197,94,.25); border-color: #22c55e; box-shadow: 0 0 18px rgba(34,197,94,.4); }
+
+  .tb-del:active, .tb-keep:active { transform: scale(.9) !important; }
+
+  /* counter */
+  .tb-counter {
+    font-family: 'Space Mono', monospace; font-size: .63rem;
+    color: #6b6b8a; white-space: nowrap; flex-shrink: 0;
+  }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: rgba(18,18,28,.96); border: 1px solid rgba(255,255,255,.1);
+    backdrop-filter: blur(12px); color: #f0f0ff;
+    padding: .45rem 1.1rem; border-radius: 99px;
+    font-size: .78rem; font-weight: 600;
+    opacity: 0; pointer-events: none;
+    transition: opacity .22s, transform .22s;
+    z-index: 10000; white-space: nowrap;
+  }
+
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── iframe ── */
+  #page-frame {
+    position: fixed; top: 0; left: 0; right: 0;
+    bottom: 60px; width: 100%; height: calc(100% - 60px);
+    border: none; background: #000;
+  }
+
+  /* ── Loader ── */
+  #loader {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 60px;
+    background: #09090f;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: .7rem;
+    z-index: 8888; transition: opacity .3s; color: #6b6b8a; font-size: .8rem;
+  }
+
+  #loader .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid rgba(255,255,255,.07); border-top-color: #a78bfa;
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loader.hidden { opacity: 0; pointer-events: none; }
+
+  /* keyboard hint */
+  #hint {
+    position: fixed; bottom: 68px; right: 1rem;
+    display: flex; gap: .7rem; opacity: .28;
+    font-size: .6rem; font-family: 'Space Mono', monospace; color: #6b6b8a;
+    pointer-events: none; transition: opacity .4s; z-index: 9990;
+  }
+
+  #hint.fade { opacity: 0; }
+
+  kbd {
+    background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 4px; padding: .07rem .28rem; font-size: .58rem; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <span id="loader-name"></span>
+</div>
+
+<iframe id="page-frame" src=""></iframe>
+
+<div id="toolbar">
+  <!-- left: picker + nav -->
+  <div class="tb-nav">
+    <a class="tb-btn picker" href="tinder.html">🃏</a>
+    <button class="tb-arrow" id="btn-prev" title="Précédent (←)">‹</button>
+    <button class="tb-arrow" id="btn-next" title="Suivant (→)">›</button>
+  </div>
+
+  <!-- center: name + tag -->
+  <div class="tb-mid">
+    <div class="tb-name" id="tb-name"></div>
+    <div class="tb-tag"><span class="tb-tag-dot" id="tb-dot"></span><span id="tb-tag"></span></div>
+  </div>
+
+  <!-- right: counter + keep/delete + open -->
+  <div class="tb-right">
+    <span class="tb-counter" id="tb-counter"></span>
+    <button class="tb-del"  id="btn-del"  onclick="setChoice('del')"  title="Delete (D)">✕ Delete</button>
+    <button class="tb-keep" id="btn-keep" onclick="setChoice('keep')" title="Keep (K)">♥ Keep</button>
+    <a class="tb-btn open" id="tb-open" href="#" target="_blank">↗</a>
+  </div>
+</div>
+
+<div id="hint">
+  <span><kbd>←</kbd><kbd>→</kbd> nav</span>
+  <span><kbd>K</kbd> keep</span>
+  <span><kbd>D</kbd> delete</span>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const STYLES = [
+  { id:1,  name:'Brutaliste',             tag:'Brutal / Raw',          color:'#ff3b00' },
+  { id:2,  name:'Bauhaus Géométrique',    tag:'Geometric / Pure',      color:'#ffcc00' },
+  { id:3,  name:'Art Déco Noir/Or',       tag:'Deco / Luxe',           color:'#d4a017' },
+  { id:4,  name:'Cyberpunk Néon',         tag:'Cyber / Glitch',        color:'#00ffe5' },
+  { id:5,  name:'Minimal Japonais',       tag:'Minimal / Zen',         color:'#c8b89a' },
+  { id:6,  name:'Horror',                 tag:'Horror / Gothic',       color:'#8b0000' },
+  { id:7,  name:'Luxe Éditorial',         tag:'Magazine / Editorial',  color:'#e8d5c4' },
+  { id:8,  name:'Terminal Hacker',        tag:'Terminal / ASCII',      color:'#00ff41' },
+  { id:9,  name:'Memphis Design',         tag:'Memphis / Retro',       color:'#ff6ec7' },
+  { id:10, name:'Glassmorphism',          tag:'Glass / Blur',          color:'#7eb8f7' },
+  { id:11, name:'Neumorphism Dark',       tag:'Neomorph / Soft',       color:'#7a7acc' },
+  { id:12, name:'Psychédélique',          tag:'Psycho / Trip',         color:'#ff00ff' },
+  { id:13, name:'Synthwave 80s',          tag:'Retro / Neon',          color:'#c561f6' },
+  { id:14, name:'Comics / BD',            tag:'Comic / Pop',           color:'#ffe03e' },
+  { id:15, name:'Dark Academia',          tag:'Academic / Vintage',    color:'#c4a882' },
+  { id:16, name:'Industrial Metal',       tag:'Industrial / Steel',    color:'#b87333' },
+  { id:17, name:'Kawaii Dark',            tag:'Kawaii / Cute',         color:'#ff80b5' },
+  { id:18, name:'Abstract Expressionist', tag:'Abstract / Paint',      color:'#ff7043' },
+  { id:19, name:'Sci-Fi Spatial',         tag:'Space / HUD',           color:'#5b9bd5' },
+  { id:20, name:'Grunge Punk',            tag:'Punk / Grunge',         color:'#aaaaaa' },
+  { id:21, name:'Art Nouveau Dark',       tag:'Nouveau / Organic',     color:'#5c8a4a' },
+  { id:22, name:'Swiss International',    tag:'Swiss / Grid',          color:'#e0e0e0' },
+  { id:23, name:'Vitraux / Stained Glass',tag:'Glass / Cathedral',     color:'#e8a020' },
+  { id:24, name:'Origami',               tag:'Origami / Fold',         color:'#80cbc4' },
+  { id:25, name:'Glitch / Data Mosh',     tag:'Glitch / Error',        color:'#ff0050' },
+  { id:26, name:'Steampunk',              tag:'Steam / Victorian',     color:'#b87333' },
+  { id:27, name:'Neon Grotesque',         tag:'Neon / Bold',           color:'#ff6600' },
+  { id:28, name:'Serif Classique',        tag:'Classic / Roman',       color:'#d4c5a9' },
+  { id:29, name:'Tarot / Occulte',        tag:'Occult / Mystic',       color:'#9b59b6' },
+  { id:30, name:'Street Art / Graffiti',  tag:'Street / Spray',        color:'#ff1744' },
+  { id:31, name:'Cinéma Noir',            tag:'Noir / Film',           color:'#d4af37' },
+  { id:32, name:'Liquide / Organique',    tag:'Liquid / Blob',         color:'#26c6da' },
+  { id:33, name:'Riso Print',             tag:'Riso / Grain',          color:'#ff6b35' },
+  { id:34, name:'Pop Art Sombre',         tag:'Pop / Warhol',          color:'#ff1a8c' },
+  { id:35, name:'ASCII / Text Art',       tag:'ASCII / Terminal',      color:'#39ff14' },
+  { id:36, name:'Néo-Tribal',             tag:'Tribal / Mandala',      color:'#ffd700' },
+  { id:37, name:'Holographique Irisé',    tag:'Holo / Rainbow',        color:'#b388ff' },
+  { id:38, name:'Brutalist Swiss Punk',   tag:'Punk / Swiss',          color:'#ff4500' },
+  { id:39, name:'Velours Noir',           tag:'Sensuel / Dark',        color:'#c41e3a' },
+];
+
+// ── Choices stored in localStorage (shared with tinder.html) ─────────
+const STORAGE_KEY = 'style-picker-choices';
+
+function loadChoices() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch { return {}; }
+}
+
+function saveChoice(id, val) {
+  const ch = loadChoices();
+  if (val === null) delete ch[id];
+  else ch[id] = val;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(ch));
+}
+
+// ── State ─────────────────────────────────────────────────────────────
+const params = new URLSearchParams(location.search);
+let currentIdx = Math.max(0, STYLES.findIndex(s => s.id === parseInt(params.get('id') || '1', 10)));
+
+function pageFile(id) { return 'page' + String(id).padStart(2,'0') + '.html'; }
+
+function accentGrad(hex) {
+  const map = {
+    '#ff3b00':'#ff8800','#ffcc00':'#ff6600','#d4a017':'#c8860a',
+    '#00ffe5':'#a020f0','#c8b89a':'#9a8070','#8b0000':'#3a0000',
+    '#e8d5c4':'#c4a882','#00ff41':'#00cc33','#ff6ec7':'#ffaa00',
+    '#7eb8f7':'#a0d0ff','#7a7acc':'#a080ff','#ff00ff':'#aa00ff',
+    '#c561f6':'#f06090','#ffe03e':'#ff6600','#c4a882':'#9a7855',
+    '#b87333':'#d4944a','#ff80b5':'#c060ff','#ff7043':'#ffc107',
+    '#5b9bd5':'#a0c8ff','#aaaaaa':'#606060','#5c8a4a':'#3a6a2a',
+    '#e0e0e0':'#c0c0c0','#e8a020':'#f0c840','#80cbc4':'#4db6ac',
+    '#ff0050':'#ff4080','#ff6600':'#ff9900','#d4c5a9':'#c0a888',
+    '#9b59b6':'#6a1a8a','#ff1744':'#ff6d00','#d4af37':'#b89020',
+    '#26c6da':'#0097a7','#ff6b35':'#ff9a00','#ff1a8c':'#ff6040',
+    '#39ff14':'#00cc00','#ffd700':'#ff8c00','#b388ff':'#ea80fc',
+    '#ff4500':'#ff8c00','#c41e3a':'#8b0000',
+  };
+  return map[hex] || '#888';
+}
+
+// ── Navigate ──────────────────────────────────────────────────────────
+function navigate(idx) {
+  currentIdx = idx;
+  const s = STYLES[idx];
+
+  history.replaceState(null, '', `?id=${s.id}`);
+
+  // loader
+  const loader = document.getElementById('loader');
+  loader.classList.remove('hidden');
+  document.getElementById('loader-name').textContent = s.name;
+
+  // toolbar accent
+  document.getElementById('toolbar').style.setProperty('--accent',
+    `linear-gradient(90deg,${s.color},${accentGrad(s.color)})`);
+
+  // text
+  document.getElementById('tb-name').textContent   = s.name;
+  document.getElementById('tb-tag').textContent    = s.tag;
+  document.getElementById('tb-dot').style.background = s.color;
+  document.getElementById('tb-counter').textContent = `${idx + 1} / ${STYLES.length}`;
+  document.getElementById('tb-open').href          = pageFile(s.id);
+
+  // nav state
+  document.getElementById('btn-prev').disabled = (idx === 0);
+  document.getElementById('btn-next').disabled = (idx === STYLES.length - 1);
+
+  // iframe
+  const frame = document.getElementById('page-frame');
+  frame.onload = () => { loader.classList.add('hidden'); };
+  frame.src = pageFile(s.id);
+  setTimeout(() => loader.classList.add('hidden'), 6000);
+
+  // sync choice buttons
+  syncButtons(s.id);
+}
+
+function syncButtons(id) {
+  const choices = loadChoices();
+  const choice  = choices[id] || null;
+  document.getElementById('btn-del').classList.toggle('active',  choice === 'del');
+  document.getElementById('btn-keep').classList.toggle('active', choice === 'keep');
+}
+
+function setChoice(val) {
+  const s = STYLES[currentIdx];
+  const choices = loadChoices();
+  const prev = choices[s.id] || null;
+
+  // toggle off if same
+  const newVal = (prev === val) ? null : val;
+  saveChoice(s.id, newVal);
+  syncButtons(s.id);
+
+  if (newVal === 'keep') {
+    showToast(`♥ Gardé — ${s.name}`);
+    setTimeout(() => { if (currentIdx < STYLES.length - 1) navigate(currentIdx + 1); }, 320);
+  } else if (newVal === 'del') {
+    showToast(`✕ Supprimé — ${s.name}`);
+    setTimeout(() => { if (currentIdx < STYLES.length - 1) navigate(currentIdx + 1); }, 320);
+  } else {
+    showToast(`↩ Choix annulé — ${s.name}`);
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentIdx > 0) navigate(currentIdx - 1);
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentIdx < STYLES.length - 1) navigate(currentIdx + 1);
+});
+
+// ── Keyboard ──────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowLeft'  && currentIdx > 0)               navigate(currentIdx - 1);
+  if (e.key === 'ArrowRight' && currentIdx < STYLES.length-1) navigate(currentIdx + 1);
+  if (e.key === 'k' || e.key === 'K') setChoice('keep');
+  if (e.key === 'd' || e.key === 'D') setChoice('del');
+});
+
+setTimeout(() => document.getElementById('hint').classList.add('fade'), 5000);
+
+navigate(currentIdx);
+</script>
+</body>
+</html>

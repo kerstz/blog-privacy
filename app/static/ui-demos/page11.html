@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEUMORPHISM — SOFT DARK</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;600;700&display=swap');
+
+:root {
+  --bg: #1E2229;
+  --bg-light: #252D36;
+  --bg-dark: #181E24;
+  --accent: #5E9BFC;
+  --accent2: #A87CFF;
+  --text: #8A9BB5;
+  --text-bright: #C5D3E8;
+  --shadow-dark: rgba(10,14,18,0.7);
+  --shadow-light: rgba(40,50,64,0.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* NEUMORPHIC MIXINS */
+.neu-flat {
+  background: var(--bg);
+  box-shadow:
+    8px 8px 16px var(--shadow-dark),
+    -8px -8px 16px var(--shadow-light);
+}
+.neu-pressed {
+  background: var(--bg);
+  box-shadow:
+    inset 4px 4px 8px var(--shadow-dark),
+    inset -4px -4px 8px var(--shadow-light);
+}
+.neu-convex {
+  background: linear-gradient(145deg, var(--bg-light), var(--bg-dark));
+  box-shadow:
+    8px 8px 16px var(--shadow-dark),
+    -8px -8px 16px var(--shadow-light);
+}
+
+@keyframes softPulse {
+  0%, 100% { box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light); }
+  50% { box-shadow: 12px 12px 24px var(--shadow-dark), -12px -12px 24px var(--shadow-light); }
+}
+@keyframes accentGlow {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; filter: brightness(1.2); }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 72px;
+  background: var(--bg);
+  box-shadow: 0 4px 20px var(--shadow-dark), 0 -2px 8px var(--shadow-light);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+}
+.nav-icon {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: softPulse 4s ease-in-out infinite;
+}
+.nav-icon svg {
+  width: 20px; height: 20px;
+}
+.nav-name {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--text-bright);
+  letter-spacing: 0.05em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0.5rem 1.2rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  font-weight: 400;
+  border-radius: 20px;
+  transition: all 0.3s;
+}
+nav ul li a:hover {
+  color: var(--accent);
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+}
+nav ul li a.active {
+  color: var(--accent);
+  box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+}
+
+/* HERO */
+.hero {
+  margin-top: 72px;
+  padding: 5rem 3rem;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 3rem;
+  align-items: center;
+}
+.hero-text {
+  animation: fadeUp 0.8s 0.2s both;
+}
+.hero-badge {
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2rem;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-bright);
+  margin-bottom: 1.5rem;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-lead {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text);
+  max-width: 50ch;
+  margin-bottom: 2rem;
+}
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+}
+.btn {
+  padding: 0.75rem 2rem;
+  border-radius: 12px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-primary {
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  box-shadow: 6px 6px 12px var(--shadow-dark), -3px -3px 8px var(--shadow-light);
+}
+.btn-primary:hover {
+  box-shadow: 8px 8px 16px var(--shadow-dark), -4px -4px 10px var(--shadow-light);
+  transform: translateY(-2px);
+}
+.btn-secondary {
+  color: var(--text);
+  box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+  background: var(--bg);
+}
+.btn-secondary:hover {
+  color: var(--text-bright);
+  transform: translateY(-2px);
+}
+
+/* HERO CARD */
+.hero-widget {
+  border-radius: 24px;
+  padding: 2rem;
+  animation: fadeUp 0.8s 0.4s both;
+  position: relative;
+  overflow: hidden;
+}
+.widget-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 2rem;
+}
+.widget-stat {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 0.75rem;
+}
+.widget-stat-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.widget-stat-text .label {
+  font-size: 0.7rem;
+  color: var(--text);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.1rem;
+}
+.widget-stat-text .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-bright);
+}
+
+/* ARTICLE */
+.article {
+  padding: 4rem 3rem;
+}
+.article-card {
+  border-radius: 20px;
+  padding: 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fadeUp 0.8s 0.6s both;
+}
+.article-card h2 {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 1.5rem;
+  line-height: 1.3;
+}
+.article-card p {
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+}
+.article-card .em { color: var(--accent); font-weight: 600; }
+.article-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(94,155,252,0.2), transparent);
+  margin: 1.5rem 0;
+}
+
+/* COMMENTS */
+.comments {
+  padding: 2rem 3rem 4rem;
+}
+.comments-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent2);
+  margin-bottom: 2rem;
+}
+.comment {
+  padding: 1.5rem;
+  border-radius: 16px;
+  margin-bottom: 1.5rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  animation: fadeUp 0.6s both;
+}
+.comment:nth-child(1) { animation-delay: 0.1s; }
+.comment:nth-child(2) { animation-delay: 0.2s; }
+.comment:nth-child(3) { animation-delay: 0.3s; }
+.comment-avatar {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: white;
+  flex-shrink: 0;
+  animation: softPulse 5s ease-in-out infinite;
+}
+.comment-avatar.a1 { background: linear-gradient(135deg, var(--accent), #3A7BD5); }
+.comment-avatar.a2 { background: linear-gradient(135deg, var(--accent2), #6A4BC5); }
+.comment-avatar.a3 { background: linear-gradient(135deg, #FC5E9B, var(--accent2)); }
+.comment-body {}
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.comment-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-bright);
+}
+.comment-date {
+  font-size: 0.7rem;
+  color: rgba(138,155,181,0.5);
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+/* FOOTER */
+footer {
+  padding: 3rem;
+  background: var(--bg);
+  box-shadow: 0 -4px 20px var(--shadow-dark), 0 2px 8px var(--shadow-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--text-bright);
+}
+.footer-logo span { color: var(--accent); }
+.footer-copy {
+  font-size: 0.75rem;
+  color: rgba(138,155,181,0.5);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo-wrap">
+    <div class="nav-icon neu-flat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#5E9BFC" stroke-width="2">
+        <circle cx="12" cy="12" r="4"/>
+        <circle cx="12" cy="12" r="9" opacity="0.4"/>
+      </svg>
+    </div>
+    <span class="nav-name">SoftDark</span>
+  </a>
+  <ul>
+    <li><a href="#" class="active">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-text">
+    <span class="hero-badge neu-pressed">Neumorphism Sombre</span>
+    <h1>Le relief<br>dans <em>l'obscurité</em></h1>
+    <p class="hero-lead">Le neumorphism dark est une contradiction résolue : des ombres profondes qui créent du relief dans les ténèbres. Une lumière qui vient de l'intérieur.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn btn-primary">Lire l'article</a>
+      <a href="#" class="btn btn-secondary">Partager</a>
+    </div>
+  </div>
+  <div class="hero-widget neu-flat">
+    <div class="widget-title">// Métriques</div>
+    <div class="widget-stat neu-pressed">
+      <div class="widget-stat-icon" style="background:rgba(94,155,252,0.15);">👁</div>
+      <div class="widget-stat-text">
+        <div class="label">Lectures</div>
+        <div class="value">2,419</div>
+      </div>
+    </div>
+    <div class="widget-stat neu-pressed">
+      <div class="widget-stat-icon" style="background:rgba(168,124,255,0.15);">⏱</div>
+      <div class="widget-stat-text">
+        <div class="label">Durée moy.</div>
+        <div class="value">3m 48s</div>
+      </div>
+    </div>
+    <div class="widget-stat neu-pressed">
+      <div class="widget-stat-icon" style="background:rgba(252,94,155,0.15);">💬</div>
+      <div class="widget-stat-text">
+        <div class="label">Commentaires</div>
+        <div class="value">3</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-card neu-flat">
+    <h2>La Lumière Intérieure du Design Sombre</h2>
+    <p>Le neumorphism est né d'une question simple : <span class="em">que se passerait-il si l'interface était moulée dans la même matière que le fond ?</span> Pas superposée, pas flottante — mais extrudée ou enfoncée dans le substrat lui-même.</p>
+    <div class="article-divider"></div>
+    <p>Le résultat est une étrangeté visuelle fascinante. Les éléments semblent être faits du même matériau sombre que la page, mais on peut les distinguer par le relief subtil qu'ils projettent. Une lumière fictive vient d'en haut à gauche — convention tacite — et crée des ombres portées et des rehauts.</p>
+    <p>Sur fond sombre, cet effet prend une dimension particulière : les ombres sont presque invisibles, et c'est le rehaut clair qui porte tout le poids de la définition formelle. <span class="em">L'objet émerge de l'obscurité par un filet de lumière</span>, comme une forme taillée dans la nuit.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <div class="comments-title">// Commentaires — 3</div>
+
+  <div class="comment neu-flat">
+    <div class="comment-avatar a1">LM</div>
+    <div class="comment-body">
+      <div class="comment-header">
+        <span class="comment-name">Léo Marchand</span>
+        <span class="comment-date">12 mars 2026</span>
+      </div>
+      <p>La métaphore de la "lumière intérieure" est magnifique. On parle souvent de skeuomorphisme comme d'un défaut mais là, la simulation physique crée une cohérence narrative.</p>
+    </div>
+  </div>
+
+  <div class="comment neu-flat">
+    <div class="comment-avatar a2">AK</div>
+    <div class="comment-body">
+      <div class="comment-header">
+        <span class="comment-name">Aya K.</span>
+        <span class="comment-date">13 mars 2026</span>
+      </div>
+      <p>Problème d'accessibilité flagrant : les contrastes neumorphiques tombent souvent en dessous de 3:1 WCAG. L'esthétique est là mais pour les malvoyants, c'est un cauchemar.</p>
+    </div>
+  </div>
+
+  <div class="comment neu-flat">
+    <div class="comment-avatar a3">TR</div>
+    <div class="comment-body">
+      <div class="comment-header">
+        <span class="comment-name">Theo R.</span>
+        <span class="comment-date">15 mars 2026</span>
+      </div>
+      <p>Solution : combiner neumorphism pour la structure et un accent de couleur vif pour les éléments interactifs. Accessibilité préservée, esthétique maintenue. C'est pas incompatible.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Soft<span>Dark</span></div>
+  <div class="footer-copy">© 2026 SoftDark — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

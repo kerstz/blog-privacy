@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLITCH — DATA MOSHING</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg: #050005;
+  --green: #00FF41;
+  --pink: #FF00AA;
+  --blue: #0044FF;
+  --white: #FFFFFF;
+  --cyan: #00FFFF;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--green);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* GLITCH ANIMATIONS */
+@keyframes glitch1 {
+  0%, 100% { clip-path: inset(0); transform: none; }
+  5% { clip-path: inset(40% 0 30% 0); transform: translateX(-5px); }
+  10% { clip-path: inset(20% 0 60% 0); transform: translateX(5px); color: var(--pink); }
+  15% { clip-path: inset(70% 0 5% 0); transform: translateX(-3px); }
+  20% { clip-path: inset(0); transform: none; }
+}
+@keyframes glitch2 {
+  0%, 100% { opacity: 1; transform: none; }
+  33% { opacity: 0; transform: translateX(3px) scaleX(1.05); }
+  34% { opacity: 1; transform: none; }
+  66% { transform: translateX(-2px) scaleY(1.02); }
+  67% { transform: none; }
+}
+@keyframes colorshift {
+  0% { color: var(--green); text-shadow: 2px 0 var(--pink), -2px 0 var(--blue); }
+  25% { color: var(--pink); text-shadow: 2px 0 var(--blue), -2px 0 var(--green); }
+  50% { color: var(--cyan); text-shadow: 2px 0 var(--green), -2px 0 var(--pink); }
+  75% { color: var(--white); text-shadow: 2px 0 var(--cyan), -2px 0 var(--pink); }
+  100% { color: var(--green); text-shadow: 2px 0 var(--pink), -2px 0 var(--blue); }
+}
+@keyframes pixelate {
+  0%, 90%, 100% { filter: none; }
+  91% { filter: blur(1px) contrast(3); }
+  92% { filter: none; }
+  95% { filter: saturate(5) hue-rotate(90deg); }
+  96% { filter: none; }
+}
+@keyframes scanH {
+  from { top: 0; }
+  to { top: 100%; }
+}
+@keyframes rgbShift {
+  0%, 100% { text-shadow: -2px 0 var(--pink), 2px 0 var(--blue); }
+  50% { text-shadow: 2px 0 var(--pink), -2px 0 var(--cyan); }
+}
+@keyframes noiseFlash {
+  0%, 95%, 100% { opacity: 0; }
+  96% { opacity: 0.15; }
+  97% { opacity: 0; }
+  98% { opacity: 0.1; }
+}
+@keyframes dataScroll {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+
+/* NOISE OVERLAY */
+.noise {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 997;
+  animation: noiseFlash 2s infinite;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,255,65,0.03) 0px,
+    rgba(0,255,65,0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* SCAN FLASH */
+.scan-flash {
+  position: fixed;
+  left: 0; right: 0;
+  height: 2px;
+  background: rgba(0,255,65,0.4);
+  z-index: 998;
+  animation: scanH 4s linear infinite;
+  pointer-events: none;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 50px;
+  background: rgba(5,0,5,0.95);
+  border-bottom: 2px solid var(--pink);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  animation: pixelate 8s infinite;
+}
+.nav-logo {
+  font-size: 1.5rem;
+  color: var(--green);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  animation: colorshift 4s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1rem;
+  height: 50px;
+  line-height: 50px;
+  color: rgba(0,255,65,0.6);
+  text-decoration: none;
+  font-size: 1rem;
+  letter-spacing: 0.1em;
+  border-left: 1px solid rgba(0,255,65,0.2);
+  transition: color 0.1s;
+}
+nav ul li a:hover { color: var(--pink); text-shadow: 0 0 10px var(--pink); }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 50px;
+  min-height: 75vh;
+  display: flex;
+  align-items: center;
+  padding: 4rem 3rem;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,65,0.01) 2px,
+    rgba(0,255,65,0.01) 4px
+  );
+}
+/* CORRUPTED TEXT */
+.glitch-title {
+  font-size: clamp(3rem, 12vw, 10rem);
+  line-height: 0.95;
+  font-family: 'VT323', monospace;
+  position: relative;
+  animation: glitch1 5s infinite;
+  text-shadow: 3px 0 var(--pink), -3px 0 var(--blue);
+}
+.glitch-title::before, .glitch-title::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+}
+.glitch-title::before {
+  color: var(--pink);
+  animation: glitch2 7s 0.3s infinite;
+  clip-path: inset(0 0 50% 0);
+}
+.glitch-title::after {
+  color: var(--blue);
+  animation: glitch2 5s 0.8s infinite;
+  clip-path: inset(50% 0 0 0);
+}
+
+.hero-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: rgba(0,255,65,0.7);
+  max-width: 50ch;
+  margin-top: 2rem;
+}
+.hero-corrupt {
+  color: var(--pink);
+  animation: colorshift 2s ease-in-out infinite;
+}
+
+/* PIXEL BLOCKS */
+.pixel-bar {
+  position: absolute;
+  right: 3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.p-row {
+  display: flex;
+  gap: 4px;
+}
+.p-cell {
+  width: 20px; height: 20px;
+  animation: colorshift linear infinite;
+}
+.p-cell:nth-child(odd) { animation-duration: 2s; }
+.p-cell:nth-child(even) { animation-duration: 3s; animation-delay: 0.5s; }
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  border-top: 2px solid rgba(0,255,65,0.2);
+  border-bottom: 2px solid rgba(0,255,65,0.2);
+}
+.article-inner {
+  max-width: 800px;
+  border: 1px solid rgba(0,255,65,0.3);
+  padding: 2rem;
+  background: rgba(0,20,0,0.5);
+  position: relative;
+  animation: pixelate 12s infinite;
+}
+.article-inner::before {
+  content: '// DATA_CORRUPTED //';
+  position: absolute;
+  top: -0.6rem; left: 1rem;
+  font-size: 0.75rem;
+  color: var(--pink);
+  background: var(--bg);
+  padding: 0 0.5rem;
+  animation: colorshift 3s infinite;
+}
+.article-inner h2 {
+  font-size: 2rem;
+  color: var(--cyan);
+  margin-bottom: 1.5rem;
+  animation: rgbShift 4s ease-in-out infinite;
+}
+.article-inner p {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.85;
+  color: rgba(0,255,65,0.8);
+  margin-bottom: 1.2rem;
+}
+.article-inner .glitch-word {
+  display: inline-block;
+  animation: colorshift 2s ease-in-out infinite;
+}
+.article-inner .corrupt {
+  color: var(--pink);
+  text-decoration: line-through;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+}
+.comments h2 {
+  font-size: 1.8rem;
+  color: var(--pink);
+  margin-bottom: 2rem;
+  animation: rgbShift 5s ease-in-out infinite;
+}
+.comment {
+  border-left: 3px solid var(--pink);
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(255,0,170,0.03);
+  position: relative;
+  animation: glitch2 8s ease-in-out infinite;
+}
+.comment:nth-child(2) { border-color: var(--blue); animation-delay: 1s; }
+.comment:nth-child(3) { border-color: var(--cyan); animation-delay: 2s; }
+.comment-name {
+  font-size: 1.2rem;
+  color: var(--cyan);
+  margin-bottom: 0.25rem;
+}
+.comment-date {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: rgba(0,255,65,0.4);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: rgba(0,255,65,0.75);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  padding: 2rem 3rem;
+  border-top: 2px solid var(--pink);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,0,170,0.03);
+}
+.footer-logo {
+  font-size: 1.5rem;
+  animation: colorshift 3s ease-in-out infinite;
+}
+.footer-copy {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.7rem;
+  color: rgba(0,255,65,0.4);
+}
+</style>
+</head>
+<body>
+
+<div class="noise"></div>
+<div class="scan-flash"></div>
+
+<nav>
+  <a href="#" class="nav-logo">D̴̟A̶T̸A̴ ̵M̷O̵S̶H̶</a>
+  <ul>
+    <li><a href="#">[HOME]</a></li>
+    <li><a href="#">[ABOUT]</a></li>
+    <li><a href="#">[CONTACT]</a></li>
+    <li><a href="#">[LOGIN]</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div>
+    <h1 class="glitch-title" data-text="SIGNAL LOST">SIG̷N̴A̵L<br>LO̷S̸T̵</h1>
+    <p class="hero-sub">T̵h̵e̶ ̴d̷a̴t̸a̷ ̶s̷t̷r̷e̷a̵m̴ ̸h̴a̸s̵ ̸b̵e̶e̴n̷ <span class="hero-corrupt">CORRUPTED</span>. Les artefacts visuels ne sont pas des erreurs — ils sont le message. La corruption est l'information.</p>
+  </div>
+  <div class="pixel-bar">
+    <div class="p-row">
+      <div class="p-cell" style="background:rgba(255,0,170,0.6);animation-delay:0s;"></div>
+      <div class="p-cell" style="background:rgba(0,255,65,0.6);animation-delay:0.2s;"></div>
+      <div class="p-cell" style="background:rgba(0,68,255,0.6);animation-delay:0.4s;"></div>
+    </div>
+    <div class="p-row">
+      <div class="p-cell" style="background:rgba(0,255,255,0.6);animation-delay:0.1s;"></div>
+      <div class="p-cell" style="background:rgba(255,0,170,0.4);animation-delay:0.3s;"></div>
+      <div class="p-cell" style="background:rgba(0,255,65,0.3);animation-delay:0.6s;"></div>
+    </div>
+    <div class="p-row">
+      <div class="p-cell" style="background:rgba(0,68,255,0.5);animation-delay:0.5s;"></div>
+      <div class="p-cell" style="background:rgba(0,255,255,0.4);animation-delay:0.2s;"></div>
+      <div class="p-cell" style="background:rgba(255,0,170,0.7);animation-delay:0.4s;"></div>
+    </div>
+    <div class="p-row">
+      <div class="p-cell" style="background:rgba(0,255,65,0.8);animation-delay:0s;"></div>
+      <div class="p-cell" style="background:rgba(0,68,255,0.5);animation-delay:0.3s;"></div>
+      <div class="p-cell" style="background:rgba(0,255,255,0.6);animation-delay:0.5s;"></div>
+    </div>
+  </div>
+</section>
+
+<section class="article">
+  <div class="article-inner">
+    <h2>L̵E̵S̴ ̷A̷R̷T̷E̴F̵A̷C̷T̵S̴ ̵S̵O̷N̵T̵ ̶L̶A̵ ̴V̸E̸R̷I̴T̵E̴</h2>
+    <p>Le <span class="glitch-word">data moshing</span> — corruption intentionnelle de données vidéo ou image — crée des effets visuels que <span class="corrupt">l'algorithme de compression</span> n'avait pas prévus. Des pixels qui dérivent, des couleurs qui contaminent les frames adjacentes, des formes qui se fondent dans l'arrière-plan.</p>
+    <p>Ces artefacts, initialement considérés comme des erreurs, sont devenus un <span class="glitch-word">langage esthétique</span> à part entière. Le glitch art transforme la panno en message : l'imperfection du système révèle les mécanismes cachés de la représentation numérique.</p>
+    <p>Quand une image se corrompt, elle dit la vérité : <span class="glitch-word">toute image est une abstraction</span>. Une série de décisions de compression, d'interpolation, d'approximation. Le glitch lève le voile sur cette construction artificielle que nous prenons pour la réalité.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>C̷O̵M̷M̷E̴N̸T̵S̵ ̴[3̷]̶</h2>
+  <div class="comment">
+    <div class="comment-name">R̴G̶B̷_̵B̸R̷E̸A̷K̵E̸R̷</div>
+    <div class="comment-date">14.03.2026 :: 23:44:07</div>
+    <p>Le datamoshing hardware avec des cartes SD endommagées donne des résultats que software ne peut pas reproduire. L'entropie physique de la puce crée des patterns organiques impossibles à simuler.</p>
+  </div>
+  <div class="comment">
+    <div class="comment-name">G̴L̵I̸T̷C̸H̴_̷A̴R̷C̷H̷I̶V̸E̵</div>
+    <div class="comment-date">15.03.2026 :: 01:17:33</div>
+    <p>Rosa Menkman a documenté tout ça dans son Glitch Manifesto (2010). La corruption comme anti-sublime numérique — révéler la facture là où le lisse voulait se cacher.</p>
+  </div>
+  <div class="comment">
+    <div class="comment-name">P̴I̸X̸E̷L̶_̷D̸R̷I̵F̶T̷E̵R̴</div>
+    <div class="comment-date">16.03.2026 :: 09:03:12</div>
+    <p>La beauté du glitch c'est qu'il ne peut pas mentir — il est la signature d'un processus réel qui s'est mal passé. Authenticité radicale dans un monde de images parfaites.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">D̴A̶T̸A̴ ̵M̷O̵S̶H̶</div>
+  <div class="footer-copy">© 2026 — CORRUPTED — ALL RIGHTS RESERVED OR LOST</div>
+</footer>
+
+</body>
+</html>

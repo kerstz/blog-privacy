@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VELOURS NOIR — UNDERGROUND BOUDOIR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Upright:wght@300;400;600&family=Cormorant+SC:wght@300;400;600&family=IM+Fell+English:ital@0;1&display=swap');
+
+:root {
+  --bg: #050203;
+  --deep: #0A0406;
+  --velvet: #120608;
+  --crimson: #8B0000;
+  --red: #CC0033;
+  --red-bright: #FF1A4A;
+  --gold: #C8901A;
+  --gold-soft: rgba(200,144,26,0.15);
+  --text: #E8D8D4;
+  --muted: rgba(220,200,195,0.4);
+  --blush: rgba(200,80,80,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IM Fell English', serif;
+  overflow-x: hidden;
+}
+
+/* VELVET TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    radial-gradient(ellipse at 20% 20%, rgba(139,0,0,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(200,144,26,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(120,20,40,0.04) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* VELVET GRAIN */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23v)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ANIMATIONS */
+@keyframes crimsonPulse {
+  0%, 100% { 
+    color: var(--red);
+    text-shadow: 0 0 12px rgba(204,0,51,0.3);
+  }
+  50% { 
+    color: var(--red-bright);
+    text-shadow: 0 0 24px rgba(255,26,74,0.5), 0 0 50px rgba(255,26,74,0.2);
+  }
+}
+@keyframes goldGlimmer {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.005); }
+}
+@keyframes candleFlicker {
+  0%, 90%, 100% { opacity: 1; }
+  91% { opacity: 0.85; }
+  93% { opacity: 0.95; }
+  95% { opacity: 0.8; }
+  97% { opacity: 1; }
+}
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes velvetGlow {
+  0%, 100% { box-shadow: 0 0 30px rgba(139,0,0,0.2), 0 0 80px rgba(200,144,26,0.05); }
+  50% { box-shadow: 0 0 50px rgba(139,0,0,0.35), 0 0 120px rgba(200,144,26,0.1); }
+}
+@keyframes chainSway {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: rgba(5,2,3,0.97);
+  border-bottom: 1px solid rgba(139,0,0,0.3);
+  display: flex;
+  align-items: center;
+  padding: 0 3.5rem;
+  animation: candleFlicker 18s infinite;
+}
+.nav-logo {
+  font-family: 'Cormorant SC', serif;
+  font-size: 1rem;
+  font-weight: 300;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+  text-decoration: none;
+  animation: goldGlimmer 5s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 3rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  transition: color 0.5s;
+  font-weight: 300;
+}
+nav ul li a:hover { color: var(--red); }
+
+/* HERO */
+.hero {
+  margin-top: 60px;
+  position: relative; z-index: 1;
+  min-height: 95vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 6rem 3rem;
+  border-bottom: 1px solid rgba(139,0,0,0.2);
+  animation: breathe 10s ease-in-out infinite;
+}
+
+/* LARGE VELVET BG SHAPES */
+.velvet-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+.velvet-orb.v1 {
+  width: 600px; height: 500px;
+  background: var(--crimson);
+  opacity: 0.06;
+  top: -100px; right: -100px;
+  animation: breathe 12s ease-in-out infinite;
+}
+.velvet-orb.v2 {
+  width: 400px; height: 600px;
+  background: var(--gold);
+  opacity: 0.04;
+  bottom: -200px; left: -100px;
+  animation: breathe 15s ease-in-out infinite reverse;
+}
+
+/* CHAIN ORNAMENT */
+.chain-ornament {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(200,144,26,0.15);
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  writing-mode: vertical-rl;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  animation: chainSway 6s ease-in-out infinite;
+}
+
+/* HERO CONTENT */
+.hero-content {
+  text-align: center;
+  position: relative; z-index: 2;
+  max-width: 650px;
+}
+
+.hero-above {
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.7em;
+  color: rgba(200,144,26,0.4);
+  margin-bottom: 2.5rem;
+  animation: revealUp 1.5s both;
+}
+
+.hero-title {
+  font-family: 'Cormorant Upright', serif;
+  font-weight: 300;
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  line-height: 1.05;
+  color: var(--text);
+  margin-bottom: 1rem;
+  letter-spacing: 0.03em;
+  animation: revealUp 1.5s 0.2s both;
+}
+.hero-title em {
+  display: block;
+  font-style: italic;
+  color: var(--red);
+  animation: crimsonPulse 6s ease-in-out infinite;
+  font-size: 0.85em;
+}
+
+/* GOLD ORNAMENTAL DIVIDER */
+.gold-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  animation: revealUp 1.5s 0.4s both;
+}
+.gold-rule::before, .gold-rule::after {
+  content: '';
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+  animation: goldGlimmer 4s ease-in-out infinite;
+}
+.gold-rule .diamond {
+  color: var(--gold);
+  font-size: 0.6rem;
+  animation: goldGlimmer 3s ease-in-out infinite;
+}
+
+.hero-sub {
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 2;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0 auto 2rem;
+  animation: revealUp 1.5s 0.6s both;
+}
+
+.hero-meta {
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,144,26,0.35);
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  animation: revealUp 1.5s 0.8s both;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 7rem 3rem;
+  border-bottom: 1px solid rgba(139,0,0,0.12);
+}
+.article::before {
+  content: '✦ ✦ ✦';
+  display: block;
+  text-align: center;
+  color: rgba(200,144,26,0.2);
+  font-size: 0.6rem;
+  letter-spacing: 0.8em;
+  margin-bottom: 3rem;
+}
+
+.article h2 {
+  font-family: 'Cormorant Upright', serif;
+  font-weight: 300;
+  font-size: 1.6rem;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 3rem;
+  animation: goldGlimmer 5s ease-in-out infinite;
+  line-height: 1.4;
+}
+
+.article p {
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 2.2;
+  color: rgba(232,216,212,0.65);
+  margin-bottom: 2rem;
+  text-align: justify;
+}
+.article p em {
+  font-style: normal;
+  color: var(--red);
+  animation: crimsonPulse 8s ease-in-out infinite;
+}
+.article p .gold-word {
+  color: var(--gold);
+  font-style: normal;
+}
+.article p:first-of-type::first-letter {
+  font-family: 'Cormorant Upright', serif;
+  font-size: 5rem;
+  font-weight: 600;
+  float: left;
+  line-height: 0.75;
+  margin-right: 0.1em;
+  padding-top: 0.05em;
+  color: var(--red);
+}
+
+.velvet-break {
+  text-align: center;
+  margin: 3rem 0;
+  color: rgba(139,0,0,0.25);
+  font-size: 0.75rem;
+  letter-spacing: 1em;
+}
+
+/* VELVET CARD */
+.velvet-card {
+  border: 1px solid rgba(200,144,26,0.2);
+  padding: 2.5rem;
+  margin: 2.5rem 0;
+  background: rgba(200,144,26,0.03);
+  position: relative;
+  animation: velvetGlow 7s ease-in-out infinite;
+}
+.velvet-card::before, .velvet-card::after {
+  content: '◆';
+  position: absolute;
+  color: rgba(200,144,26,0.2);
+  font-size: 0.5rem;
+  animation: goldGlimmer 4s ease-in-out infinite;
+}
+.velvet-card::before { top: -0.5rem; left: 50%; transform: translateX(-50%); }
+.velvet-card::after { bottom: -0.5rem; left: 50%; transform: translateX(-50%); }
+.velvet-card p {
+  text-align: center;
+  color: rgba(200,144,26,0.7);
+  font-family: 'Cormorant Upright', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  line-height: 1.8;
+  margin: 0 !important;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 5rem 3rem 7rem;
+}
+.comments-title {
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  color: rgba(200,144,26,0.4);
+  text-align: center;
+  margin-bottom: 3rem;
+}
+.comment {
+  padding: 2.5rem 0;
+  border-bottom: 1px solid rgba(139,0,0,0.08);
+  position: relative;
+}
+.comment:last-child { border-bottom: none; }
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+.comment-name {
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  color: var(--gold);
+  animation: goldGlimmer 6s ease-in-out infinite;
+}
+.comment-date {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: rgba(200,144,26,0.25);
+}
+.comment p {
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.95;
+  color: rgba(220,200,195,0.5);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--velvet);
+  border-top: 1px solid rgba(139,0,0,0.3);
+  padding: 4rem 3rem;
+  text-align: center;
+}
+.footer-seal {
+  color: rgba(200,144,26,0.2);
+  font-size: 1.2rem;
+  letter-spacing: 0.6em;
+  margin-bottom: 1.5rem;
+  animation: goldGlimmer 6s ease-in-out infinite;
+  display: block;
+}
+.footer-name {
+  font-family: 'Cormorant SC', serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+  animation: goldGlimmer 4s ease-in-out infinite;
+}
+.footer-copy {
+  font-size: 0.65rem;
+  font-style: italic;
+  color: var(--muted);
+  letter-spacing: 0.15em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">Velours Noir</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="velvet-orb v1"></div>
+  <div class="velvet-orb v2"></div>
+  <div class="chain-ornament" aria-hidden="true">◆ · · · · · · · · · · · · · · ◆</div>
+
+  <div class="hero-content">
+    <div class="hero-above">Underground Boudoir — Édition Nocturne</div>
+    <h1 class="hero-title">
+      Sous La Surface<br>
+      <em>du Désir</em>
+    </h1>
+    <div class="gold-rule">
+      <span class="diamond">◆</span>
+    </div>
+    <p class="hero-sub">Dans les espaces où le velours étouffe le son et où la lumière n'arrive qu'indirectement, les règles du dehors n'ont plus cours. Ici commence le territoire de l'authentique.</p>
+    <div class="hero-meta">
+      <span>Séraphine Moreau</span>
+      <span>◆</span>
+      <span>20 Mars 2026</span>
+      <span>◆</span>
+      <span>8 min</span>
+    </div>
+  </div>
+</section>
+
+<article class="article">
+  <h2>L'Esthétique de la Transgression Consentie</h2>
+
+  <p>Le cuir, le latex, le velours noir : ces matières portent une <em>charge symbolique</em> que l'esthétique mainstream évacue soigneusement. Elles disent quelque chose sur le corps, sur son rapport à la contrainte et à la liberté, sur la puissance qui se donne et celle qui se prend. Un langage visuel développé dans les marges qui a lentement infiltré la mode, le design, la publicité — <span class="gold-word">toujours dépouillé de son sens original</span>.</p>
+
+  <div class="velvet-break">✦ · ✦ · ✦</div>
+
+  <div class="velvet-card">
+    <p>"Le pouvoir librement choisi de se soumettre est le contraire de la servitude. C'est la possession la plus absolue de sa volonté."</p>
+  </div>
+
+  <p>L'underground boudoir est un espace de <em>théâtre rituel</em>. Il a ses codes visuels — le drapé profond, la lumière rasante sur les surfaces réfléchissantes, le rouge carmin sur le noir absolu — qui signalent un espace différent de la vie ordinaire. Comme une scène, comme un temple : un endroit où les rôles habituels sont <span class="gold-word">suspendus, retournés, explorés</span>.</p>
+
+  <p>L'esthétique ne <em>produit</em> pas cette dynamique — elle la rend visible, lui donne un espace symbolique, lui offre un vocabulaire. C'est pourquoi les espaces qui comprennent vraiment ces codes sont rares : ils demandent une cohérence entre <span class="gold-word">l'atmosphère visuelle</span>, les pratiques et les <em>intentions humaines</em> qui les animent. Le velours seul ne suffit pas.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">✦ Confidences des Lecteurs ✦</div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Victoire N.</span>
+      <span class="comment-date">18 mars 2026</span>
+    </div>
+    <p>La distinction "appropriation mainstream/sens original" est essentielle. Lorsque Versace ou d'autres maisons de luxe utilisent l'esthétique BDSM, elles en extraient le code visuel tout en gommant la philosophie du consentement et de la réciprocité qui en est le fondement éthique réel.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Dorian S.</span>
+      <span class="comment-date">19 mars 2026</span>
+    </div>
+    <p>La métaphore du théâtre est juste — mais elle risque aussi de dépolitiser. Ces espaces ont été des refuges réels pour des communautés marginalisées avant d'être des esthétiques. La dimension de survie et de communauté mérite d'être mentionnée aux côtés de la dimension artistique.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Lyra M.</span>
+      <span class="comment-date">20 mars 2026</span>
+    </div>
+    <p>Ce qui frappe dans cet espace visuel — cette page elle-même — c'est comment une esthétique peut créer une disposition intérieure différente. Le velours, le rouge foncé, les ornements en or : ils ralentissent la lecture, créent une attention différente. La forme est déjà un contenu.</p>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-seal">◆ · · · ◆</span>
+  <div class="footer-name">Velours Noir</div>
+  <div class="footer-copy">© MMXXVI — Dans les espaces où la lumière arrive indirectement</div>
+</footer>
+
+</body>
+</html>

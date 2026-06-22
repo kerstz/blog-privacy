@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASCII ART — /dev/null/blog</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap');
+
+:root {
+  --bg: #000000;
+  --green: #33FF00;
+  --green-dim: rgba(51,255,0,0.5);
+  --green-faint: rgba(51,255,0,0.15);
+  --amber: #FFB000;
+  --cyan: #00FFFF;
+  --white: #CCCCCC;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--green);
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+}
+
+/* CRT SCANLINES */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent, transparent 2px,
+    rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* CRT VIGNETTE */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+  pointer-events: none;
+  z-index: 998;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes typeIn {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes scanV {
+  from { top: -10%; }
+  to { top: 110%; }
+}
+@keyframes flicker {
+  0%, 97%, 100% { opacity: 1; }
+  98% { opacity: 0.8; }
+}
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 4px var(--green), 0 0 8px rgba(51,255,0,0.3); }
+  50% { text-shadow: 0 0 8px var(--green), 0 0 20px rgba(51,255,0,0.5); }
+}
+
+/* SCAN LINE MOVING */
+.scan-move {
+  position: fixed;
+  left: 0; right: 0;
+  height: 3px;
+  background: rgba(51,255,0,0.08);
+  z-index: 997;
+  pointer-events: none;
+  animation: scanV 8s linear infinite;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 44px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--green-faint);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  animation: flicker 15s infinite;
+}
+.nav-logo {
+  font-family: 'VT323', monospace;
+  font-size: 1.3rem;
+  color: var(--green);
+  text-decoration: none;
+  animation: glow 3s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+  font-size: 0.75rem;
+}
+nav ul li::before { content: '['; color: var(--green-dim); }
+nav ul li::after { content: ']'; color: var(--green-dim); }
+nav ul li a {
+  color: var(--green);
+  text-decoration: none;
+  padding: 0 0.5rem;
+  transition: color 0.1s;
+}
+nav ul li a:hover { color: var(--amber); }
+
+/* ASCII ART HERO */
+.hero {
+  margin-top: 44px;
+  position: relative; z-index: 1;
+  padding: 3rem 2rem;
+  border-bottom: 1px solid var(--green-faint);
+  animation: flicker 20s infinite;
+}
+
+.ascii-art {
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  color: var(--green);
+  line-height: 1.2;
+  white-space: pre;
+  animation: glow 4s ease-in-out infinite;
+  overflow-x: auto;
+}
+
+/* ASCII TITLE ART */
+.ascii-header {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  color: var(--green-dim);
+  margin-top: 2rem;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* TERMINAL BOX */
+.terminal {
+  border: 1px solid var(--green-faint);
+  padding: 1.5rem 2rem;
+  margin: 2rem 0;
+  position: relative;
+}
+.terminal::before {
+  content: '[ TERMINAL ]';
+  position: absolute;
+  top: -0.6rem;
+  left: 1rem;
+  background: var(--bg);
+  padding: 0 0.5rem;
+  font-size: 0.7rem;
+  color: var(--green-dim);
+  letter-spacing: 0.1em;
+}
+
+.prompt { color: var(--green-dim); }
+.prompt::before { content: '$ '; }
+.output { color: var(--white); opacity: 0.7; margin-left: 1.5rem; }
+.cursor::after {
+  content: '█';
+  animation: blink 1s step-end infinite;
+  color: var(--green);
+}
+.error { color: #FF4444; }
+.info { color: var(--cyan); }
+.warn { color: var(--amber); }
+
+/* PROGRESS BAR ASCII */
+.ascii-progress {
+  margin: 0.5rem 0;
+  color: var(--green);
+  font-size: 0.85rem;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 3rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  border-bottom: 1px solid var(--green-faint);
+}
+.article-heading {
+  font-family: 'VT323', monospace;
+  font-size: 1.8rem;
+  color: var(--green);
+  animation: glow 4s ease-in-out infinite;
+  margin-bottom: 0.5rem;
+}
+.article-meta {
+  font-size: 0.7rem;
+  color: var(--green-dim);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px dotted var(--green-faint);
+}
+.article-body p {
+  font-size: 0.85rem;
+  line-height: 1.8;
+  color: var(--white);
+  opacity: 0.75;
+  margin-bottom: 1.5rem;
+}
+.article-body p .highlight { color: var(--green); }
+.article-body p .amber { color: var(--amber); }
+.article-body p .cyan { color: var(--cyan); }
+
+.ascii-divider {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--green-faint);
+  margin: 2rem 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 3rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments-heading {
+  font-family: 'VT323', monospace;
+  font-size: 1.4rem;
+  color: var(--green);
+  margin-bottom: 2rem;
+  animation: glow 4s ease-in-out infinite;
+}
+.comment {
+  margin-bottom: 2rem;
+  border-left: 2px solid var(--green-faint);
+  padding-left: 1.5rem;
+}
+.comment-header {
+  font-size: 0.75rem;
+  color: var(--green-dim);
+  margin-bottom: 0.5rem;
+}
+.comment-header .name { color: var(--cyan); }
+.comment-header .date { color: var(--amber); margin-left: 1rem; }
+.comment p {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: rgba(204,204,204,0.7);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  border-top: 1px solid var(--green-faint);
+  padding: 2rem;
+  font-size: 0.7rem;
+}
+.footer-ascii {
+  color: var(--green-faint);
+  white-space: pre;
+  line-height: 1.2;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+.footer-info {
+  color: var(--green-dim);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+</style>
+</head>
+<body>
+<div class="scan-move"></div>
+
+<nav>
+  <a href="#" class="nav-logo">/dev/null/blog</a>
+  <ul>
+    <li><a href="#">accueil</a></li>
+    <li><a href="#">about</a></li>
+    <li><a href="#">contact</a></li>
+    <li><a href="#">login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+<pre class="ascii-art">
+  ___   ____   ____ ___ ___
+ /   | / __/  / __//  _/  /
+/ /| |_\ \   / /_ / // /  
+/_/ |_/___/  \___/___/_/   
+
+  ████████╗███████╗██╗  ██╗████████╗
+  ╚══██╔══╝██╔════╝╚██╗██╔╝╚══██╔══╝
+     ██║   █████╗   ╚███╔╝    ██║   
+     ██║   ██╔══╝   ██╔██╗    ██║   
+     ██║   ███████╗██╔╝ ██╗   ██║   
+     ╚═╝   ╚══════╝╚═╝  ╚═╝   ╚═╝   
+</pre>
+
+  <div class="terminal">
+    <div class="prompt">cat /etc/blog/info</div>
+    <div class="output info">name: /dev/null/blog</div>
+    <div class="output info">version: 3.7.2-stable</div>
+    <div class="output info">author: root@localhost</div>
+    <div class="output info">topic: "L'Art du Terminal"</div>
+    <div class="output">date: <span style="color:var(--amber)">2026-03-18 04:37:22 UTC</span></div>
+    <div class="output">reading_time: <span style="color:var(--green)">7min</span></div>
+    <div class="output"><br></div>
+    <div class="prompt">uptime</div>
+    <div class="output">1337 days, 4:20:00</div>
+    <div class="output"><br></div>
+    <div class="ascii-progress">[####################] 100% loaded</div>
+    <div class="prompt cursor"></div>
+  </div>
+</section>
+
+<article class="article">
+  <div class="article-heading">// L'Esthétique du Terminal</div>
+  <div class="article-meta">
+    DATE: 2026-03-18 | AUTHOR: root_elias | TAGS: [ASCII, TERMINAL, ART, CULTURE]
+  </div>
+
+  <div class="article-body">
+    <p>Avant les interfaces graphiques, avant les fenêtres et les icônes, il n'y avait que le <span class="highlight">texte</span>. Les programmeurs des années 70 et 80 ont développé une esthétique de l'écran monochrome : caractères de pseudographies (╔═╗║╚╝├┤┬┴┼), figures en ASCII 7-bit, animations par effacement et réécriture. Une <span class="amber">beauté fonctionnelle</span> née des contraintes matérielles.</p>
+
+    <div class="ascii-divider">----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+----+</div>
+
+    <p>Cette esthétique ne s'est jamais vraiment éteinte. Elle a évolué : <span class="cyan">ANSI art</span> avec ses 256 couleurs dans les BBS des années 90, démoscène avec ses effets rasters et sprites, art généré par scripts sur les terminaux Linux modernes. Et maintenant une résurgence esthétique dans le web design et l'identité visuelle — la nostalgie du vert sur noir comme signal d'authenticité technique.</p>
+
+    <p>Il y a quelque chose de <span class="highlight">fondamentalement honnête</span> dans le terminal. Pas d'images de stock, pas de dégradés marketing, pas de typo "friendly". Juste des caractères et des commandes. L'interface qui ne ment pas sur ce qu'elle est. Dans une époque de design manipulatoire optimisé pour les biais cognitifs, le terminal est presque un acte <span class="amber">politique</span>.</p>
+  </div>
+</article>
+
+<section class="comments">
+  <div class="comments-heading">// COMMENTAIRES</div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="name">kernel_panic_42</span>
+      <span class="date">2026-03-16</span>
+    </div>
+    <p>La démoscène mérite plus qu'une mention en passant — c'est un mouvement artistique majeur souvent ignoré par le mainstream. Les demos Amiga des années 90 atteignaient des niveaux d'optimisation et de créativité visuels qui dépassaient largement les jeux commerciaux de l'époque.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="name">0xDEADBEEF</span>
+      <span class="date">2026-03-17</span>
+    </div>
+    <p>La "nostalgie du vert sur noir" est devenue un cliché du branding startup tech. Chaque boîte qui veut paraître "hacker" fait un terminal vert. L'esthétique authentique du terminal n'a rien de nostalgique — elle est simplement efficace.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="name">tty1_ghost</span>
+      <span class="date">2026-03-18</span>
+    </div>
+    <p>L'argument "interface honnête" est intéressant mais réducteur. Le terminal a aussi ses mensonges : abstractions des syscalls, shells qui masquent la complexité du kernel. L'honnêteté perçue est relative au niveau d'abstraction qu'on considère comme "vrai".</p>
+  </div>
+</section>
+
+<footer>
+<pre class="footer-ascii">
++-------------------------------------------------------------------------------------------+
+| /dev/null/blog — established 2019 — serving static HTML since before it was cool again   |
++-------------------------------------------------------------------------------------------+
+</pre>
+  <div class="footer-info">
+    <span>© 2026 root@localhost · MIT License</span>
+    <span>uptime: 1337 jours · 0 downtime · 100% pure HTML</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NÉO-TRIBAL — GÉOMÉTRIES ANCESTRALES</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@100;300;400;700&family=Cinzel:wght@400;700;900&display=swap');
+
+:root {
+  --bg: #080806;
+  --deep: #040402;
+  --gold: #C8A020;
+  --gold-bright: #E8C040;
+  --gold-faint: rgba(200,160,32,0.12);
+  --text: #E8E0C8;
+  --muted: rgba(220,210,185,0.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Josefin Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* TRIBAL PATTERN BACKGROUND */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(
+      0deg, transparent, transparent 39px,
+      rgba(200,160,32,0.03) 39px, rgba(200,160,32,0.03) 40px
+    ),
+    repeating-linear-gradient(
+      90deg, transparent, transparent 39px,
+      rgba(200,160,32,0.03) 39px, rgba(200,160,32,0.03) 40px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* DIAMOND PATTERN */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(
+      45deg, transparent, transparent 28px,
+      rgba(200,160,32,0.02) 28px, rgba(200,160,32,0.02) 29px
+    ),
+    repeating-linear-gradient(
+      -45deg, transparent, transparent 28px,
+      rgba(200,160,32,0.02) 28px, rgba(200,160,32,0.02) 29px
+    );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* TRIBAL ANIMATIONS */
+@keyframes tribalReveal {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes goldGlow {
+  0%, 100% { 
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(200,160,32,0.3); 
+  }
+  50% { 
+    color: var(--gold-bright);
+    text-shadow: 0 0 20px rgba(232,192,64,0.6), 0 0 40px rgba(232,192,64,0.2); 
+  }
+}
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); opacity: 0.15; }
+  50% { transform: scale(1.02); opacity: 0.22; }
+}
+@keyframes lineReveal {
+  from { transform: scaleX(0); transform-origin: left; }
+  to { transform: scaleX(1); transform-origin: left; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: rgba(8,8,6,0.97);
+  border-bottom: 1px solid rgba(200,160,32,0.2);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+  animation: goldGlow 5s ease-in-out infinite;
+}
+.nav-geo {
+  width: 20px; height: 20px;
+  border: 2px solid var(--gold);
+  transform: rotate(45deg);
+  margin-right: 0.75rem;
+  opacity: 0.6;
+  display: inline-block;
+  flex-shrink: 0;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 300;
+  transition: color 0.4s;
+}
+nav ul li a:hover { color: var(--gold); }
+
+/* HERO */
+.hero {
+  margin-top: 60px;
+  position: relative; z-index: 1;
+  min-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 5rem 3rem;
+}
+
+/* LARGE TRIBAL MANDALA */
+.mandala {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+}
+.mandala-ring {
+  position: absolute;
+  top: 50%; left: 50%;
+  border: 1px solid rgba(200,160,32,0.1);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rotate linear infinite;
+}
+.mandala-ring:nth-child(1) { width: 200px; height: 200px; animation-duration: 60s; }
+.mandala-ring:nth-child(2) { width: 320px; height: 320px; animation-duration: 80s; animation-direction: reverse; border-style: dashed; }
+.mandala-ring:nth-child(3) { width: 460px; height: 460px; animation-duration: 100s; }
+.mandala-ring:nth-child(4) { width: 620px; height: 620px; animation-duration: 130s; animation-direction: reverse; border-style: dotted; border-color: rgba(200,160,32,0.06); }
+.mandala-ring:nth-child(5) { width: 800px; height: 800px; animation-duration: 160s; border-color: rgba(200,160,32,0.04); }
+
+/* DIAMOND PATTERNS ON RINGS */
+.mandala-ring::before {
+  content: '◆';
+  position: absolute;
+  top: -0.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(200,160,32,0.3);
+  font-size: 0.7rem;
+}
+.mandala-ring::after {
+  content: '◆';
+  position: absolute;
+  bottom: -0.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(200,160,32,0.3);
+  font-size: 0.7rem;
+}
+
+/* CENTRAL SYMBOL */
+.mandala-center {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4rem;
+  color: rgba(200,160,32,0.15);
+  animation: breathe 6s ease-in-out infinite;
+}
+
+.hero-content {
+  text-align: center;
+  position: relative; z-index: 2;
+  animation: tribalReveal 1.5s both;
+}
+
+.hero-above {
+  font-size: 0.6rem;
+  letter-spacing: 0.6em;
+  text-transform: uppercase;
+  color: rgba(200,160,32,0.5);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+.hero-above::before, .hero-above::after {
+  content: '◆';
+  color: var(--gold);
+  font-size: 0.4rem;
+  animation: goldGlow 4s ease-in-out infinite;
+}
+
+.hero-title {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  font-size: clamp(3rem, 9vw, 8rem);
+  letter-spacing: 0.2em;
+  line-height: 0.95;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  color: var(--text);
+}
+.hero-title span {
+  display: block;
+  color: var(--gold);
+  animation: goldGlow 6s ease-in-out infinite;
+  font-size: 0.6em;
+  letter-spacing: 0.4em;
+}
+
+/* TRIBAL BORDER LINE */
+.tribal-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 1.5rem 0;
+  color: var(--gold);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  animation: lineReveal 2s 0.5s both;
+}
+.tribal-line::before, .tribal-line::after {
+  content: '';
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+}
+
+.hero-sub {
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  line-height: 1.9;
+  color: var(--muted);
+  max-width: 480px;
+  margin: 0 auto 2rem;
+  font-weight: 300;
+  text-transform: uppercase;
+}
+.hero-meta {
+  font-size: 0.65rem;
+  letter-spacing: 0.25em;
+  color: rgba(200,160,32,0.35);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 6rem 3rem;
+  max-width: 750px;
+  margin: 0 auto;
+  border-bottom: 1px solid rgba(200,160,32,0.1);
+}
+.article-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+.tribal-ornament {
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+  color: rgba(200,160,32,0.3);
+  display: block;
+  text-align: center;
+  margin: 2.5rem 0;
+}
+.article h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+  animation: goldGlow 6s ease-in-out infinite;
+}
+.article p {
+  font-size: 0.9rem;
+  line-height: 2.2;
+  font-weight: 300;
+  color: rgba(232,224,200,0.7);
+  margin-bottom: 2rem;
+  letter-spacing: 0.03em;
+  text-align: justify;
+}
+.article p em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 5rem 3rem;
+  max-width: 750px;
+  margin: 0 auto;
+}
+.comments-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 3rem;
+  animation: goldGlow 5s ease-in-out infinite;
+}
+.comment {
+  padding: 2.5rem 0;
+  border-bottom: 1px solid rgba(200,160,32,0.08);
+  position: relative;
+}
+.comment:last-child { border-bottom: none; }
+.comment::before {
+  content: '◆';
+  position: absolute;
+  left: -1.5rem;
+  top: 2.8rem;
+  font-size: 0.5rem;
+  color: rgba(200,160,32,0.3);
+}
+.comment-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+.comment-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.comment-date {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: rgba(200,160,32,0.3);
+  text-transform: uppercase;
+}
+.comment p {
+  font-size: 0.85rem;
+  line-height: 1.9;
+  font-weight: 300;
+  color: rgba(232,224,200,0.55);
+  letter-spacing: 0.03em;
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--deep);
+  border-top: 1px solid rgba(200,160,32,0.15);
+  padding: 3rem;
+  text-align: center;
+}
+.footer-symbol {
+  font-size: 1.5rem;
+  color: rgba(200,160,32,0.2);
+  letter-spacing: 0.5em;
+  margin-bottom: 1rem;
+  animation: rotate 20s linear infinite;
+  display: inline-block;
+}
+.footer-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--gold);
+  animation: goldGlow 5s ease-in-out infinite;
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="nav-geo"></span>
+    Géométries
+  </a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="mandala" aria-hidden="true">
+    <div class="mandala-ring"></div>
+    <div class="mandala-ring"></div>
+    <div class="mandala-ring"></div>
+    <div class="mandala-ring"></div>
+    <div class="mandala-ring"></div>
+    <div class="mandala-center">◈</div>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-above">Géométries Ancestrales — Vol. VII</div>
+    <h1 class="hero-title">
+      NÉO
+      <span>◆ TRIBAL ◆</span>
+      SACRÉ
+    </h1>
+    <div class="tribal-line">◆ ◇ ◆ ◇ ◆</div>
+    <p class="hero-sub">Les formes répétitives portent une mémoire plus ancienne que l'écriture. Chaque triangle, chaque losange, chaque spirale était déjà langage avant d'être ornement.</p>
+    <div class="hero-meta">
+      <span>Zara Okonjo</span>
+      <span>◆</span>
+      <span>19 Mars 2026</span>
+      <span>◆</span>
+      <span>6 min</span>
+    </div>
+  </div>
+</section>
+
+<article class="article">
+  <div class="article-header">
+    <div class="tribal-ornament">◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆</div>
+    <h2>La Géométrie Comme Langage Premier</h2>
+    <div class="tribal-ornament">◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆ ◇ ◆</div>
+  </div>
+
+  <p>Avant toute représentation figurative, avant les hiéroglyphes et les idéogrammes, il y avait le <em>motif géométrique</em>. Les ocres rouges des grottes de Blombos (Afrique du Sud, 75 000 ans) montrent des lignes parallèles en chevrons gravées sur des galets. Ce n'est pas de la décoration — c'est le début de l'<em>abstraction symbolique</em>.</p>
+
+  <div class="tribal-ornament">◈</div>
+
+  <p>Le motif répétitif obéit à une logique cognitive universelle : notre cerveau reconnaît le pattern et se détend, puis anticipe la prochaine occurrence, crée une attente. Quand le pattern est brisé ou varié, l'attention se réveille. Les tisseuses Berbères, les sculpteurs Māori, les peintres Ndebele utilisent tous ce mécanisme — <em>créer du sens par la répétition et ses ruptures</em>.</p>
+
+  <p>Le néo-tribal contemporain emprunte ces formes sans forcément en comprendre la <em>signification originelle</em>. C'est une appropriation qui mérite réflexion — mais aussi un témoignage de la persistance universelle de ces formes. Le triangle pointé vers le haut, le losange, la spirale logarithmique : ces formes ont été redécouvertes indépendamment sur tous les continents. Elles semblent répondre à quelque chose dans l'architecture de la <em>perception humaine</em> elle-même.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">◆ Transmissions ◆</div>
+
+  <div class="comment">
+    <div class="comment-head">
+      <span class="comment-name">Yemi Adeyemi</span>
+      <span class="comment-date">17 Mars 2026</span>
+    </div>
+    <p>L'analyse de Blombos est correcte mais il faut préciser : ces encoches pourraient aussi être des marques fonctionnelles (comptage, propriété) plutôt que symboliques. La distinction art/outil est une projection moderne sur une intention ancienne qu'on ne peut pas vérifier.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-head">
+      <span class="comment-name">Iris Sokolov</span>
+      <span class="comment-date">18 Mars 2026</span>
+    </div>
+    <p>La question de l'appropriation culturelle dans le néo-tribal est complexe. Il faut distinguer : copier un motif spécifique à une culture identifiée (problématique) vs s'inspirer d'une logique géométrique universelle (plus défendable). La frontière est floue mais la distinction est réelle.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-head">
+      <span class="comment-name">Marcus Blackwood</span>
+      <span class="comment-date">19 Mars 2026</span>
+    </div>
+    <p>Les formes universelles indépendamment redécouvertes — il y a une littérature anthropologique solide là-dessus (Leroi-Gourhan, Donald). Mais attention à l'universalisme naïf : les formes similaires peuvent correspondre à des fonctions culturelles totalement différentes. Ressemblance formelle ≠ parenté sémantique.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-symbol">◈</div>
+  <div class="footer-name">Géométries Ancestrales</div>
+  <div class="footer-copy">© MMXXVI — Formes Premières — Mémoire Géométrique</div>
+</footer>
+
+</body>
+</html>

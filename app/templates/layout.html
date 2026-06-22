@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}TechBlog{% endblock %}</title>
+    <title>{% block title %}MyBlog{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
+    {% block extra_head %}{% endblock %}
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <!-- Navbar -->
     <header>
         <nav class="navbar">
-            <a class="navbar-brand" href="{{ url_for('index') }}">TechBlog</a>
+            <a class="navbar-brand" href="{{ url_for('index') }}">My<span class="redact">Blog</span></a>
             <ul class="navbar-menu">
                 <li><a href="{{ url_for('about') }}">About</a></li>
                 <li><a href="{{ url_for('contact') }}">Contact</a></li>
@@ -23,7 +28,11 @@
                         </a></li>
                     {% endif %}
                     <li><a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="user-btn">
-                        <span class="icon-user"></span>
+                        {% if current_user.profile_picture %}
+                            <img src="{{ url_for('uploaded_file', filename=current_user.profile_picture.split('/')[-1]) }}" alt="Profile picture" class="profile-nav-img">
+                        {% else %}
+                            <span class="icon-user"></span>
+                        {% endif %}
                     </a></li>
                     <li><a href="{{ url_for('notifications') }}" class="notification-btn">
                         <span class="icon-bell"></span>
@@ -35,7 +44,7 @@
                         <span class="icon-sign-out"></span>
                     </a></li>
                 {% else %}
-                    <li><a href="{{ url_for('register') }}" class="register-btn">Register</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
                     <li><a href="{{ url_for('login') }}" class="login-btn">Login</a></li>
                 {% endif %}
             </ul>
@@ -54,15 +63,8 @@
     <footer class="footer">
         <div class="footer-container">
             <a href="{{ url_for('donate') }}" class="donate-btn">
-                ❤️ Support
+                <span class="icon-heart"></span> Support the blog
             </a>
-        </div>
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-            <p style="font-size: 14px; color: #9ca3af; margin: 0;">
-                <a href="https://github.com/berstz/blog-privacy" target="_blank" rel="noopener noreferrer" style="color: #10b981; text-decoration: none; transition: color 0.3s;">
-                    <span style="margin-right: 5px;">⭐</span>View on GitHub
-                </a>
-            </p>
         </div>
     </footer>
 </body>

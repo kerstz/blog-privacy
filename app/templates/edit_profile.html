@@ -28,6 +28,27 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label for="profile_picture">Profile picture</label>
+                {% if current_user.profile_picture %}
+                    <div class="current-avatar">
+                        <img src="{{ url_for('uploaded_file', filename=current_user.profile_picture.split('/')[-1]) }}" alt="Current profile picture" class="current-avatar-img">
+                        <small>Current picture</small>
+                    </div>
+                {% endif %}
+                {{ form.profile_picture(class="form-control") }}
+                {% if form.profile_picture.errors %}
+                    <div class="error-messages">
+                        {% for error in form.profile_picture.errors %}
+                            <span class="error">{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="file-info">
+                    <small>Allowed formats: JPG, JPEG, PNG, GIF</small>
+                </div>
+            </div>
+
             <div class="form-actions">
                 <button type="submit" class="btn-save">
                     <span class="icon-save"></span> Save
@@ -37,6 +58,26 @@
                 </a>
             </div>
         </form>
+    </div>
+
+    <!-- 2FA / TOTP Security Section -->
+    <div class="edit-profile-form" style="margin-top:1.5rem;">
+        <h3 style="margin-bottom:1rem;font-size:1.1rem;">Two-factor authentication</h3>
+        {% if current_user.totp_enabled %}
+            <p style="color:var(--brass-bright);margin-bottom:1rem;font-size:.9rem;">
+                <span class="icon-check"></span> 2FA is currently <strong>active</strong> on your account.
+            </p>
+            <a href="{{ url_for('totp_disable') }}" class="btn-cancel" style="display:inline-flex;border-radius:10px;padding:.6rem 1.4rem;text-decoration:none;">
+                Disable 2FA
+            </a>
+        {% else %}
+            <p style="color:#c3c4cb;margin-bottom:1rem;font-size:.9rem;">
+                2FA is not enabled. Add an extra layer of security using an authenticator app.
+            </p>
+            <a href="{{ url_for('totp_setup') }}" class="btn-save" style="display:inline-flex;border-radius:10px;padding:.6rem 1.4rem;text-decoration:none;">
+                Enable 2FA
+            </a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
@@ -150,6 +191,22 @@
 .file-info small {
     color: #888;
     font-size: 0.85rem;
+}
+
+.current-avatar {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.current-avatar-img {
+    width: 84px;
+    height: 84px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 2px solid rgba(139, 147, 255, 0.6);
 }
 
 .error-messages {

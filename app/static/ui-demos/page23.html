@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VITRAUX — FRAGMENTS DE LUMIÈRE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Almendra:ital,wght@0,400;1,400&display=swap');
+
+:root {
+  --bg: #050508;
+  --lead: #1A1A20;
+  --ruby: #CC0020;
+  --sapphire: #0030AA;
+  --emerald: #006030;
+  --amber: #CC7700;
+  --violet: #660088;
+  --gold: #C8A840;
+  --ice: #88BBDD;
+  --text: #E8E0F0;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Almendra', serif;
+  overflow-x: hidden;
+}
+
+/* STAINED GLASS EFFECT - Light ray animation */
+@keyframes lightRay {
+  0%, 100% { opacity: 0.6; transform: skewX(-10deg) scaleX(1); }
+  50% { opacity: 1; transform: skewX(-10deg) scaleX(1.05); }
+}
+@keyframes colorShift {
+  0% { filter: hue-rotate(0deg) saturate(1.2); }
+  100% { filter: hue-rotate(15deg) saturate(1.3); }
+}
+@keyframes glassGlow {
+  0%, 100% { box-shadow: inset 0 0 20px rgba(255,255,255,0.05); }
+  50% { box-shadow: inset 0 0 40px rgba(255,255,255,0.1); }
+}
+@keyframes fragmentReveal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* LEAD LINES GRID */
+.lead-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(5,5,8,0.96);
+  border-bottom: 2px solid var(--lead);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 0.9rem;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: rgba(232,224,240,0.5);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-style: italic;
+  transition: color 0.3s;
+  letter-spacing: 0.05em;
+}
+nav ul li a:hover { color: var(--gold); }
+
+/* HERO - STAINED GLASS WINDOW */
+.hero {
+  margin-top: 64px;
+  min-height: 80vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* THE STAINED GLASS */
+.window {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  /* Irregular grid for stained glass effect */
+  grid-template-columns: 15% 25% 20% 22% 18%;
+  grid-template-rows: 20% 30% 25% 25%;
+  gap: 3px;
+  background: var(--lead);
+  padding: 3px;
+}
+.pane {
+  position: relative;
+  overflow: hidden;
+  animation: fragmentReveal 0.8s both, glassGlow 4s ease-in-out infinite;
+}
+.pane::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%, rgba(0,0,0,0.3) 100%);
+}
+/* Light ray effect */
+.pane::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 30%;
+  height: 140%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: skewX(-10deg);
+  animation: lightRay 5s ease-in-out infinite;
+}
+
+/* Pane colors */
+.pane.ruby { background: var(--ruby); animation-delay: 0.1s; }
+.pane.sapphire { background: var(--sapphire); animation-delay: 0.2s; }
+.pane.emerald { background: var(--emerald); animation-delay: 0.3s; }
+.pane.amber { background: var(--amber); animation-delay: 0.4s; }
+.pane.violet { background: var(--violet); animation-delay: 0.5s; }
+.pane.ice { background: var(--ice); animation-delay: 0.6s; }
+.pane.gold { background: var(--gold); animation-delay: 0.7s; }
+.pane.dark-ruby { background: #660010; animation-delay: 0.2s; }
+.pane.dark-blue { background: #001850; animation-delay: 0.4s; }
+.pane.teal { background: #004040; animation-delay: 0.6s; }
+.pane.orange { background: #993300; animation-delay: 0.1s; }
+.pane.pink { background: #880044; animation-delay: 0.8s; }
+.pane.lime { background: #2A5A00; animation-delay: 0.3s; }
+.pane.deep-purple { background: #200044; animation-delay: 0.5s; }
+.pane.navy { background: #001030; animation-delay: 0.7s; }
+.pane.maroon { background: #440010; animation-delay: 0.2s; }
+.pane.cyan { background: #004860; animation-delay: 0.6s; }
+.pane.ochre { background: #5A3800; animation-delay: 0.4s; }
+.pane.forest { background: #0A2010; animation-delay: 0.8s; }
+.pane.plum { background: #3A0044; animation-delay: 0.1s; }
+
+/* CENTER TEXT OVERLAY */
+.window-text {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 3rem;
+  background: rgba(5,5,8,0.6);
+  backdrop-filter: blur(2px);
+  border: 2px solid rgba(200,168,64,0.3);
+  max-width: 600px;
+}
+.window-text .ornament {
+  font-size: 1.5rem;
+  color: var(--gold);
+  letter-spacing: 0.5em;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+.window-text h1 {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--text);
+  margin-bottom: 1rem;
+  text-shadow: 0 0 20px rgba(200,168,64,0.4);
+}
+.window-text .sub {
+  font-style: italic;
+  font-size: 0.9rem;
+  color: rgba(232,224,240,0.6);
+  letter-spacing: 0.1em;
+}
+.window-text .meta {
+  margin-top: 1.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.7;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 5rem 2rem;
+  border-top: 2px solid var(--lead);
+}
+
+/* FRAGMENT DECORATIONS */
+.fragment-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
+  gap: 2px;
+  margin-bottom: 4rem;
+  background: var(--lead);
+  height: 60px;
+}
+.frag { animation: glassGlow 3s ease-in-out infinite; }
+.frag.r { background: var(--ruby); animation-delay: 0s; }
+.frag.b { background: var(--sapphire); animation-delay: 0.5s; }
+.frag.e { background: var(--emerald); animation-delay: 1s; }
+
+.article h2 {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.article p {
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(232,224,240,0.8);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+.article p:first-of-type::first-letter {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 4rem;
+  float: left;
+  margin-right: 0.1em;
+  line-height: 0.85;
+  color: var(--amber);
+}
+.article p .color-ruby { color: #FF4466; }
+.article p .color-blue { color: var(--ice); }
+.article p .color-gold { color: var(--gold); }
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem 5rem;
+  border-top: 2px solid var(--lead);
+}
+.comments-title {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 0.9rem;
+  color: var(--gold);
+  padding: 3rem 0 2rem;
+  text-align: center;
+  letter-spacing: 0.1em;
+}
+.comment {
+  border: 1px solid var(--lead);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  background: rgba(26,26,32,0.5);
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+}
+.comment:nth-child(1)::before { background: var(--ruby); }
+.comment:nth-child(2)::before { background: var(--sapphire); }
+.comment:nth-child(3)::before { background: var(--emerald); }
+.comment-name {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 0.75rem;
+  color: var(--gold);
+  margin-bottom: 0.25rem;
+  letter-spacing: 0.05em;
+}
+.comment-date {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: rgba(232,224,240,0.3);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: rgba(232,224,240,0.65);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: rgba(26,26,32,0.8);
+  border-top: 2px solid var(--lead);
+  padding: 3rem;
+  text-align: center;
+}
+.footer-window {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  background: var(--lead);
+  height: 20px;
+  margin-bottom: 2rem;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.fw { }
+.fw:nth-child(1) { background: var(--ruby); }
+.fw:nth-child(2) { background: var(--amber); }
+.fw:nth-child(3) { background: var(--emerald); }
+.fw:nth-child(4) { background: var(--gold); }
+.fw:nth-child(5) { background: var(--sapphire); }
+.fw:nth-child(6) { background: var(--violet); }
+.fw:nth-child(7) { background: var(--ice); }
+.footer-name {
+  font-family: 'Cinzel Decorative', cursive;
+  font-size: 1rem;
+  color: var(--gold);
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-style: italic;
+  font-size: 0.75rem;
+  color: rgba(232,224,240,0.3);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">Fragments de Lumière</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="window">
+    <div class="pane ruby"></div>
+    <div class="pane sapphire"></div>
+    <div class="pane emerald"></div>
+    <div class="pane amber"></div>
+    <div class="pane dark-ruby"></div>
+
+    <div class="pane violet"></div>
+    <div class="pane gold"></div>
+    <div class="pane dark-blue"></div>
+    <div class="pane teal"></div>
+    <div class="pane orange"></div>
+
+    <div class="pane ice"></div>
+    <div class="pane pink"></div>
+    <div class="pane lime"></div>
+    <div class="pane deep-purple"></div>
+    <div class="pane navy"></div>
+
+    <div class="pane maroon"></div>
+    <div class="pane cyan"></div>
+    <div class="pane ochre"></div>
+    <div class="pane forest"></div>
+    <div class="pane plum"></div>
+  </div>
+
+  <div class="window-text">
+    <span class="ornament">✦ ✦ ✦</span>
+    <h1>La Lumière<br>Traversée</h1>
+    <p class="sub">Sur l'art des vitraux gothiques et leur transposition numérique</p>
+    <p class="meta">Isabelle Lumière · 16 Mars 2026 · 5 min</p>
+  </div>
+</section>
+
+<article class="article">
+  <div class="fragment-row">
+    <div class="frag r"></div>
+    <div class="frag b"></div>
+    <div class="frag e"></div>
+  </div>
+
+  <h2>De la Transparence Colorée comme Théologie</h2>
+
+  <p>Le vitrail gothique n'est pas une fenêtre décorée. C'est un instrument théologique. La lumière qui traverse le <span class="color-ruby">rouge sang du Christ</span>, le <span class="color-blue">bleu céleste de la Vierge</span>, le <span class="color-gold">or divin du Père</span> — chaque couleur était une doctrine traduite en photons. Les fidèles analphabètes "lisaient" ainsi la théologie du salut en regardant le soleil filtré.</p>
+
+  <p>Abbot Suger de Saint-Denis, le concepteur des premières verrières gothiques au XIIème siècle, avait une théorie mystique de la lumière colorée : elle purifiait l'âme des spectateurs, les élevant vers l'immatériel. Ce n'était pas de la superstition — c'était une <span class="color-blue">théorie de la perception sensible</span> comme voie vers le transcendant.</p>
+
+  <p>Transposer cette logique au design numérique, c'est comprendre que la couleur n'est pas décoration mais information. Que la fragmentation en panes séparées par des plombs n'est pas une contrainte mais une <span class="color-gold">grammaire de la lumière</span>. Chaque fragment est une note dans une symphonie colorée.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">✦ Correspondances des Lecteurs ✦</div>
+
+  <div class="comment">
+    <div class="comment-name">Dom. Alcuin M.</div>
+    <div class="comment-date">12 mars 2026</div>
+    <p>La référence à Suger est précise. Sa théorie de la "lux nova" dans la Lettre à l'Abbé Suger est le premier traité esthétique médiéval. La lumière colorée comme médiation entre matière et esprit.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">Véronique T-D.</div>
+    <div class="comment-date">14 mars 2026</div>
+    <p>Les vitraux de Chartres utilisent un bleu (le "bleu de Chartres") dont la formule est partiellement perdue. La beauté de certains artefacts anciens réside dans leur irréplicabilité.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">Lux Designer</div>
+    <div class="comment-date">15 mars 2026</div>
+    <p>Ce design en fragmentation colorée est lui-même un vitrail numérique. L'analogie entre lead lines et CSS grid est parfaite. Forme et contenu se répondent magnifiquement.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-window">
+    <div class="fw"></div>
+    <div class="fw"></div>
+    <div class="fw"></div>
+    <div class="fw"></div>
+    <div class="fw"></div>
+    <div class="fw"></div>
+    <div class="fw"></div>
+  </div>
+  <div class="footer-name">Fragments de Lumière</div>
+  <div class="footer-copy">© MMXXVI — Lux & Veritas — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

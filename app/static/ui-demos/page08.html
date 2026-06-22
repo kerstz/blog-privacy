@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TERMINAL — root@void:~</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Fira+Code:wght@300;400;600&display=swap');
+
+:root {
+  --bg: #000000;
+  --green: #00FF41;
+  --green-dim: #007A1F;
+  --amber: #FFB000;
+  --white: #CCCCCC;
+  --dark-gray: #0A0A0A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: text;
+}
+
+/* PHOSPHOR CRT EFFECT */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0.05),
+    rgba(0,0,0,0.05) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* CURSOR BLINK */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes typeIn {
+  from { width: 0; overflow: hidden; }
+  to { width: 100%; }
+}
+@keyframes fadeInLine {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow {
+  0%, 100% { text-shadow: 0 0 5px var(--green), 0 0 10px var(--green); }
+  50% { text-shadow: 0 0 10px var(--green), 0 0 25px var(--green), 0 0 50px rgba(0,255,65,0.3); }
+}
+
+/* NAV = TERMINAL TOP BAR */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: #0A0A0A;
+  height: 28px;
+  border-bottom: 1px solid var(--green-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  gap: 0;
+}
+.term-btn {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.term-btn.red { background: #FF5F56; }
+.term-btn.yellow { background: #FFBD2E; }
+.term-btn.green { background: #27C93F; }
+.term-title {
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: rgba(0,255,65,0.5);
+  letter-spacing: 0.1em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 0.75rem;
+  color: var(--green-dim);
+  text-decoration: none;
+  font-size: 0.7rem;
+  line-height: 28px;
+  letter-spacing: 0.1em;
+  border-left: 1px solid #111;
+  transition: color 0.2s;
+}
+nav ul li a:hover { color: var(--green); }
+
+/* TERMINAL WINDOW */
+.terminal {
+  margin-top: 28px;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+/* ASCII HEADER */
+.ascii-art {
+  color: var(--green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: clamp(6px, 1.2vw, 12px);
+  line-height: 1.2;
+  margin-bottom: 2rem;
+  animation: glow 4s ease-in-out infinite;
+  white-space: pre;
+}
+
+.prompt-line {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  animation: fadeInLine 0.3s both;
+}
+.prompt {
+  color: var(--green);
+  flex-shrink: 0;
+}
+.cmd {
+  color: var(--white);
+}
+.output {
+  padding-left: 0;
+  color: var(--green-dim);
+  margin-bottom: 0.2rem;
+  animation: fadeInLine 0.3s both;
+}
+.output.err { color: #FF4444; }
+.output.highlight { color: var(--amber); }
+.output.white { color: var(--white); }
+.cursor {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  background: var(--green);
+  vertical-align: text-bottom;
+  animation: blink 1s infinite;
+}
+
+/* SECTION HEADERS */
+.section-header {
+  color: var(--amber);
+  font-family: 'Fira Code', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 2rem 0 1rem;
+  padding: 0.5rem;
+  border-left: 3px solid var(--amber);
+  background: rgba(255,176,0,0.05);
+}
+
+/* ARTICLE BLOCK */
+.article-block {
+  border: 1px solid var(--green-dim);
+  padding: 1.5rem;
+  margin: 1rem 0 2rem;
+  position: relative;
+  background: rgba(0,255,65,0.02);
+}
+.article-block::before {
+  content: '/* ARTICLE CONTENT */';
+  position: absolute;
+  top: -0.6rem;
+  left: 1rem;
+  font-size: 0.75rem;
+  color: var(--green-dim);
+  background: var(--bg);
+  padding: 0 0.5rem;
+}
+.article-block p {
+  color: rgba(204,204,204,0.85);
+  line-height: 1.8;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.article-block .keyword { color: #569CD6; }
+.article-block .string { color: #CE9178; }
+.article-block .comment-code { color: #6A9955; }
+
+/* PROGRESS BAR */
+.progress-bar {
+  margin: 0.5rem 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.85rem;
+}
+.progress-fill {
+  display: inline-block;
+  height: 12px;
+  background: var(--green);
+  vertical-align: middle;
+  box-shadow: 0 0 8px var(--green);
+}
+.progress-empty {
+  display: inline-block;
+  height: 12px;
+  background: #111;
+  border: 1px solid var(--green-dim);
+  vertical-align: middle;
+}
+
+/* COMMENT TABLE */
+.comment-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.85rem;
+}
+.comment-table th {
+  color: var(--amber);
+  text-align: left;
+  padding: 0.4rem 1rem 0.4rem 0;
+  border-bottom: 1px solid var(--green-dim);
+  font-weight: 400;
+}
+.comment-table td {
+  padding: 0.75rem 1rem 0.75rem 0;
+  border-bottom: 1px solid #111;
+  color: rgba(204,204,204,0.8);
+  vertical-align: top;
+}
+.comment-table tr:last-child td { border-bottom: none; }
+.comment-table .user { color: var(--green); }
+.comment-table .ts { color: var(--green-dim); white-space: nowrap; }
+
+/* FOOTER */
+.footer-term {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #111;
+  color: var(--green-dim);
+  font-size: 0.8rem;
+  display: flex;
+  justify-content: space-between;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="term-btn red"></div>
+  <div class="term-btn yellow"></div>
+  <div class="term-btn green"></div>
+  <div class="term-title">root@void — bash — 80×24</div>
+  <ul>
+    <li><a href="#">[home]</a></li>
+    <li><a href="#">[about]</a></li>
+    <li><a href="#">[contact]</a></li>
+    <li><a href="#">[login]</a></li>
+  </ul>
+</nav>
+
+<div class="terminal">
+
+<pre class="ascii-art">
+ __   __ ___  ___  ____     ____ ______ __  ______ __  _____
+ \ \ / // _ \|_ _||  _ \   / ___|_  _//  ||_  _/  \\ \| ___|
+  \ V /| | | || | | | | |  \___ \ | | | |) | | || () |> _|
+   \_/ |_| |_||_| |_| |_|   ___) || | |    | | || // |___|
+                            |____/ |_| |_|\__||_|/_/ v2.0.26
+</pre>
+
+<div class="prompt-line" style="animation-delay:0.1s">
+  <span class="prompt">root@void:~$</span>
+  <span class="cmd">cat /blog/articles/latest.md</span>
+</div>
+
+<div class="section-header"># L'INTELLIGENCE DES MACHINES</div>
+
+<div class="article-block">
+  <p>
+    <span class="comment-code">// Article du 16 Mars 2026 — Auteur: h4x0r_sage</span><br>
+    <br>
+    <span class="keyword">function</span> <span class="string">comprendre_ia</span>() {<br>
+    &nbsp;&nbsp;<span class="comment-code">// La vraie question n'est pas "les machines pensent-elles"</span><br>
+    &nbsp;&nbsp;<span class="comment-code">// mais "pourquoi ça nous dérange qu'elles le fassent"</span><br>
+    }
+  </p>
+  <p>Dans les sous-sols de Silicon Valley, des ingénieurs tapent frénétiquement sur des claviers en regardant des graphes de loss descendre vers zéro. Ils appellent ça de la science. Le reste du monde appelle ça de la magie noire.</p>
+  <p>La réalité se situe quelque part entre les deux. Le <span class="keyword">gradient descent</span> n'est pas mystérieux — c'est de l'optimisation itérative sur un espace à haute dimension. Mais son résultat, lui, défie parfois toute explication intuitive.</p>
+  <p><span class="output highlight">GPT-4 a résolu des problèmes mathématiques non publiés en 2024.</span> Personne n'avait programmé ça. C'est apparu. Est-ce de l'émergence ? De l'overfitting sur des données cachées ? On ne sait pas. Et c'est le problème.</p>
+</div>
+
+<div class="prompt-line">
+  <span class="prompt">root@void:~$</span>
+  <span class="cmd">ls -la /blog/stats/</span>
+</div>
+<div class="output">total 3 items</div>
+<div class="output">-rw-r--r-- 1 root  root  <span class="output highlight">1.2K</span>  Vues aujourd'hui: 2,847</div>
+<div class="output">-rw-r--r-- 1 root  root  <span class="output highlight">0.3K</span>  Commentaires: 3</div>
+<div class="output">-rw-r--r-- 1 root  root  <span class="output highlight">0.1K</span>  Temps de lecture moyen: 4m 12s</div>
+
+<br>
+<div class="prompt-line">
+  <span class="prompt">root@void:~$</span>
+  <span class="cmd">cat /blog/comments/latest.json | python3 -m json.tool</span>
+</div>
+
+<div class="section-header"># COMMENTS — 3 RECORDS FOUND</div>
+
+<table class="comment-table">
+  <thead>
+    <tr>
+      <th>USER</th>
+      <th>TIMESTAMP</th>
+      <th>CONTENT</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="user">n3ur0_hack</td>
+      <td class="ts">2026-03-14<br>22:17:08</td>
+      <td>Le point sur l'émergence GPT-4 est vrai. J'ai vu les papiers de Bubeck et al. 2023 — "Sparks of AGI". Ils ont testé des puzzles de raisonnement jamais vus en training. Résultats troublants.</td>
+    </tr>
+    <tr>
+      <td class="user">0xDEADCODE</td>
+      <td class="ts">2026-03-15<br>01:44:31</td>
+      <td>L'explication "overfitting sur données cachées" est la plus probable. Le dataset de GPT contient probablement des solutions aux problèmes de math olympiades. Data contamination, pas émergence.</td>
+    </tr>
+    <tr>
+      <td class="user">grep_sage</td>
+      <td class="ts">2026-03-16<br>09:12:55</td>
+      <td>Le vrai mystère c'est la comprension grammaticale zéro-shot sur des langues rares. Là on peut pas arguer data contamination pour du Quechua ou du Wolof. Quelque chose se passe structurellement.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="prompt-line">
+  <span class="prompt">root@void:~$</span>
+  <span class="cmd">uptime</span>
+</div>
+<div class="output"> 16 mars 2026 23:59:41 up 847 jours, 4:20, 1 user, load average: 0.07, 0.03, 0.01</div>
+
+<br>
+<div class="prompt-line">
+  <span class="prompt">root@void:~$</span>
+  <span class="cursor"></span>
+</div>
+
+<div class="footer-term">
+  <span>VOID TERMINAL v2.0.26 — GNU GPL3</span>
+  <span>root@void — Sessions actives: 1</span>
+  <span>© 2026</span>
+</div>
+
+</div>
+
+</body>
+</html>

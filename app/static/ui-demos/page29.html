@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAROT OCCULT — LE GRIMOIRE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&family=Fondamento:ital@0;1&display=swap');
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fondamento:ital@0;1&family=Almendra:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #080010;
+  --deep-purple: #0E0018;
+  --purple: #2A0060;
+  --gold: #C8A030;
+  --gold-light: #E8C050;
+  --silver: #A0A8C0;
+  --mystic: rgba(200,160,48,0.1);
+  --text: #D8D0F0;
+  --muted: rgba(160,148,192,0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Fondamento', cursive;
+  overflow-x: hidden;
+}
+
+/* STAR PATTERN */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(200,160,48,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* MYSTICAL ANIMATIONS */
+@keyframes mysticalGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(200,160,48,0.2), 0 0 60px rgba(200,160,48,0.05); }
+  50% { box-shadow: 0 0 40px rgba(200,160,48,0.4), 0 0 100px rgba(200,160,48,0.1); }
+}
+@keyframes starRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes pentagramGlow {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.15; }
+}
+@keyframes goldPulse {
+  0%, 100% { color: var(--gold); text-shadow: 0 0 10px rgba(200,160,48,0.4); }
+  50% { color: var(--gold-light); text-shadow: 0 0 20px rgba(232,192,80,0.7), 0 0 40px rgba(232,192,80,0.3); }
+}
+@keyframes runeReveal {
+  from { opacity: 0; transform: translateY(15px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 68px;
+  background: rgba(8,0,16,0.97);
+  border-bottom: 1px solid rgba(200,160,48,0.2);
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+  box-shadow: 0 4px 30px rgba(200,160,48,0.05);
+}
+.nav-logo {
+  font-size: 1.1rem;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  animation: goldPulse 4s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.nav-logo .rune { font-size: 1.4rem; animation: starRotate 10s linear infinite; display: inline-block; }
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-style: italic;
+  letter-spacing: 0.05em;
+  transition: color 0.4s;
+  position: relative;
+}
+nav ul li a::before {
+  content: '✦';
+  margin-right: 0.4rem;
+  color: rgba(200,160,48,0.4);
+  font-style: normal;
+  font-size: 0.6rem;
+}
+nav ul li a:hover { color: var(--gold); }
+
+/* HERO — TAROT CARD LAYOUT */
+.hero {
+  margin-top: 68px;
+  position: relative;
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 5rem 3rem;
+  border-bottom: 1px solid rgba(200,160,48,0.1);
+}
+
+/* MYSTICAL BACKGROUND SYMBOLS */
+.symbol-bg {
+  position: absolute;
+  font-size: 30vw;
+  color: rgba(200,160,48,0.04);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  line-height: 1;
+  animation: pentagramGlow 6s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+}
+
+/* ORBITING RUNES */
+.rune-orbit {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 500px; height: 500px;
+  transform: translate(-50%, -50%);
+  animation: starRotate 30s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+.rune-orbit span {
+  position: absolute;
+  font-size: 1rem;
+  color: rgba(200,160,48,0.1);
+  top: 0; left: 50%;
+  transform: translateX(-50%);
+}
+
+/* TAROT CARD */
+.tarot-card {
+  width: 260px;
+  border: 2px solid rgba(200,160,48,0.4);
+  padding: 2rem 1.5rem;
+  position: relative;
+  background: linear-gradient(180deg, var(--deep-purple) 0%, var(--bg) 100%);
+  animation: mysticalGlow 4s ease-in-out infinite, orbFloat 8s ease-in-out infinite;
+  text-align: center;
+  flex-shrink: 0;
+  margin-right: 4rem;
+  z-index: 1;
+}
+.tarot-card::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(200,160,48,0.15);
+  pointer-events: none;
+}
+.card-roman {
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  color: var(--gold);
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+}
+.card-symbol {
+  font-size: 5rem;
+  display: block;
+  margin: 1rem 0;
+  animation: goldPulse 3s ease-in-out infinite;
+}
+.card-name {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+.card-meaning {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.card-ornament {
+  margin-top: 1.5rem;
+  color: rgba(200,160,48,0.3);
+  letter-spacing: 0.5em;
+  font-size: 0.8rem;
+}
+
+/* HERO TEXT */
+.hero-text {
+  max-width: 500px;
+  position: relative; z-index: 1;
+  animation: runeReveal 1.5s both;
+}
+.hero-category {
+  font-size: 0.65rem;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgba(200,160,48,0.5);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.hero-category::before {
+  content: '✦';
+  color: var(--gold);
+  animation: starRotate 5s linear infinite;
+  display: inline-block;
+}
+.hero-title {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+  font-weight: 400;
+}
+.hero-title em {
+  font-style: normal;
+  color: var(--gold-light);
+  animation: goldPulse 5s ease-in-out infinite;
+  display: inline-block;
+}
+.hero-sub {
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.9;
+  color: var(--muted);
+}
+.hero-meta {
+  margin-top: 2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(200,160,48,0.4);
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 5rem 2rem;
+  border-bottom: 1px solid rgba(200,160,48,0.08);
+}
+/* BORDER ORNAMENTS */
+.article::before {
+  content: '✦ ✦ ✦';
+  display: block;
+  text-align: center;
+  color: rgba(200,160,48,0.3);
+  letter-spacing: 0.5em;
+  margin-bottom: 2rem;
+  font-size: 0.8rem;
+}
+.article h2 {
+  font-size: 1.3rem;
+  font-weight: 400;
+  color: var(--gold);
+  text-align: center;
+  margin-bottom: 2rem;
+  letter-spacing: 0.05em;
+  animation: goldPulse 6s ease-in-out infinite;
+}
+.article p {
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(216,208,240,0.75);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+}
+.article p em { color: var(--gold-light); font-style: italic; }
+.article p:first-of-type::first-letter {
+  font-size: 4.5rem;
+  float: left;
+  line-height: 0.8;
+  margin-right: 0.15em;
+  color: var(--gold);
+  padding-top: 0.1em;
+}
+.mystic-break {
+  text-align: center;
+  color: rgba(200,160,48,0.3);
+  font-size: 1rem;
+  letter-spacing: 0.8em;
+  margin: 2rem 0;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 2rem 5rem;
+  border-bottom: 1px solid rgba(200,160,48,0.08);
+}
+.comments-title {
+  text-align: center;
+  font-size: 0.8rem;
+  letter-spacing: 0.3em;
+  color: rgba(200,160,48,0.5);
+  padding: 3rem 0 2rem;
+  text-transform: uppercase;
+}
+.comment {
+  padding: 2rem 0;
+  border-bottom: 1px solid rgba(200,160,48,0.06);
+  position: relative;
+}
+.comment:last-child { border-bottom: none; }
+.comment::before {
+  content: '✦';
+  position: absolute;
+  left: -2rem; top: 2rem;
+  color: rgba(200,160,48,0.2);
+  font-size: 0.7rem;
+}
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.comment-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--silver);
+  letter-spacing: 0.05em;
+}
+.comment-date {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: rgba(200,160,48,0.3);
+}
+.comment p {
+  font-style: italic;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: rgba(216,208,240,0.6);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--deep-purple);
+  border-top: 1px solid rgba(200,160,48,0.15);
+  padding: 3rem;
+  text-align: center;
+}
+.footer-seal {
+  font-size: 2rem;
+  color: rgba(200,160,48,0.3);
+  letter-spacing: 0.5em;
+  margin-bottom: 1rem;
+  animation: starRotate 15s linear infinite;
+  display: inline-block;
+}
+.footer-name {
+  font-size: 1.1rem;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  animation: goldPulse 4s ease-in-out infinite;
+}
+.footer-copy {
+  font-size: 0.7rem;
+  font-style: italic;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">
+    <span class="rune">✦</span>
+    Le Grimoire
+  </a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="symbol-bg" aria-hidden="true">✡</div>
+  <div class="rune-orbit" aria-hidden="true">
+    <span style="transform:translateX(-50%) rotate(0deg) translateY(-240px) rotate(0deg)">ᚨ</span>
+    <span style="transform:translateX(-50%) rotate(45deg) translateY(-240px) rotate(-45deg)">ᛒ</span>
+    <span style="transform:translateX(-50%) rotate(90deg) translateY(-240px) rotate(-90deg)">ᚲ</span>
+    <span style="transform:translateX(-50%) rotate(135deg) translateY(-240px) rotate(-135deg)">ᛞ</span>
+    <span style="transform:translateX(-50%) rotate(180deg) translateY(-240px) rotate(-180deg)">ᛖ</span>
+    <span style="transform:translateX(-50%) rotate(225deg) translateY(-240px) rotate(-225deg)">ᚠ</span>
+    <span style="transform:translateX(-50%) rotate(270deg) translateY(-240px) rotate(-270deg)">ᚷ</span>
+    <span style="transform:translateX(-50%) rotate(315deg) translateY(-240px) rotate(-315deg)">ᚺ</span>
+  </div>
+
+  <div class="tarot-card">
+    <div class="card-roman">XVIII — Le Grimoire</div>
+    <span class="card-symbol">🌕</span>
+    <div class="card-name">La Lune</div>
+    <div class="card-meaning">Mystère · Illusion · Intuition · Les profondeurs inconscientes</div>
+    <div class="card-ornament">✦ ✦ ✦</div>
+  </div>
+
+  <div class="hero-text">
+    <div class="hero-category">Arcanes des Savoirs Occultes</div>
+    <h1 class="hero-title">
+      Les Voiles<br>de <em>l'Invisible</em>
+    </h1>
+    <p class="hero-sub">Quand la raison atteint ses limites, d'autres formes de connaissance prennent le relais. Non pas l'irrationnel — mais l'anté-rationnel, le fondement que la logique repose sans jamais voir.</p>
+    <div class="hero-meta">
+      <span>Sibylline Morrigan</span>
+      <span>✦</span>
+      <span>16 Mars 2026</span>
+      <span>✦</span>
+      <span>7 min</span>
+    </div>
+  </div>
+</section>
+
+<article class="article">
+  <h2>Sur la Connaissance par les Ombres</h2>
+
+  <p>Les traditions ésotériques n'ont jamais prétendu contredire la science. Elles prétendent la précéder — et parfois la compléter. L'astrologie babylonienne est née d'une observation méticuleuse des cycles célestes, bien avant que Newton formule les lois de la gravitation. Le Tarot est une carte du psyché humain, une topographie des états mentaux dessinée avant que Jung invente la psychologie analytique.</p>
+
+  <div class="mystic-break">✦ ᚨ ✦ ᛒ ✦</div>
+
+  <p>Ce n'est pas de la superstition — c'est de la <em>phénoménologie préscientifique</em>. Des générations d'observateurs ont catalogué des correspondances entre états intérieurs et événements extérieurs, sans avoir les outils conceptuels pour les formaliser. Les résultats sont parfois précis, parfois vagues — comme toute observation qualitative avant sa formalisation rigoureuse.</p>
+
+  <p>La lune n'<em>influence</em> pas les marées de l'âme par un mécanisme physique identifiable. Mais la lune nous a appris, au fil des millénaires, à observer nos propres cycles intérieurs — en projetant sur l'astre nos rythmes biologiques et émotionnels. La <em>métaphore comme outil d'introspection</em> : c'est peut-être là l'essentiel de ce qu'on appelle la sagesse occulte.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">✦ Transmissions des Initiés ✦</div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Hermias Caducée</span>
+      <span class="comment-date">12 mars 2026</span>
+    </div>
+    <p>La distinction "antérieur à la raison" vs "contraire à la raison" est fondamentale et rarement faite. L'occident a rejeté l'intuition comme non-rationnelle alors qu'elle peut être pré-rationnelle — base non formalisée de connaissance.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Selene Nocturne</span>
+      <span class="comment-date">14 mars 2026</span>
+    </div>
+    <p>La comparaison Jung/Tarot est classique mais le Jung tardif (Synchronicité, 1952) est plus prudent qu'on ne le cite : il ne valide pas le tarot comme outil divinatoire mais comme "miroir de projection archétypale". Nuance importante.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Malachite R.</span>
+      <span class="comment-date">15 mars 2026</span>
+    </div>
+    <p>La beauté visuelle de cet article — design mystique, runes en orbite — sert le propos en créant un état d'attention différent. On ne lit pas l'occultisme comme on lit un article de technologie. La forme prépare la réception.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-seal">✦</div>
+  <div class="footer-name">Le Grimoire</div>
+  <div class="footer-copy">© MMXXVI — Arcanes & Mystères — Omnia sunt arcana</div>
+</footer>
+
+</body>
+</html>

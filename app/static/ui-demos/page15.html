@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DARK ACADEMIA — BIBLIOTHÈQUE OBSCURE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+
+:root {
+  --bg: #0E0C08;
+  --parchment: #D4C49A;
+  --ink: #E8DFC8;
+  --sepia: #8B7355;
+  --dark-sepia: #3D2E14;
+  --gold: #C8A84A;
+  --aged: #F0E8D0;
+  --brown: #5C3D11;
+  --shadow: #1A1208;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'EB Garamond', serif;
+  font-size: 17px;
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* PARCHMENT TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: 
+    repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(200,168,74,0.04) 29px, rgba(200,168,74,0.04) 30px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* VIGNETTE */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes flickerCandle {
+  0%, 100% { opacity: 0.95; transform: scale(1); }
+  5% { opacity: 0.85; transform: scale(0.99); }
+  10% { opacity: 0.97; transform: scale(1.01); }
+  20% { opacity: 0.9; }
+  30% { opacity: 0.95; }
+  50% { opacity: 0.88; }
+  70% { opacity: 0.96; }
+}
+@keyframes inkBleed {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pageReveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: var(--shadow);
+  border-bottom: 1px solid var(--dark-sepia);
+  display: flex;
+  align-items: center;
+  padding: 0 4rem;
+  animation: flickerCandle 8s ease-in-out infinite;
+}
+.nav-logo {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.05em;
+}
+.nav-logo span {
+  font-style: normal;
+  font-size: 0.7rem;
+  color: var(--sepia);
+  margin-left: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--sepia);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-style: italic;
+  transition: color 0.4s;
+  letter-spacing: 0.05em;
+}
+nav ul li a:hover { color: var(--parchment); }
+
+/* HEADER */
+header {
+  margin-top: 64px;
+  padding: 5rem 8rem 4rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid var(--dark-sepia);
+  background: linear-gradient(to bottom, var(--shadow), transparent);
+}
+.header-seal {
+  font-size: 2rem;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  animation: flickerCandle 5s ease-in-out infinite;
+  letter-spacing: 0.3em;
+}
+.header-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--dark-sepia), var(--gold), var(--dark-sepia), transparent);
+  margin: 1.5rem auto;
+  max-width: 500px;
+}
+header h1 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
+  font-weight: 400;
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--parchment);
+  margin-bottom: 1rem;
+  animation: pageReveal 1.5s 0.5s both;
+}
+header h1 em {
+  font-style: normal;
+  color: var(--gold);
+}
+.header-sub {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--sepia);
+  letter-spacing: 0.1em;
+}
+
+/* MAIN LAYOUT */
+.main-content {
+  position: relative; z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 5rem 4rem;
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 5rem;
+}
+
+/* ARTICLE */
+.article h2 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  color: var(--parchment);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--dark-sepia);
+  position: relative;
+}
+.article h2::after {
+  content: '✦';
+  position: absolute;
+  bottom: -0.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg);
+  padding: 0 0.5rem;
+  color: var(--gold);
+  font-size: 0.8rem;
+}
+.article p {
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(232,223,200,0.8);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+  hyphens: auto;
+}
+.article p:first-of-type::first-letter {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 4.5rem;
+  font-weight: 700;
+  line-height: 0.8;
+  float: left;
+  margin-right: 0.1em;
+  color: var(--gold);
+  padding-top: 0.1em;
+}
+.article .quote {
+  border-left: 2px solid var(--gold);
+  padding: 1rem 2rem;
+  margin: 2rem 0;
+  font-style: italic;
+  color: var(--parchment);
+  position: relative;
+}
+.article .quote::before {
+  content: '"';
+  position: absolute;
+  top: -0.5rem; left: 1rem;
+  font-size: 3rem;
+  color: var(--gold);
+  opacity: 0.3;
+  line-height: 1;
+  font-family: 'Libre Baskerville', serif;
+}
+
+/* SIDEBAR */
+.sidebar {}
+.sidebar-block {
+  padding: 1.5rem;
+  border: 1px solid var(--dark-sepia);
+  margin-bottom: 2rem;
+  position: relative;
+  background: rgba(58,46,20,0.2);
+}
+.sidebar-block::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 2px; height: 100%;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+}
+.sidebar-block-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--gold);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+.sidebar-block p {
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--sepia);
+  line-height: 1.7;
+}
+
+/* FOOTNOTE DIVIDER */
+.footnote-rule {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  color: var(--dark-sepia);
+  font-size: 0.8rem;
+  font-style: italic;
+  letter-spacing: 0.2em;
+}
+.footnote-rule::before, .footnote-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--dark-sepia);
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 4rem 5rem;
+  border-top: 1px solid var(--dark-sepia);
+}
+.comments-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1rem;
+  font-style: italic;
+  color: var(--gold);
+  padding: 2rem 0 1.5rem;
+  letter-spacing: 0.1em;
+}
+.comment {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--dark-sepia);
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 2rem;
+}
+.comment:last-child { border-bottom: none; }
+.comment-left {
+  text-align: right;
+  border-right: 1px solid var(--dark-sepia);
+  padding-right: 2rem;
+}
+.comment-name {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--parchment);
+  margin-bottom: 0.25rem;
+}
+.comment-date {
+  font-size: 0.75rem;
+  color: var(--sepia);
+  font-style: italic;
+}
+.comment p {
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.8;
+  color: rgba(232,223,200,0.7);
+  padding-left: 2rem;
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--shadow);
+  border-top: 1px solid var(--dark-sepia);
+  padding: 3rem 4rem;
+  text-align: center;
+  animation: flickerCandle 10s ease-in-out infinite;
+}
+.footer-seal { font-size: 1.5rem; color: var(--gold); margin-bottom: 0.75rem; letter-spacing: 0.3em; }
+.footer-name {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  color: var(--gold);
+  margin-bottom: 0.25rem;
+}
+.footer-copy {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--sepia);
+  letter-spacing: 0.1em;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">Bibliothèque Obscure<span>Est. MDCCXCVIII</span></a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="header-seal">⸻ ✦ ⸻</div>
+  <h1>Sur la Mélancolie<br>des <em>Bibliothèques Vides</em></h1>
+  <div class="header-rule"></div>
+  <p class="header-sub">Essai — Isadora Fontaine-Grey — Mars 2026 — 7 minutes de lecture</p>
+</header>
+
+<div class="main-content">
+  <article class="article">
+    <h2>De l'Odeur des Vieux Livres comme Forme de Mémoire</h2>
+
+    <p>Il existe un mot allemand pour cette chose : <em>Bibliosmie</em> — la mémoire olfactive des livres. L'odeur particulière des volumes anciens, mélange de vanilline et de benzaldéhyde issu de la dégradation lente du papier, agit sur l'amygdale cérébrale d'une façon que les neurobiologistes ont mis des années à cartographier.</p>
+
+    <div class="quote">
+      "Une bibliothèque, c'est tout un monde. Entrez et fermez la porte derrière vous. Le présent disparaît."<br>
+      <small>— Jorge Luis Borges</small>
+    </div>
+
+    <p>Les bibliothèques obscures — celles que personne ne fréquente plus, celles des maisons de campagne abandonnées, celles des couvents — conservent non seulement des textes mais des atmosphères. Chaque livre fermé contient du temps suspendu. L'acte de l'ouvrir est une forme de résurrection.</p>
+
+    <div class="footnote-rule">✦ ✦ ✦</div>
+
+    <p>Le mouvement Dark Academia, né sur les réseaux sociaux aux alentours de 2020, a redécouvert cette vérité que les humanistes du XIXème siècle connaissaient intimement : l'apprentissage a une esthétique, et cette esthétique est profondément sombre. La lampe de bureau, les notes dans les marges, le café froid, la nuit qui avance — autant de rituels d'un rapport au savoir qui refuse la lumière crue du présent.</p>
+  </article>
+
+  <div class="sidebar">
+    <div class="sidebar-block">
+      <div class="sidebar-block-title">Épigraphe</div>
+      <p>"Dans la bibliothèque, les vivants et les morts coexistent."<br>— Umberto Eco</p>
+    </div>
+    <div class="sidebar-block">
+      <div class="sidebar-block-title">Lectures Conseillées</div>
+      <p>· <em>Le Nom de la Rose</em> — Eco<br>· <em>La Bibliothèque de Babel</em> — Borges<br>· <em>The Secret History</em> — Tartt</p>
+    </div>
+    <div class="sidebar-block">
+      <div class="sidebar-block-title">Parution</div>
+      <p><em>Revue des Ombres</em>, Vol. XIV<br>Mars 2026 — pp. 47-58</p>
+    </div>
+  </div>
+</div>
+
+<section class="comments">
+  <div class="comments-title">Annotations des Lecteurs — III</div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="comment-name">Dr. Arnaud V.</div>
+      <div class="comment-date">12 mars 2026</div>
+    </div>
+    <p>La distinction entre <em>bibliosmie</em> comme mémoire olfactive et la madeleine proustienne mériterait développement. Proust utilisait le goût comme vecteur de temps retrouvé — l'odeur des livres fonctionne différemment car elle ne déplace pas dans un souvenir précis, mais dans une atmosphère temporelle diffuse.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="comment-name">Céleste M.</div>
+      <div class="comment-date">14 mars 2026</div>
+    </div>
+    <p>Le rapprochement avec le Dark Academia est intéressant mais risqué. Le mouvement sur les réseaux est souvent une <em>esthétisation</em> superficielle du savoir — l'image du carnet ouvert près d'une tasse de thé sans nécessairement la profondeur du rapport intellectuel décrit ici.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-left">
+      <div class="comment-name">Theo R-B.</div>
+      <div class="comment-date">15 mars 2026</div>
+    </div>
+    <p>La phrase "chaque livre fermé contient du temps suspendu" est simplement belle. C'est exactement la raison pour laquelle je ne vends jamais mes livres même lus — ils conservent quelque chose du moment où je les ai lus.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-seal">⸻ ✦ ⸻</div>
+  <div class="footer-name">Bibliothèque Obscure</div>
+  <div class="footer-copy">© MMXXVI — Savoir, Ombre &amp; Mémoire — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

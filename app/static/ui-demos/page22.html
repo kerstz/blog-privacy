@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SWISS — NEUE GRID</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100;0,300;0,700;1,300&display=swap');
+
+:root {
+  --bg: #0A0A0A;
+  --white: #F5F5F5;
+  --red: #E63322;
+  --gray: #2A2A2A;
+  --mid: #444;
+  --unit: 8px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 300;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* GRID SYSTEM (8pt) */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 48px;
+}
+.row {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+}
+
+@keyframes lineReveal {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes numberCount {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  border-bottom: 1px solid var(--gray);
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  align-items: center;
+}
+.nav-brand {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  border-right: 1px solid var(--gray);
+  padding: 0 32px;
+}
+.nav-brand a {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--white);
+  text-decoration: none;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.nav-links {
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  height: 64px;
+}
+.nav-links a {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  padding: 0 24px;
+  color: var(--mid);
+  text-decoration: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-left: 1px solid var(--gray);
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--white); }
+.nav-links a:last-child { border-right: 1px solid var(--gray); }
+
+/* HERO */
+.hero {
+  margin-top: 64px;
+  padding-top: 96px;
+  padding-bottom: 96px;
+  border-bottom: 1px solid var(--gray);
+  position: relative;
+}
+.hero-number {
+  position: absolute;
+  top: 0; left: 0;
+  width: 200px;
+  height: 100%;
+  border-right: 1px solid var(--gray);
+  display: flex;
+  align-items: flex-start;
+  padding: 96px 0 0 32px;
+}
+.hero-number span {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mid);
+  writing-mode: vertical-rl;
+}
+.hero-content {
+  margin-left: 200px;
+  padding: 0 48px;
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 24px;
+  align-items: end;
+}
+.hero-title-col {
+  grid-column: 1 / 8;
+}
+.hero-meta-col {
+  grid-column: 9 / 11;
+  padding-bottom: 8px;
+}
+h1 {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 0;
+}
+h1 em {
+  font-style: normal;
+  color: var(--red);
+}
+.hero-line {
+  height: 3px;
+  background: var(--red);
+  margin-top: 24px;
+  animation: lineReveal 1s ease-out both;
+  transform-origin: left;
+}
+.meta-item {
+  margin-bottom: 16px;
+}
+.meta-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 4px;
+}
+.meta-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.05em;
+}
+
+/* ARTICLE */
+.article-section {
+  border-bottom: 1px solid var(--gray);
+}
+.article-grid {
+  display: grid;
+  grid-template-columns: 200px 1fr 300px;
+  align-items: start;
+}
+.article-sidebar-left {
+  border-right: 1px solid var(--gray);
+  padding: 48px 32px;
+  height: 100%;
+}
+.sidebar-num {
+  font-size: 4rem;
+  font-weight: 100;
+  color: var(--gray);
+  line-height: 1;
+  margin-bottom: 8px;
+  animation: numberCount 1s both;
+}
+.sidebar-tag {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--mid);
+}
+.sidebar-cat {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--red);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+  margin-top: 16px;
+}
+.article-body {
+  padding: 48px;
+  animation: slideUp 0.8s 0.3s both;
+}
+.article-body h2 {
+  font-size: 1.4rem;
+  font-weight: 300;
+  line-height: 1.3;
+  margin-bottom: 32px;
+  letter-spacing: -0.01em;
+}
+.article-body h2 strong { font-weight: 700; }
+.article-body p {
+  font-size: 0.9rem;
+  line-height: 1.8;
+  color: rgba(245,245,245,0.7);
+  margin-bottom: 24px;
+  max-width: 65ch;
+}
+.article-body p .red { color: var(--red); font-weight: 700; }
+.pull {
+  font-size: 1.2rem;
+  font-weight: 100;
+  font-style: italic;
+  color: var(--white);
+  border-top: 1px solid var(--gray);
+  border-bottom: 1px solid var(--gray);
+  padding: 24px 0;
+  margin: 32px 0;
+  line-height: 1.5;
+}
+.article-sidebar-right {
+  border-left: 1px solid var(--gray);
+  padding: 48px 32px;
+}
+.right-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 16px;
+}
+.right-block {
+  border-top: 1px solid var(--gray);
+  padding-top: 16px;
+  margin-bottom: 24px;
+}
+.right-text {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: rgba(245,245,245,0.5);
+}
+
+/* COMMENTS */
+.comments-section {
+  border-bottom: 1px solid var(--gray);
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+.comments-label-col {
+  border-right: 1px solid var(--gray);
+  padding: 48px 32px;
+}
+.comments-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--mid);
+  writing-mode: vertical-rl;
+}
+.comments-body {
+  padding: 48px;
+}
+.comments-body h2 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mid);
+  margin-bottom: 32px;
+}
+.comment {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 32px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--gray);
+}
+.comment:last-child { border-bottom: none; }
+.comment-left {
+  border-right: 1px solid var(--gray);
+  padding-right: 32px;
+}
+.comment-name {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 4px;
+}
+.comment-date {
+  font-size: 0.65rem;
+  color: var(--mid);
+  letter-spacing: 0.1em;
+}
+.comment p {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: rgba(245,245,245,0.6);
+}
+
+/* FOOTER */
+footer {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+}
+.footer-left {
+  border-right: 1px solid var(--gray);
+  padding: 32px;
+}
+.footer-brand {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.footer-brand span { color: var(--red); }
+.footer-right {
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.footer-copy {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--mid);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><a href="#">NEUE GRID</a></div>
+  <div class="nav-links">
+    <a href="#">Accueil</a>
+    <a href="#">About</a>
+    <a href="#">Contact</a>
+    <a href="#">Login</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-number">
+    <span>Article No. 022 — 2026</span>
+  </div>
+  <div class="hero-content">
+    <div class="hero-title-col">
+      <h1>La Grille<br>comme <em>Liberté</em></h1>
+      <div class="hero-line"></div>
+    </div>
+    <div class="hero-meta-col">
+      <div class="meta-item">
+        <div class="meta-label">Auteur</div>
+        <div class="meta-value">Müller H.</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Date</div>
+        <div class="meta-value">16.03.2026</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Lecture</div>
+        <div class="meta-value">4 min</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="article-section">
+  <div class="article-grid">
+    <div class="article-sidebar-left">
+      <div class="sidebar-num">22</div>
+      <div class="sidebar-tag">Article</div>
+      <div class="sidebar-cat">Swiss Style</div>
+    </div>
+    <div class="article-body">
+      <h2>Le Style International :<br><strong>contrainte ou libération ?</strong></h2>
+      <p>Le Style International Typographique — né à Zurich et Bâle dans les années 1950 — a été à la fois le mouvement le plus influent et le plus mal compris du design graphique. Ses détracteurs l'ont accusé de <span class="red">froideur clinique</span>, d'uniformisation stérilisante. Ses apologistes ont vu en lui la définition même du design moderne.</p>
+      <div class="pull">La grille n'est pas une cage. C'est un tremplin.</div>
+      <p>Karl Gerstner, Josef Müller-Brockmann — ces noms sont associés à une rigueur qui intimidait les esprits créatifs des années 60. Pourtant, le paradoxe est frappant : les contraintes que la grille impose libèrent l'esprit des décisions arbitraires pour le concentrer sur ce qui compte vraiment — <span class="red">la relation entre les éléments</span>.</p>
+      <p>Le design sombre contemporain qui s'approprie ces codes suisse retrouve quelque chose d'essentiel : la clarté comme acte de respect envers le lecteur. Pas de décoration inutile. Chaque élément justifié. Chaque espace intentionnel.</p>
+    </div>
+    <div class="article-sidebar-right">
+      <div class="right-label">Références</div>
+      <div class="right-block">
+        <div class="right-text">K. Gerstner, "Designing Programmes", 1964</div>
+      </div>
+      <div class="right-block">
+        <div class="right-text">J. Müller-Brockmann, "Grid Systems", 1981</div>
+      </div>
+      <div class="right-block">
+        <div class="right-text">E. Ruder, "Typography", 1967</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="comments-section">
+  <div class="comments-label-col">
+    <div class="comments-label">Commentaires — 3</div>
+  </div>
+  <div class="comments-body">
+    <h2>Réponses des Lecteurs</h2>
+
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">Max R.</div>
+        <div class="comment-date">13.03.2026</div>
+      </div>
+      <p>La distinction entre "contrainte" et "libération" est le cœur du débat. Gerstner lui-même disait que la grille est un programme — un espace de variations possibles, pas une règle fixe.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">Lena B.</div>
+        <div class="comment-date">14.03.2026</div>
+      </div>
+      <p>Ce que le Swiss Style dark perd c'est la couleur expressive — l'original utilisait abondamment le rouge (ce rouge suisse précis). L'adaptation sombre est fidèle à l'esprit mais change le caractère.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">H. Fischer</div>
+        <div class="comment-date">15.03.2026</div>
+      </div>
+      <p>IBM Plex Sans comme choix de police ici — judicieux. C'est la seule grotesque moderne qui honore vraiment l'esprit suisse sans copier Helvetica. IBM a fait un excellent travail.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-left">
+    <div class="footer-brand">NEUE<span> GRID</span></div>
+  </div>
+  <div class="footer-right">
+    <div class="footer-copy">© 2026 — Swiss International Style — All Rights Reserved</div>
+  </div>
+</footer>
+
+</body>
+</html>

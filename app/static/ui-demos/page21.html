@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ART NOUVEAU — JARDIN NOCTURNE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Uncial+Antiqua&display=swap');
+
+:root {
+  --bg: #060E06;
+  --forest: #0A1A0A;
+  --gold: #C6933A;
+  --gold-light: #E8B85A;
+  --green: #2A5C2A;
+  --deep-green: #1A3A1A;
+  --purple: #3A1A5C;
+  --cream: #EDE5C8;
+  --sage: #8AAA6A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--cream);
+  font-family: 'Philosopher', serif;
+  font-size: 17px;
+  line-height: 1.8;
+  overflow-x: hidden;
+}
+
+/* ART NOUVEAU VINE BORDERS */
+@keyframes vineGrow {
+  from { stroke-dashoffset: 1000; opacity: 0; }
+  to { stroke-dashoffset: 0; opacity: 1; }
+}
+@keyframes petalSway {
+  0%, 100% { transform: rotate(-3deg) translateX(0); }
+  50% { transform: rotate(3deg) translateX(5px); }
+}
+@keyframes goldShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes moonGlow {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+@keyframes leafFloat {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  33% { transform: rotate(5deg) translateY(-8px); }
+  66% { transform: rotate(-3deg) translateY(4px); }
+}
+
+/* ORNAMENTAL SVG VINE (inline) */
+.vine-border {
+  width: 100%;
+  height: 60px;
+  overflow: hidden;
+  position: relative;
+}
+.vine-border svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: rgba(6,14,6,0.97);
+  border-bottom: 1px solid var(--green);
+  height: 68px;
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+}
+.nav-logo {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: 1.1rem;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light), var(--gold));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: goldShimmer 5s linear infinite;
+}
+.nav-ornament {
+  color: var(--green);
+  margin: 0 1rem;
+  font-size: 1.2rem;
+  animation: petalSway 4s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2rem;
+  margin-left: auto;
+}
+nav ul li a {
+  color: var(--sage);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-style: italic;
+  transition: color 0.4s;
+  position: relative;
+  letter-spacing: 0.05em;
+}
+nav ul li a::before {
+  content: '❦';
+  margin-right: 0.4rem;
+  color: var(--gold);
+  font-style: normal;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+nav ul li a:hover { color: var(--cream); }
+nav ul li a:hover::before { opacity: 1; }
+
+/* HEADER */
+header {
+  margin-top: 68px;
+  position: relative;
+  overflow: hidden;
+}
+.header-bg {
+  min-height: 75vh;
+  background: radial-gradient(ellipse 80% 60% at 50% 60%, rgba(42,92,42,0.2) 0%, transparent 70%),
+              radial-gradient(ellipse 50% 80% at 30% 40%, rgba(58,26,92,0.15) 0%, transparent 60%),
+              var(--forest);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 5rem 3rem;
+  text-align: center;
+}
+
+/* MOON */
+.moon {
+  position: absolute;
+  top: 2rem; right: 8%;
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--gold-light), var(--gold));
+  box-shadow: 0 0 30px rgba(198,147,58,0.4), 0 0 80px rgba(198,147,58,0.15);
+  animation: moonGlow 6s ease-in-out infinite;
+}
+.moon::after {
+  content: '';
+  position: absolute;
+  top: 5px; right: 5px;
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, transparent 50%);
+}
+
+/* FLORAL DECORATIONS */
+.floral {
+  position: absolute;
+  font-size: 3rem;
+  opacity: 0.15;
+  color: var(--gold);
+  animation: leafFloat ease-in-out infinite;
+}
+.floral.f1 { top: 10%; left: 3%; font-size: 5rem; animation-duration: 8s; animation-delay: 0s; }
+.floral.f2 { top: 60%; left: 2%; font-size: 3rem; animation-duration: 6s; animation-delay: -2s; }
+.floral.f3 { top: 20%; right: 3%; font-size: 4rem; animation-duration: 7s; animation-delay: -4s; }
+.floral.f4 { bottom: 10%; right: 5%; font-size: 3.5rem; animation-duration: 9s; animation-delay: -1s; }
+
+.header-content {
+  position: relative;
+  z-index: 1;
+  max-width: 700px;
+}
+.header-ornament {
+  font-size: 1rem;
+  letter-spacing: 1em;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  opacity: 0.7;
+}
+header h1 {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: clamp(2rem, 6vw, 4.5rem);
+  line-height: 1.2;
+  color: var(--cream);
+  margin-bottom: 1rem;
+  text-shadow: 0 0 30px rgba(198,147,58,0.3);
+}
+header h1 em {
+  font-style: normal;
+  color: var(--gold-light);
+  display: block;
+  font-size: 0.7em;
+  letter-spacing: 0.1em;
+}
+.header-sub {
+  font-style: italic;
+  color: var(--sage);
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+}
+
+/* VINE SEPARATOR */
+.vine-sep {
+  text-align: center;
+  padding: 1rem;
+  font-size: 1.2rem;
+  color: var(--gold);
+  opacity: 0.4;
+  letter-spacing: 0.5em;
+  position: relative; z-index: 1;
+}
+
+/* ARTICLE */
+.article-wrapper {
+  position: relative; z-index: 1;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 4rem 2rem 5rem;
+}
+/* ORNAMENTAL BORDER */
+.article-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: linear-gradient(to bottom, transparent, var(--gold), var(--sage), var(--gold), transparent);
+  opacity: 0.3;
+}
+.article-meta {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--sage);
+  letter-spacing: 0.1em;
+  margin-bottom: 2.5rem;
+  padding-left: 2rem;
+}
+.article-wrapper h2 {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: 1.3rem;
+  color: var(--gold);
+  margin-bottom: 2rem;
+  padding-left: 2rem;
+  line-height: 1.4;
+}
+.article-wrapper p {
+  font-size: 1rem;
+  line-height: 2;
+  color: rgba(237,229,200,0.8);
+  margin-bottom: 1.5rem;
+  text-align: justify;
+  padding-left: 2rem;
+}
+.article-wrapper p:first-of-type::first-letter {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: 4.5rem;
+  float: left;
+  margin-right: 0.15em;
+  line-height: 0.85;
+  color: var(--gold);
+  text-shadow: 0 0 20px rgba(198,147,58,0.4);
+}
+.article-wrapper p em { color: var(--gold); font-style: italic; }
+
+/* NATURE DIVIDER */
+.nature-div {
+  padding-left: 2rem;
+  margin: 2rem 0;
+  color: var(--sage);
+  font-size: 0.85rem;
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  opacity: 0.6;
+}
+.nature-div::before, .nature-div::after {
+  content: '❦';
+  color: var(--gold);
+  font-size: 1rem;
+  font-style: normal;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 2rem 5rem;
+  border-top: 1px solid rgba(198,147,58,0.2);
+}
+.comments-title {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: 1rem;
+  color: var(--gold);
+  padding: 2rem 0 1.5rem 2rem;
+  letter-spacing: 0.05em;
+}
+.comment {
+  padding: 1.5rem 0 1.5rem 2rem;
+  border-bottom: 1px solid rgba(198,147,58,0.1);
+  position: relative;
+}
+.comment::before {
+  content: '❧';
+  position: absolute;
+  left: 0; top: 1.5rem;
+  color: var(--gold);
+  opacity: 0.4;
+  font-size: 0.8rem;
+}
+.comment:last-child { border-bottom: none; }
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.comment-name {
+  font-family: 'Philosopher', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--cream);
+}
+.comment-date {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--sage);
+}
+.comment p {
+  font-size: 0.95rem;
+  font-style: italic;
+  line-height: 1.8;
+  color: rgba(237,229,200,0.65);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--forest);
+  border-top: 1px solid rgba(198,147,58,0.2);
+  padding: 3rem;
+  text-align: center;
+}
+.footer-brand {
+  font-family: 'Uncial Antiqua', cursive;
+  font-size: 1.2rem;
+  color: var(--gold);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.1em;
+}
+.footer-ornament {
+  font-size: 1rem;
+  color: var(--green);
+  letter-spacing: 0.5em;
+  margin-bottom: 0.5rem;
+}
+.footer-copy {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--sage);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">Jardin Nocturne</a>
+  <span class="nav-ornament">❦</span>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<header>
+  <div class="header-bg">
+    <div class="moon"></div>
+    <div class="floral f1">🌿</div>
+    <div class="floral f2">🍃</div>
+    <div class="floral f3">🌱</div>
+    <div class="floral f4">🌿</div>
+
+    <div class="header-content">
+      <div class="header-ornament">❦ ❦ ❦</div>
+      <h1>
+        Les Jardins<br>
+        <em>de Minuit</em>
+      </h1>
+      <p class="header-sub">Méditation sur la beauté des plantes qui fleurissent dans l'obscurité</p>
+    </div>
+  </div>
+</header>
+
+<div class="vine-sep">⸻ ❦ ❦ ❦ ⸻</div>
+
+<div class="article-wrapper">
+  <div class="article-meta">
+    <span>Selene Beaumont</span>
+    <span>·</span>
+    <span>16 Mars 2026</span>
+    <span>·</span>
+    <span>5 minutes</span>
+  </div>
+
+  <h2>De la Grâce des Formes qui Refusent la Lumière</h2>
+
+  <p>Il existe une botanique nocturne que les hortologues ignorent souvent : les plantes qui ont évolué pour <em>fleurir dans l'ombre</em>. Non par manque de lumière, mais par choix sélectif millénaire. La Belle de Nuit, le Jasmin de Nuit, la Fleur de Lune — autant d'espèces dont la beauté s'épanouit précisément quand le monde s'endort.</p>
+
+  <div class="nature-div">Sur la persistance de la beauté dans les endroits que la lumière du jour ne touche pas</div>
+
+  <p>L'Art Nouveau a compris cette vérité avant les naturalistes : il n'y a pas de hiérarchie entre la lumière et l'ombre dans le monde végétal. Les courbes organiques d'Hector Guimard, les iris stylisés d'Alphonse Mucha — tous puisaient dans cette grammaire naturelle qui ne distingue pas entre ce qui est <em>visible</em> et ce qui est <em>réel</em>.</p>
+
+  <p>Les vrilles, les tiges qui s'enroulent, les pétales qui s'ouvrent vers la nuit plutôt que vers le soleil — voilà le vocabulaire d'un design qui refuse la rhétorique de la clarté. La beauté n'a pas besoin d'être <em>évidente</em>. Elle peut être chuchotée.</p>
+</div>
+
+<section class="comments">
+  <div class="comments-title">Réponses des Lecteurs — ❦</div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Flora Montagne</span>
+      <span class="comment-date">13 mars 2026</span>
+    </div>
+    <p>La mention de la Belle de Nuit est particulièrement juste. La Mirabilis jalapa s'ouvre à 17h précisément — elle a une horloge interne qui répond aux températures, pas à la lumière. Un chef-d'œuvre d'évolution.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Théo Arsenault</span>
+      <span class="comment-date">14 mars 2026</span>
+    </div>
+    <p>Mucha n'est pas toujours cité comme "naturaliste" mais sa relation aux plantes était documentée — il photographiait des fleurs pour ses études de courbes. L'Art Nouveau était aussi une discipline d'observation.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Iris V-M.</span>
+      <span class="comment-date">15 mars 2026</span>
+    </div>
+    <p>"La beauté peut être chuchotée" — c'est une phrase qui restera. Elle dit quelque chose de fondamental sur la différence entre présence et déclamation dans le design.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-ornament">❦ ❦ ❦</div>
+  <div class="footer-brand">Jardin Nocturne</div>
+  <div class="footer-copy">© 2026 — Beauté dans l'Ombre — Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INDUSTRIAL — FORGEMASTER</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Saira+Condensed:wght@300;400;700;900&display=swap');
+
+:root {
+  --bg: #0A0A0A;
+  --metal: #2A2A2A;
+  --steel: #4A4A4A;
+  --rust: #8B2500;
+  --rust-bright: #C04000;
+  --copper: #B87333;
+  --warning: #FFB300;
+  --text: #C8C4BC;
+  --light: #E8E0D4;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 400;
+  overflow-x: hidden;
+}
+
+/* METAL PLATE TEXTURE */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(255,255,255,0.015) 19px, rgba(255,255,255,0.015) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.01) 39px, rgba(255,255,255,0.01) 40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* RIVET MIXIN */
+.rivet::before, .rivet::after {
+  content: '●';
+  font-size: 0.5rem;
+  color: var(--steel);
+  position: absolute;
+}
+
+/* ANIMATIONS */
+@keyframes sparkle {
+  0%, 90%, 100% { opacity: 0; transform: scale(0); }
+  5% { opacity: 1; transform: scale(1); }
+  10% { opacity: 0; transform: scale(0); }
+}
+@keyframes rustGlow {
+  0%, 100% { box-shadow: inset 0 0 20px rgba(139,37,0,0.3); }
+  50% { box-shadow: inset 0 0 40px rgba(192,64,0,0.5); }
+}
+@keyframes chainRattle {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+@keyframes pressureGauge {
+  from { stroke-dashoffset: 220; }
+  to { stroke-dashoffset: 55; }
+}
+@keyframes warningBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes slideIn {
+  from { transform: translateX(-30px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 60px;
+  background: linear-gradient(to bottom, var(--metal), var(--bg));
+  border-bottom: 3px solid var(--steel);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  gap: 2rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1);
+}
+/* Rivets */
+nav::before, nav::after {
+  content: '●';
+  font-size: 0.7rem;
+  color: var(--steel);
+  flex-shrink: 0;
+}
+.nav-logo {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--copper);
+  text-decoration: none;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+.nav-logo span { color: var(--warning); }
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.2rem;
+  height: 60px;
+  line-height: 60px;
+  color: var(--text);
+  text-decoration: none;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-left: 1px solid var(--steel);
+  transition: all 0.2s;
+  position: relative;
+}
+nav ul li a::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--rust);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s;
+}
+nav ul li a:hover {
+  color: var(--warning);
+  background: rgba(255,179,0,0.05);
+}
+nav ul li a:hover::before { transform: scaleX(1); }
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 60px;
+  display: grid;
+  grid-template-columns: 6px 1fr 300px;
+  min-height: 75vh;
+  border-bottom: 3px solid var(--steel);
+}
+
+.hero-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--warning) 0, var(--warning) 10px,
+    var(--bg) 10px, var(--bg) 20px
+  );
+  opacity: 0.8;
+}
+
+.hero-main {
+  padding: 5rem 4rem;
+  border-right: 3px solid var(--steel);
+  animation: slideIn 0.8s both;
+}
+.hero-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--rust-bright);
+  margin-bottom: 2rem;
+}
+.hero-tag::before {
+  content: '▶▶';
+  font-size: 0.6rem;
+}
+.hero-title {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: clamp(3rem, 8vw, 7rem);
+  font-weight: 900;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 1.5rem;
+  color: var(--light);
+  text-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+}
+.hero-title .rust-word { color: var(--rust-bright); }
+.hero-title .copper-word { color: var(--copper); }
+.hero-desc {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text);
+  max-width: 50ch;
+  border-left: 3px solid var(--rust);
+  padding-left: 1.5rem;
+}
+
+/* GAUGE PANEL */
+.hero-panel {
+  padding: 3rem 2rem;
+  background: var(--metal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+.panel-title {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--copper);
+  text-align: center;
+}
+.gauge-svg {
+  width: 140px; height: 140px;
+}
+.gauge-circle {
+  fill: none;
+  stroke: var(--steel);
+  stroke-width: 12;
+}
+.gauge-fill {
+  fill: none;
+  stroke: var(--rust-bright);
+  stroke-width: 12;
+  stroke-linecap: butt;
+  stroke-dasharray: 220;
+  stroke-dashoffset: 220;
+  animation: pressureGauge 3s 0.5s ease-out forwards;
+}
+.gauge-text {
+  font-family: 'Saira Condensed', monospace;
+  font-size: 1.5rem;
+  font-weight: 900;
+  fill: var(--warning);
+  text-anchor: middle;
+}
+.gauge-label {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.6rem;
+  fill: var(--copper);
+  text-anchor: middle;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.metric {
+  width: 100%;
+  border: 1px solid var(--steel);
+  padding: 0.75rem;
+  background: var(--bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.metric-key {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+.metric-val {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--warning);
+}
+
+/* WARNING BAR */
+.warning-bar {
+  position: relative; z-index: 1;
+  padding: 0.75rem 3rem;
+  background: var(--rust);
+  border-top: 2px solid var(--rust-bright);
+  border-bottom: 2px solid var(--rust-bright);
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  animation: rustGlow 3s ease-in-out infinite;
+}
+.warning-icon {
+  font-size: 1.2rem;
+  animation: warningBlink 1s ease-in-out infinite;
+}
+.warning-text {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--warning);
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 6px 1fr;
+  border-bottom: 3px solid var(--steel);
+}
+.article-stripe {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--rust) 0, var(--rust) 8px,
+    var(--bg) 8px, var(--bg) 16px
+  );
+  opacity: 0.5;
+}
+.article-inner {
+  padding: 4rem 3rem;
+}
+.article-inner h2 {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--copper);
+  margin-bottom: 1.5rem;
+}
+.article-inner h2::before {
+  content: '/// ';
+  color: var(--rust);
+}
+.article-inner p {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text);
+  margin-bottom: 1.2rem;
+  max-width: 70ch;
+}
+.article-inner .tech { color: var(--warning); font-weight: 700; }
+.bolt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--steel);
+  background: var(--metal);
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--copper);
+  margin: 1rem 0;
+}
+.bolt::before { content: '⬡'; }
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem 3rem;
+  border-bottom: 3px solid var(--steel);
+}
+.comments h2 {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--copper);
+  margin-bottom: 2rem;
+}
+.comment {
+  border: 1px solid var(--steel);
+  border-left: 4px solid var(--rust-bright);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(42,42,42,0.5);
+  position: relative;
+}
+.comment::after {
+  content: '●';
+  position: absolute;
+  top: 1rem; right: 1rem;
+  color: var(--steel);
+  font-size: 0.5rem;
+}
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.comment-name {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--copper);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.comment-date {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.75rem;
+  color: var(--steel);
+  letter-spacing: 0.15em;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--metal);
+  border-top: 3px solid var(--steel);
+  padding: 2rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--copper);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.footer-logo span { color: var(--warning); }
+.footer-copy {
+  font-family: 'Saira Condensed', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  color: var(--steel);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">FORGE<span>MASTER</span></a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-stripe"></div>
+  <div class="hero-main">
+    <div class="hero-tag">Industrie Lourde — Section 7A</div>
+    <h1 class="hero-title">
+      L'ACIER<br>
+      <span class="rust-word">NE MENT</span><br>
+      <span class="copper-word">PAS</span>
+    </h1>
+    <p class="hero-desc">Dans les ateliers où le métal est forgé, il n'y a pas de place pour l'esthétique gratuite. Chaque forme répond à une contrainte. Chaque surface porte la marque de sa fabrication.</p>
+  </div>
+  <div class="hero-panel">
+    <div class="panel-title">// Données Système</div>
+    <svg class="gauge-svg" viewBox="0 0 140 140">
+      <circle class="gauge-circle" cx="70" cy="70" r="55" stroke-dasharray="220" stroke-dashoffset="0" transform="rotate(-126 70 70)"/>
+      <circle class="gauge-fill" cx="70" cy="70" r="55" transform="rotate(-126 70 70)"/>
+      <text class="gauge-text" x="70" y="75">78%</text>
+      <text class="gauge-label" x="70" y="92">PRESSION</text>
+    </svg>
+    <div class="metric">
+      <span class="metric-key">Vues</span>
+      <span class="metric-val">3,147</span>
+    </div>
+    <div class="metric">
+      <span class="metric-key">Temp. lecture</span>
+      <span class="metric-val">5 MIN</span>
+    </div>
+    <div class="metric">
+      <span class="metric-key">Date</span>
+      <span class="metric-val">16.03.26</span>
+    </div>
+  </div>
+</section>
+
+<div class="warning-bar">
+  <span class="warning-icon">⚠</span>
+  <span class="warning-text">Zone de forge active — Contenu à haute température — Protection requise</span>
+  <span class="warning-icon">⚠</span>
+</div>
+
+<section class="article">
+  <div class="article-stripe"></div>
+  <div class="article-inner">
+    <h2>LA BEAUTÉ DU MÉTAL BRUT</h2>
+    <div class="bolt">Matériaux : Acier S355 · Fonte grise · Cuivre C11000</div>
+    <p>Les grandes forges industrielles du XIXème siècle ont engendré une esthétique que personne n'avait planifiée. Les <span class="tech">rivets exposés</span>, les poutres métalliques apparentes, les gaines de vapeur serpentant sous les plafonds — tout cela était fonctionnel, utilitaire, nécessaire. Et pourtant, quelque chose de beau en émergeait.</p>
+    <p>Le pont Gustave Eiffel sur le Viaduc de Garabit (1884) en est l'exemple parfait : chaque arc est calculé au millimètre selon les contraintes mécaniques, chaque <span class="tech">membrure en treillis</span> répond à une équation de charge. Le résultat est d'une élégance que aucun design "conscient" de la période n'a égalé.</p>
+    <p>C'est la leçon industrielle : la <span class="tech">contrainte comme générateur de forme</span>. Quand la matière et les forces en jeu dictent la géométrie, on obtient souvent une beauté que l'ornement artificiel ne peut reproduire. Le métal dit sa propre vérité.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>// RAPPORTS DE TERRAIN</h2>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">Kovacs_Métal</span>
+      <span class="comment-date">14.03.2026</span>
+    </div>
+    <p>Ingénieur métallurgiste ici. La distinction entre beauté fonctionnelle et ornementale est exacte mais nuancée : les Victoriens ajoutaient aussi des ornements sur leurs ponts. La frontière n'est jamais nette.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">ForgeMaître_7</span>
+      <span class="comment-date">15.03.2026</span>
+    </div>
+    <p>Le Viaduc de Garabit est un chef-d'œuvre mais l'arc en crescent n'était pas uniquement fonctionnel — Eiffel avait des choix formels conscients. La frontière entre ingénierie et architecture est toujours poreuse.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-header">
+      <span class="comment-name">RustPatina</span>
+      <span class="comment-date">16.03.2026</span>
+    </div>
+    <p>La rouille comme patine est le sujet qui manque ici. L'oxyde de fer sur l'acier Corten est délibérément utilisé comme finition — la dégradation elle-même devient esthétique. L'industrial design contemporain célèbre l'impermanence.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">FORGE<span>MASTER</span></div>
+  <div class="footer-copy">© 2026 — L'Acier Ne Ment Pas — Section 7A</div>
+</footer>
+
+</body>
+</html>

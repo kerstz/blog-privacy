@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>静寂 — Silence Journal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400&family=Zen+Kurenaido&display=swap');
+
+:root {
+  --bg: #0C0B0A;
+  --paper: #F0EDE8;
+  --ink: #E8E2D9;
+  --accent: #C17560;
+  --muted: #5A5450;
+  --line: rgba(240,237,232,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 300;
+  line-height: 1.9;
+  overflow-x: hidden;
+  font-size: 15px;
+}
+
+/* HORIZONTAL LINES */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 39px,
+    var(--line) 39px,
+    var(--line) 40px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes inkDrop {
+  0% { opacity: 0; transform: scale(0.3); }
+  60% { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideRight {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 4rem;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.nav-logo {
+  font-family: 'Zen Kurenaido', sans-serif;
+  font-size: 1.4rem;
+  color: var(--accent);
+  text-decoration: none;
+  margin-right: auto;
+  letter-spacing: 0.1em;
+}
+.nav-logo span {
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 200;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-left: 0.75rem;
+  letter-spacing: 0.2em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 2.5rem;
+}
+nav ul li a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.75rem;
+  letter-spacing: 0.25em;
+  font-weight: 300;
+  transition: color 0.5s;
+}
+nav ul li a:hover { color: var(--ink); }
+
+/* MAIN */
+main {
+  position: relative;
+  z-index: 1;
+  margin-top: 64px;
+}
+
+/* HERO */
+.hero {
+  min-height: 85vh;
+  display: flex;
+  align-items: center;
+  padding: 6rem 4rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  gap: 8rem;
+}
+.hero-jp {
+  writing-mode: vertical-rl;
+  font-family: 'Zen Kurenaido', sans-serif;
+  font-size: clamp(3rem, 10vh, 7rem);
+  color: rgba(240,237,232,0.06);
+  letter-spacing: 0.2em;
+  user-select: none;
+  flex-shrink: 0;
+}
+.hero-content {
+  flex: 1;
+  animation: fadeIn 2s ease both;
+}
+.hero-date {
+  font-size: 0.75rem;
+  letter-spacing: 0.35em;
+  color: var(--muted);
+  margin-bottom: 3rem;
+  text-transform: uppercase;
+}
+.hero-h1 {
+  font-family: 'Zen Kurenaido', sans-serif;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--ink);
+  margin-bottom: 1rem;
+  animation: slideRight 1.5s 0.3s both;
+}
+.hero-h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-haiku {
+  margin: 3rem 0;
+  border-left: 1px solid var(--accent);
+  padding-left: 2rem;
+}
+.hero-haiku p {
+  font-size: 1rem;
+  line-height: 2;
+  color: var(--muted);
+  font-style: italic;
+  font-weight: 200;
+}
+.hero-haiku .haiku-attr {
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: rgba(90,84,80,0.6);
+  margin-top: 0.5rem;
+}
+.hero-intro {
+  font-size: 0.95rem;
+  line-height: 2;
+  color: rgba(232,226,217,0.7);
+  max-width: 45ch;
+}
+
+/* RED DOT */
+.red-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+  margin-bottom: 4rem;
+  animation: inkDrop 1s 0.5s both;
+}
+
+/* ARTICLE */
+.article {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 4rem 2rem 6rem;
+  border-top: 1px solid var(--line);
+}
+.article-meta {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 3rem;
+}
+.article h2 {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--ink);
+  margin-bottom: 2rem;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+}
+.article p {
+  font-size: 0.95rem;
+  line-height: 2.1;
+  color: rgba(232,226,217,0.75);
+  margin-bottom: 2rem;
+  text-align: justify;
+}
+.article p .kana {
+  font-family: 'Zen Kurenaido', sans-serif;
+  color: var(--accent);
+  font-size: 1.1em;
+}
+
+/* BREAK */
+.article-break {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.5em;
+}
+.article-break::before, .article-break::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* COMMENTS */
+.comments {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 2rem 6rem;
+  border-top: 1px solid var(--line);
+}
+.comments-title {
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 3rem 0 2rem;
+}
+.comment {
+  padding: 2rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.comment:last-child { border-bottom: none; }
+.comment-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.comment-name {
+  font-size: 0.85rem;
+  font-weight: 400;
+  color: var(--ink);
+  letter-spacing: 0.1em;
+}
+.comment-date {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.2em;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.9;
+  color: rgba(232,226,217,0.6);
+  font-style: italic;
+}
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.footer-logo {
+  font-family: 'Zen Kurenaido', sans-serif;
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+.footer-copy {
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  color: var(--muted);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">静寂<span>Silence Journal</span></a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<main>
+  <section class="hero">
+    <div class="hero-jp" aria-hidden="true">静寂の声</div>
+    <div class="hero-content">
+      <div class="hero-date">16 mars 2026 &nbsp;·&nbsp; journal n°47</div>
+      <div class="red-dot"></div>
+      <h1 class="hero-h1">L'art de ne rien<br>faire <em>bien</em></h1>
+      <div class="hero-haiku">
+        <p>Neige sur l'encre noire —<br>
+        le pinceau s'arrête.<br>
+        Rien à corriger.</p>
+        <div class="haiku-attr">— Matsuo Bashō, trans. libre</div>
+      </div>
+      <p class="hero-intro">Dans une culture qui célèbre la productivité comme vertu cardinale, apprendre à s'immobiliser est un acte de résistance subtile.</p>
+    </div>
+  </section>
+
+  <article class="article">
+    <div class="article-meta">
+      <span>Akemi Laurent</span>
+      <span>5 minutes</span>
+      <span>Philosophie</span>
+    </div>
+
+    <h2>Sur la pratique du <span class="kana">間</span> — l'espace entre</h2>
+
+    <p>Les maîtres de la calligraphie japonaise enseignent que ce n'est pas le trait qui fait la lettre — c'est l'espace entre les traits. Le <span class="kana">間</span> (ma) : cet intervalle vivant où la forme respire, où le sens émerge non de la présence mais de l'absence maîtrisée.</p>
+
+    <div class="article-break">◦&nbsp;&nbsp;◦&nbsp;&nbsp;◦</div>
+
+    <p>Transposons cela au design contemporain. Chaque élément d'une interface occupe de l'espace — mais aussi chaque élément décide de l'espace qu'il ne prendra pas. La marge généreuse n'est pas du gaspillage : c'est du <span class="kana">間</span>. Elle crée la respiration qui rend la lecture possible, qui signale que ce qui est ici mérite qu'on s'y attarde.</p>
+
+    <p>Le minimalisme japonais n'est pas l'absence de contenu. C'est la présence précise de ce qui est nécessaire, entouré du silence qui lui confère son poids. Une seule pierre dans un jardin sec dit plus qu'une mosaïque.</p>
+  </article>
+
+  <section class="comments">
+    <div class="comments-title">Réponses — 3 lecteurs</div>
+
+    <div class="comment">
+      <div class="comment-top">
+        <span class="comment-name">Hinata M.</span>
+        <span class="comment-date">13 mars</span>
+      </div>
+      <p>Le concept de Ma est souvent mal traduit comme "espace négatif" — mais il n'est pas négatif du tout. Il est plein de potentialité. Votre article capture bien cette nuance.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-top">
+        <span class="comment-name">Pierre-Luc D.</span>
+        <span class="comment-date">14 mars</span>
+      </div>
+      <p>Je pense à Cage et sa pièce 4'33'' en lisant ceci. Le silence comme composition. L'absence comme présence. Même territoire philosophique, différente culture.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-top">
+        <span class="comment-name">Yuki S.</span>
+        <span class="comment-date">15 mars</span>
+      </div>
+      <p>日本語でコメントを書いてもいいですか？間の概念をここまで正確に捉えた外国語の記事を読んだのは初めてです。とても美しい。</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="footer-logo">静寂</div>
+  <div class="footer-copy">© 2026 · Silence Journal · Tous droits réservés</div>
+</footer>
+
+</body>
+</html>

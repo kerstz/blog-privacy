@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POP ART SOMBRE — SÉRIGRAPHIE NOIRE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Passion+One:wght@400;700&family=Open+Sans:wght@300;400&display=swap');
+
+:root {
+  --bg: #0A0A0A;
+  --pop1: #FF0066; /* hot pink */
+  --pop2: #FFDD00; /* yellow */
+  --pop3: #00BBFF; /* cyan */
+  --pop4: #FF6600; /* orange */
+  --pop5: #44FF00; /* lime */
+  --text: #FFFFFF;
+  --dots: rgba(255,255,255,0.07);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Open Sans', sans-serif;
+  overflow-x: hidden;
+}
+
+/* BENDAY DOTS BACKGROUND */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--dots) 2px, transparent 2px);
+  background-size: 14px 14px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ANIMATIONS */
+@keyframes popIn {
+  0% { transform: scale(0) rotate(-15deg); opacity: 0; }
+  60% { transform: scale(1.1) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes colorCycle {
+  0% { background-color: var(--pop1); }
+  25% { background-color: var(--pop3); }
+  50% { background-color: var(--pop2); }
+  75% { background-color: var(--pop4); }
+  100% { background-color: var(--pop1); }
+}
+@keyframes zap {
+  0%, 90%, 100% { transform: rotate(-3deg) scale(1); }
+  92% { transform: rotate(3deg) scale(1.05); }
+  94% { transform: rotate(-2deg) scale(0.98); }
+}
+@keyframes dotsPulse {
+  0%, 100% { opacity: 0.07; }
+  50% { opacity: 0.12; }
+}
+@keyframes stripeMove {
+  from { background-position: 0 0; }
+  to { background-position: 40px 0; }
+}
+@keyframes warhol {
+  0%, 100% { filter: hue-rotate(0deg) saturate(1.5); }
+  25% { filter: hue-rotate(90deg) saturate(2); }
+  50% { filter: hue-rotate(180deg) saturate(1.8); }
+  75% { filter: hue-rotate(270deg) saturate(2); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  height: 56px;
+  background: var(--bg);
+  border-bottom: 4px solid var(--pop1);
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+}
+.nav-logo {
+  font-family: 'Bangers', cursive;
+  font-size: 1.6rem;
+  letter-spacing: 0.1em;
+  color: var(--pop2);
+  text-decoration: none;
+  text-shadow: 3px 3px 0 var(--pop1);
+  animation: zap 10s infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0.3rem 1rem;
+  color: var(--bg);
+  text-decoration: none;
+  font-family: 'Passion One', cursive;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  background: var(--text);
+  border: 2px solid var(--bg);
+  transition: background 0.2s;
+}
+nav ul li:nth-child(2) a { background: var(--pop1); }
+nav ul li:nth-child(3) a { background: var(--pop3); }
+nav ul li:nth-child(4) a { background: var(--pop2); }
+nav ul li a:hover { animation: colorCycle 0.5s infinite; }
+
+/* HERO — 4-GRID WARHOL */
+.warhol-grid {
+  margin-top: 56px;
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  min-height: 80vh;
+}
+.warhol-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 2rem;
+  overflow: hidden;
+  border: 4px solid var(--bg);
+  text-align: center;
+}
+.warhol-cell:nth-child(1) { background: var(--pop1); }
+.warhol-cell:nth-child(2) { background: var(--pop3); }
+.warhol-cell:nth-child(3) { background: var(--pop2); }
+.warhol-cell:nth-child(4) { background: var(--pop4); }
+
+/* Benday dots overlay per cell */
+.warhol-cell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(0,0,0,0.15) 2px, transparent 2px);
+  background-size: 10px 10px;
+  pointer-events: none;
+}
+
+.cell-portrait {
+  font-size: 8rem;
+  line-height: 1;
+  filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.4));
+  animation: popIn 0.8s both;
+  margin-bottom: 0.5rem;
+}
+.warhol-cell:nth-child(1) .cell-portrait { animation-delay: 0s; }
+.warhol-cell:nth-child(2) .cell-portrait { animation-delay: 0.2s; }
+.warhol-cell:nth-child(3) .cell-portrait { animation-delay: 0.4s; }
+.warhol-cell:nth-child(4) .cell-portrait { animation-delay: 0.6s; }
+
+.cell-label {
+  font-family: 'Bangers', cursive;
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+  color: var(--bg);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+
+/* HERO CAPTION */
+.hero-caption {
+  position: relative; z-index: 1;
+  background: var(--bg);
+  padding: 3rem 4rem;
+  border-bottom: 4px solid var(--pop2);
+  display: flex;
+  align-items: baseline;
+  gap: 3rem;
+  flex-wrap: wrap;
+}
+.hero-title {
+  font-family: 'Bangers', cursive;
+  font-size: clamp(3rem, 8vw, 6rem);
+  letter-spacing: 0.05em;
+  color: var(--pop2);
+  text-shadow: 4px 4px 0 var(--pop1);
+  line-height: 1;
+  animation: zap 12s infinite;
+}
+.hero-sub {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.6);
+  max-width: 400px;
+  flex: 1;
+}
+.hero-meta {
+  font-family: 'Passion One', cursive;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: var(--pop1);
+  white-space: nowrap;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  padding: 5rem 4rem;
+  max-width: 850px;
+  margin: 0 auto;
+  border-bottom: 4px solid rgba(255,0,102,0.3);
+}
+.pow-label {
+  display: inline-block;
+  background: var(--pop1);
+  color: var(--bg);
+  font-family: 'Bangers', cursive;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 1rem;
+  transform: rotate(-2deg);
+  margin-bottom: 2rem;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.5);
+  animation: zap 8s infinite;
+}
+.article h2 {
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+  color: var(--pop3);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  margin-bottom: 2rem;
+}
+.article p {
+  font-size: 0.9rem;
+  line-height: 1.9;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--pop3);
+  padding-left: 1.5rem;
+}
+.article p:nth-child(even) { border-left-color: var(--pop1); }
+.article p:nth-child(3n) { border-left-color: var(--pop2); }
+.article p .pop { font-family: 'Bangers', cursive; font-size: 1.1em; letter-spacing: 0.05em; }
+.article p .pop1 { color: var(--pop1); }
+.article p .pop2 { color: var(--pop2); }
+.article p .pop3 { color: var(--pop3); }
+
+/* ZAP DIVIDER */
+.zap-divider {
+  text-align: center;
+  margin: 2rem 0;
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  letter-spacing: 0.3em;
+  color: var(--pop4);
+  animation: zap 5s infinite;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  padding: 4rem;
+  max-width: 850px;
+  margin: 0 auto;
+}
+.comments-title {
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  letter-spacing: 0.1em;
+  color: var(--pop5);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+  margin-bottom: 2rem;
+}
+.comment {
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: 3px solid;
+  position: relative;
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.comment:nth-child(1) { border-color: var(--pop1); }
+.comment:nth-child(2) { border-color: var(--pop3); }
+.comment:nth-child(3) { border-color: var(--pop5); }
+.comment-name {
+  font-family: 'Passion One', cursive;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+.comment:nth-child(1) .comment-name { color: var(--pop1); }
+.comment:nth-child(2) .comment-name { color: var(--pop3); }
+.comment:nth-child(3) .comment-name { color: var(--pop5); }
+.comment-date {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.85rem;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.6);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--pop1);
+  border-top: 4px solid var(--bg);
+  padding: 2rem 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-brand {
+  font-family: 'Bangers', cursive;
+  font-size: 1.5rem;
+  letter-spacing: 0.1em;
+  color: var(--bg);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+}
+.footer-copy {
+  font-size: 0.75rem;
+  color: rgba(0,0,0,0.5);
+  font-weight: 300;
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">POW!</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<div class="warhol-grid">
+  <div class="warhol-cell">
+    <div class="cell-portrait">👁️</div>
+    <div class="cell-label">REGARD</div>
+  </div>
+  <div class="warhol-cell">
+    <div class="cell-portrait">💋</div>
+    <div class="cell-label">DÉSIR</div>
+  </div>
+  <div class="warhol-cell">
+    <div class="cell-portrait">⚡</div>
+    <div class="cell-label">POUVOIR</div>
+  </div>
+  <div class="warhol-cell">
+    <div class="cell-portrait">🌸</div>
+    <div class="cell-label">ICÔNE</div>
+  </div>
+</div>
+
+<div class="hero-caption">
+  <h1 class="hero-title">RÉPÉTITION<br>COMME ART</h1>
+  <p class="hero-sub">Warhol a compris avant tout le monde : dans la société de consommation, la reproduction détruit le sens original pour en créer un nouveau. Le produit devient icône par sa seule omniprésence.</p>
+  <div class="hero-meta">Léo Fontaine · 17 Mars 2026 · 5 min</div>
+</div>
+
+<article class="article">
+  <div class="pow-label">POW!</div>
+  <h2>L'Icône par la Répétition</h2>
+
+  <p>Andy Warhol n'a pas inventé le <span class="pop pop2">Pop Art</span> — mais il a inventé son système théorique. Sa série Campbell's Soup Cans (1962) n'est pas une célébration de la soupe en conserve, c'est une <span class="pop pop1">déconstruction</span> du regard : si vous regardez 32 fois la même image, que voyez-vous ? La chose ou l'image de la chose ?</p>
+
+  <div class="zap-divider">★ ZAP ★</div>
+
+  <p>La sérigraphie est au cœur de l'esthétique Warhol. Elle permet la <span class="pop pop3">reproduction mécanique</span> avec légères variations involontaires — les dérives d'encre, les approximations de couleur, le grain de la superposition. Ce n'est pas un bug : c'est la signature du processus. Chaque exemplaire est identique ET unique, comme les individus dans la masse.</p>
+
+  <p>Sur fond noir, les couleurs pop explosent différemment. La <span class="pop pop1">saturation maximale</span> sur le sombre crée un effet de profondeur impossible sur fond blanc. Les icônes pop sur noir ne célèbrent plus — elles <span class="pop pop2">avertissent</span>. La société de consommation exposée à l'ultraviolet de sa propre logique.</p>
+</article>
+
+<section class="comments">
+  <div class="comments-title">BAM! LES LECTEURS RÉAGISSENT</div>
+
+  <div class="comment">
+    <div class="comment-name">ART_CRITIC_777</div>
+    <div class="comment-date">15 mars 2026</div>
+    <p>L'analyse "répétition = déconstruction du regard" est valide mais il faut aussi mentionner la critique sociale implicite : Warhol venait d'une famille pauvre d'immigrants. Son obsession pour les produits de masse n'est pas innocente — c'est l'enfant pauvre qui regarde les vitrines des supermarchés.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">SÉRIGRAPHE_INC</div>
+    <div class="comment-date">16 mars 2026</div>
+    <p>La sérigraphie de Warhol était gérée par des assistants à la Factory — lui supervisait mais ne tirait pas lui-même. Cette "dé-authentification" du geste artistique était délibérée et conceptuellement cohérente avec le reste de son œuvre.</p>
+  </div>
+
+  <div class="comment">
+    <div class="comment-name">NOIR_POP_ZINE</div>
+    <div class="comment-date">17 mars 2026</div>
+    <p>Pop Art sur fond noir — il y a une lignée : Jean-Michel Basquiat mixait l'esthétique pop avec le fond sombre pour dénoncer ce que Warhol célébrait. Deux artistes qui se connaissaient, deux utilisations opposées de la même grammaire visuelle.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">POW! ZINE</div>
+  <div class="footer-copy">© 2026 — Art sur fond noir · Sérigraphie digitale</div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRUTALIST SWISS PUNK — ANARCHITEKTUR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,100;0,400;0,700;0,900;1,900&family=IBM+Plex+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #0D0D0D;
+  --white: #F0EEE8;
+  --red: #E80000;
+  --yellow: #FFEE00;
+  --black: #000000;
+  --gray: #2A2A2A;
+  --mid: #5A5A5A;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--white);
+  font-family: 'IBM Plex Mono', monospace;
+  overflow-x: hidden;
+}
+
+/* GRID OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(240,238,232,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(240,238,232,0.03) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* PUNK DISTORTION */
+@keyframes punkShake {
+  0%, 96%, 100% { transform: translate(0,0) rotate(0deg); }
+  97% { transform: translate(-3px, 1px) rotate(-0.5deg); }
+  98% { transform: translate(2px, -1px) rotate(0.3deg); }
+  99% { transform: translate(-1px, 2px) rotate(-0.2deg); }
+}
+@keyframes redFlash {
+  0%, 94%, 100% { opacity: 1; }
+  95% { opacity: 0.7; }
+  96% { opacity: 1; }
+}
+@keyframes gridSlide {
+  from { transform: translateX(-80px); }
+  to { transform: translateX(0px); }
+}
+@keyframes strikeThrough {
+  from { width: 0; }
+  to { width: 100%; }
+}
+@keyframes scanDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100vh); }
+}
+
+/* PUNK SCANLINE */
+.punk-scan {
+  position: fixed;
+  left: 0; right: 0;
+  height: 2px;
+  background: rgba(232,0,0,0.3);
+  z-index: 999;
+  pointer-events: none;
+  animation: scanDown 6s linear infinite;
+}
+
+/* NAV — SWISS GRID BUT BROKEN */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 56px;
+  background: var(--black);
+  border-bottom: 3px solid var(--red);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  padding: 0;
+  animation: redFlash 20s infinite;
+}
+.nav-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  text-decoration: none;
+  padding: 0 1.5rem;
+  border-right: 1px solid var(--gray);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  text-transform: uppercase;
+}
+.nav-logo span { color: var(--red); }
+.nav-counter {
+  padding: 0 1.5rem;
+  font-size: 0.65rem;
+  color: var(--mid);
+  font-style: italic;
+  letter-spacing: 0.05em;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  height: 100%;
+  margin: 0;
+}
+nav ul li {
+  border-left: 1px solid var(--gray);
+}
+nav ul li a {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 1.2rem;
+  color: var(--mid);
+  text-decoration: none;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  transition: all 0.15s;
+  font-weight: 700;
+}
+nav ul li a:hover { color: var(--white); background: var(--red); }
+
+/* HERO — BRUTALIST SWISS GRID BROKEN BY PUNK */
+.hero {
+  margin-top: 56px;
+  position: relative; z-index: 1;
+  min-height: 85vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  border-bottom: 3px solid var(--gray);
+  overflow: hidden;
+}
+
+/* HERO LEFT — MASSIVE TYPE */
+.hero-left {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  padding: 5rem 3rem;
+  border-right: 1px solid var(--gray);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.hero-left::before {
+  content: 'ANAR-\ARCHITEKTUR';
+  position: absolute;
+  top: 0; left: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 100;
+  font-size: 18vw;
+  line-height: 0.85;
+  color: rgba(240,238,232,0.03);
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  pointer-events: none;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: break-all;
+}
+
+.hero-number {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.65rem;
+  color: var(--red);
+  letter-spacing: 0.2em;
+  margin-bottom: 1rem;
+}
+
+.hero-big-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(4rem, 10vw, 9rem);
+  line-height: 0.85;
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  margin-bottom: 2rem;
+  animation: punkShake 15s infinite;
+}
+.hero-big-title .struck {
+  position: relative;
+  display: inline-block;
+}
+.hero-big-title .struck::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 48%;
+  height: 3px;
+  background: var(--red);
+  animation: strikeThrough 0.8s 1s both;
+  width: 100%;
+}
+
+.hero-rule {
+  width: 100%;
+  height: 1px;
+  background: var(--red);
+  margin-bottom: 1rem;
+}
+
+.hero-meta {
+  font-size: 0.65rem;
+  color: var(--mid);
+  line-height: 2;
+}
+.hero-meta span { display: block; }
+.hero-meta .accent { color: var(--red); }
+
+/* HERO RIGHT TOP */
+.hero-right-top {
+  grid-column: 2;
+  grid-row: 1;
+  padding: 5rem 3rem 2rem;
+  border-bottom: 1px solid var(--gray);
+}
+.hero-subtitle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--yellow);
+  margin-bottom: 1.5rem;
+}
+.hero-text {
+  font-size: 0.8rem;
+  line-height: 1.8;
+  color: rgba(240,238,232,0.55);
+}
+
+/* HERO RIGHT BOTTOM — PUNK LIST */
+.hero-right-bottom {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 2rem 3rem;
+  background: var(--black);
+}
+.punk-list {
+  list-style: none;
+}
+.punk-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--gray);
+  font-size: 0.7rem;
+  color: var(--mid);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem;
+  align-items: center;
+}
+.punk-list li:last-child { border-bottom: none; }
+.punk-list .num { color: var(--red); font-weight: 700; }
+.punk-list .item { text-transform: uppercase; letter-spacing: 0.05em; }
+.punk-list .val { color: var(--yellow); }
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 5rem 0;
+  gap: 0;
+  border-bottom: 1px solid var(--gray);
+}
+.article-sidebar {
+  border-right: 1px solid var(--gray);
+  padding: 0 1.5rem;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.article-sidebar-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--red);
+  font-weight: 700;
+}
+.article-main {
+  padding: 0 3rem;
+}
+.article-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--white);
+  margin-bottom: 2rem;
+  line-height: 1.2;
+}
+.article-title .red { color: var(--red); }
+.article-title .yellow { color: var(--yellow); }
+.article p {
+  font-size: 0.8rem;
+  line-height: 1.9;
+  color: rgba(240,238,232,0.6);
+  margin-bottom: 1.5rem;
+}
+.article p strong { color: var(--red); font-weight: 700; }
+.article p em { color: var(--yellow); font-style: italic; }
+
+/* PUNK PULL QUOTE */
+.punk-quote {
+  border: 1px solid var(--red);
+  border-left: 4px solid var(--red);
+  padding: 1.5rem;
+  margin: 2rem 0;
+  background: rgba(232,0,0,0.05);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--white);
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+}
+.punk-quote::before {
+  content: '//';
+  color: var(--red);
+  margin-right: 0.5rem;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 0 5rem;
+}
+.comments-sidebar {
+  border-right: 1px solid var(--gray);
+  padding: 0 1.5rem;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  display: flex;
+  align-items: center;
+  padding-top: 5rem;
+}
+.comments-sidebar-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gray);
+  font-weight: 700;
+}
+.comments-main {
+  padding: 5rem 3rem 0;
+}
+.comment {
+  border-top: 1px solid var(--gray);
+  padding: 1.5rem 0;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 2rem;
+}
+.comment:first-child { border-top-color: var(--red); }
+.comment-left .comment-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+  color: var(--white);
+  margin-bottom: 0.25rem;
+}
+.comment-left .comment-date {
+  font-size: 0.6rem;
+  color: var(--mid);
+}
+.comment p {
+  font-size: 0.8rem;
+  line-height: 1.7;
+  color: rgba(240,238,232,0.55);
+}
+.comment p strong { color: var(--yellow); }
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--black);
+  border-top: 3px solid var(--red);
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 2rem;
+}
+.footer-brand {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--white);
+}
+.footer-brand span { color: var(--red); }
+.footer-rule { width: 100%; height: 1px; background: var(--gray); }
+.footer-copy {
+  font-size: 0.6rem;
+  color: var(--mid);
+  text-align: right;
+  line-height: 1.8;
+}
+</style>
+</head>
+<body>
+<div class="punk-scan" aria-hidden="true"></div>
+
+<nav>
+  <a href="#" class="nav-logo">ANAR<span>CH</span>ITEKTUR</a>
+  <div class="nav-counter">Vol.38 / No.2026</div>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-number">// 038</div>
+    <h1 class="hero-big-title">
+      DESTROY<br>
+      <span class="struck">DESIGN</span><br>
+      REBUILD
+    </h1>
+    <div class="hero-rule"></div>
+    <div class="hero-meta">
+      <span class="accent">AUTEUR: Felix Grosz</span>
+      <span>DATE: 19.03.2026</span>
+      <span>LECTURE: 7MIN</span>
+    </div>
+  </div>
+
+  <div class="hero-right-top">
+    <div class="hero-subtitle">// Le Punk Rencontre le Swiss</div>
+    <p class="hero-text">Quand la grille helvétique—outil du capitalisme tardif—est sabotée de l'intérieur, que reste-t-il ? Une structure qui expose sa propre construction. Une honnêteté brutale sur les règles du jeu.</p>
+  </div>
+
+  <div class="hero-right-bottom">
+    <ul class="punk-list">
+      <li><span class="num">01</span><span class="item">Grid — ROMPU</span><span class="val">67%</span></li>
+      <li><span class="num">02</span><span class="item">Typographie — CHOQUANTE</span><span class="val">89%</span></li>
+      <li><span class="num">03</span><span class="item">Règles — VIOLÉES</span><span class="val">100%</span></li>
+      <li><span class="num">04</span><span class="item">Système — EXPOSÉ</span><span class="val">∞</span></li>
+    </ul>
+  </div>
+</section>
+
+<article class="article">
+  <div class="article-sidebar">
+    <div class="article-sidebar-text">// ANALYSE</div>
+  </div>
+  <div class="article-main">
+    <h2 class="article-title">
+      LA GRILLE COMME<br>
+      <span class="red">ARME</span> ET COMME<br>
+      <span class="yellow">CAGE</span>
+    </h2>
+
+    <p>Le Style International Suisse, développé à Bâle et Zurich dans les années 50, est l'esthétique la plus influente du XX° siècle. <strong>Toute communication visuelle occidentale porte son empreinte</strong> : la grille modulaire, la typographie Helvetica, la hiérarchie claire, l'absence d'ornement. Müller-Brockmann a codifié ce système pour qu'il soit universellement compréhensible — et donc universellement contrôlable.</p>
+
+    <div class="punk-quote">La clarté comme instrument de domination.</div>
+
+    <p>Le mouvement punk graphique des années 70 (Jamie Reid pour les Sex Pistols, Cosey Fanni Tutti pour COUM Transmissions) a compris instinctivement ce que les théoriciens ont mis des années à articuler : <em>une mise en page "propre" n'est jamais neutre</em>. Elle dit : "Ce message a été approuvé, il est fiable, vous pouvez le recevoir." La mise en page chaotique dit l'inverse.</p>
+
+    <p>Le Brutalist Swiss Punk ne choisit pas entre les deux. Il <strong>utilise la grille pour la détruire</strong> — expose les lignes de construction, brise la cohérence au moment précis où elle se forme, mélange des fontes incompatibles selon des règles typographiques strictes. C'est une honnêteté sur les mécanismes du design qui prétend n'être que <em>fonctionnel</em>.</p>
+  </div>
+</article>
+
+<section class="comments">
+  <div class="comments-sidebar">
+    <div class="comments-sidebar-text">// RÉACTIONS</div>
+  </div>
+  <div class="comments-main">
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">K. MULLER</div>
+        <div class="comment-date">17.03.2026</div>
+      </div>
+      <p>L'interprétation de Müller-Brockmann comme "instrument de contrôle" est anachronique — il développait ses théories dans un contexte de reconstruction post-guerre où la clarté signifiait reconstruction démocratique, pas domination. <strong>Projeter Foucault sur le Swiss grid est légitime mais doit être daté</strong>.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">PUNK_ARCHIVIST</div>
+        <div class="comment-date">18.03.2026</div>
+      </div>
+      <p>Jamie Reid mérite plus qu'une mention — son "God Save the Queen" (1977) est peut-être le design le plus influent de la seconde moitié du XX° siècle. Le cut-up typographique vient de l'art Dada et de Burroughs, pas inventé de toutes pièces : <em>l'anarchie graphique a ses propres traditions</em>.</p>
+    </div>
+
+    <div class="comment">
+      <div class="comment-left">
+        <div class="comment-name">GRID_GHOST</div>
+        <div class="comment-date">19.03.2026</div>
+      </div>
+      <p>Ce design en particulier utilise lui-même une grille très stricte malgré le discours anti-grille — la contradiction est productive mais <strong>mérite d'être nommée</strong>. "Utiliser la grille pour la détruire" reste quand même utiliser la grille. Est-ce une limite ou une cohérence ?</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-brand">ANAR<span>CH</span>ITEKTUR</div>
+  <div class="footer-rule"></div>
+  <div class="footer-copy">
+    © 2026<br>
+    Brutalist Swiss Punk Review
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>COMICS — DARK STRIP</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Permanent+Marker&family=Comic+Neue:wght@400;700&display=swap');
+
+:root {
+  --bg: #111111;
+  --ink: #000000;
+  --yellow: #FFE800;
+  --red: #FF1A1A;
+  --blue: #1A6EFF;
+  --white: #FFFFFF;
+  --paper: #FFF8DC;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Comic Neue', cursive;
+  font-weight: 700;
+  overflow-x: hidden;
+}
+
+/* HALFTONE BG */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 8px 8px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes pow {
+  0% { transform: scale(0) rotate(-20deg); }
+  60% { transform: scale(1.2) rotate(5deg); }
+  80% { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px) rotate(-1deg); }
+  75% { transform: translateX(5px) rotate(1deg); }
+}
+@keyframes speechBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  background: var(--yellow);
+  border-bottom: 5px solid var(--ink);
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  justify-content: space-between;
+}
+.nav-logo {
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  -webkit-text-stroke: 1px var(--ink);
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+}
+nav ul li a {
+  display: block;
+  padding: 0.3rem 1rem;
+  color: var(--ink);
+  text-decoration: none;
+  font-family: 'Bangers', cursive;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border: 3px solid var(--ink);
+  background: var(--white);
+  transition: all 0.1s;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+nav ul li a:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 var(--ink);
+  background: var(--red);
+  color: var(--white);
+}
+
+/* COMIC STRIPS */
+.comic-wrapper {
+  margin-top: 60px;
+  position: relative;
+  z-index: 1;
+  padding: 2rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 0;
+  border: 5px solid var(--ink);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--bg);
+}
+
+.panel {
+  background: var(--paper);
+  border: 4px solid var(--ink);
+  position: relative;
+  overflow: visible;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* PANEL 1 - HERO */
+.panel.hero-panel {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #1A6EFF 0%, #0A3A8A 100%);
+}
+.panel-label {
+  font-family: 'Bangers', cursive;
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 0.5rem;
+}
+.hero-panel h1 {
+  font-family: 'Bangers', cursive;
+  font-size: 4rem;
+  line-height: 0.95;
+  color: var(--yellow);
+  -webkit-text-stroke: 3px var(--ink);
+  letter-spacing: 0.05em;
+  text-shadow: 5px 5px 0 var(--ink);
+  animation: shake 0.5s ease-in-out 1s both;
+}
+.hero-panel h1 span { color: var(--red); }
+
+/* SPEECH BUBBLE */
+.speech-bubble {
+  position: relative;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  padding: 1rem 1.5rem;
+  border-radius: 20px;
+  margin: 1rem 0;
+  font-family: 'Comic Neue', cursive;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  animation: speechBounce 3s ease-in-out infinite;
+  display: inline-block;
+  max-width: 90%;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -18px;
+  left: 20px;
+  width: 0; height: 0;
+  border-left: 10px solid transparent;
+  border-right: 20px solid transparent;
+  border-top: 18px solid var(--white);
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -22px;
+  left: 18px;
+  width: 0; height: 0;
+  border-left: 12px solid transparent;
+  border-right: 22px solid transparent;
+  border-top: 22px solid var(--ink);
+}
+.thought-bubble {
+  background: var(--white);
+  border: 3px solid var(--ink);
+  padding: 1rem 1.5rem;
+  border-radius: 50px;
+  font-family: 'Comic Neue', cursive;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink);
+  position: relative;
+  display: inline-block;
+}
+.thought-bubble::after {
+  content: '○ ○';
+  position: absolute;
+  bottom: -24px;
+  left: 30px;
+  color: var(--ink);
+  font-size: 0.7rem;
+  letter-spacing: -0.1em;
+}
+
+/* PANEL 2 - IMAGE PLACEHOLDER */
+.panel.image-panel {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1rem;
+}
+.panel-scene {
+  width: 80%;
+  aspect-ratio: 1;
+  background: linear-gradient(135deg, #333 0%, #111 100%);
+  border: 4px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.panel-scene::before {
+  content: '💥';
+  font-size: 5rem;
+  animation: pow 0.4s ease-out both;
+}
+
+/* ONOMATOPOEIA */
+.onomatopee {
+  font-family: 'Bangers', cursive;
+  font-size: 4rem;
+  color: var(--yellow);
+  -webkit-text-stroke: 3px var(--red);
+  text-shadow: 4px 4px 0 var(--ink);
+  letter-spacing: 0.05em;
+  transform: rotate(-10deg);
+  animation: pow 0.6s ease-out both;
+  display: inline-block;
+  z-index: 2;
+}
+
+/* PANEL 3 - ARTICLE */
+.panel.article-panel {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  padding: 2rem;
+  background: var(--paper);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+.article-text h2 {
+  font-family: 'Bangers', cursive;
+  font-size: 2.5rem;
+  color: var(--ink);
+  margin-bottom: 1rem;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+  -webkit-text-stroke: 1px var(--ink);
+}
+.article-text h2 span { color: var(--red); }
+.article-text p {
+  font-family: 'Comic Neue', cursive;
+  font-weight: 400;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--ink);
+  margin-bottom: 1rem;
+}
+.article-text p strong { color: var(--blue); font-weight: 700; }
+.article-sidebar {
+  border-left: 4px solid var(--ink);
+  padding-left: 2rem;
+}
+
+/* CAPTION BOX */
+.caption-box {
+  background: var(--yellow);
+  border: 3px solid var(--ink);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-family: 'Bangers', cursive;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+}
+
+/* COMMENTS AS PANELS */
+.comments-strip {
+  position: relative; z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  border: 5px solid var(--ink);
+  border-top: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--ink);
+  gap: 4px;
+}
+.comment-panel {
+  background: var(--paper);
+  padding: 1.5rem;
+  min-height: 200px;
+  position: relative;
+}
+.comment-panel:nth-child(2) { background: linear-gradient(135deg, #FFE8E8, #FFC0C0); }
+.comment-panel:nth-child(3) { background: linear-gradient(135deg, #E8EEFF, #C0CCFF); }
+.comment-panel .speech-bubble { font-size: 0.85rem; }
+.comment-name {
+  font-family: 'Bangers', cursive;
+  font-size: 1.3rem;
+  color: var(--ink);
+  margin-top: 1.5rem;
+  letter-spacing: 0.05em;
+}
+.comment-date {
+  font-family: 'Comic Neue', cursive;
+  font-size: 0.7rem;
+  color: #666;
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 1;
+  background: var(--yellow);
+  border-top: 5px solid var(--ink);
+  padding: 1.5rem 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  border-left: 5px solid var(--ink);
+  border-right: 5px solid var(--ink);
+}
+.footer-logo {
+  font-family: 'Bangers', cursive;
+  font-size: 2rem;
+  color: var(--ink);
+  -webkit-text-stroke: 1px var(--ink);
+}
+.footer-copy {
+  font-family: 'Comic Neue', cursive;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="#" class="nav-logo">DARK STRIP!</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<div class="comic-wrapper">
+  <!-- PANEL 1: HERO -->
+  <div class="panel hero-panel">
+    <div class="panel-label">PLANCHE 01 — L'AUBE DU CHAOS</div>
+    <h1>DARK<br><span>STRIP</span></h1>
+    <div class="speech-bubble">
+      "Le design est une arme. Utilisez-la avec responsabilité !"
+    </div>
+  </div>
+
+  <!-- PANEL 2: ACTION -->
+  <div class="panel image-panel">
+    <div class="panel-scene"></div>
+    <div class="onomatopee">KA-BOOM!</div>
+  </div>
+
+  <!-- PANEL 3: ARTICLE -->
+  <div class="panel article-panel">
+    <div class="article-text">
+      <h2>LE POUVOIR<br>DES <span>CASES</span></h2>
+      <div class="caption-box">QUELQUE PART AU CŒUR DU DESIGN DIGITAL — 2026</div>
+      <p>La bande dessinée a inventé quelque chose que le cinéma n'a jamais réussi à reproduire : <strong>la gestion parfaite du temps par l'espace</strong>. Chaque case est un moment. L'espace entre les cases — le "gouttière" — est le temps qui passe.</p>
+      <p>Scott McCloud le montre dans "Understanding Comics" : le lecteur complète mentalement l'action entre deux cases. C'est du <strong>storytelling collaboratif</strong> — le lecteur co-crée la narration.</p>
+      <p>Cette technique appliquée au web design créerait des interfaces narratives où l'utilisateur est acteur de la découverte, pas simple spectateur d'un défilement.</p>
+    </div>
+    <div class="article-sidebar">
+      <div class="thought-bubble">
+        Ce serait ça, le futur du design ?
+      </div>
+      <br><br>
+      <div class="caption-box">ASTUCE DU DESSINATEUR :</div>
+      <p style="font-family:'Comic Neue',cursive; font-weight:400; font-size:0.9rem; line-height:1.7; color:var(--ink);">La règle des trois cases : introduction, développement, chute. La même structure que le bon design UX.</p>
+    </div>
+  </div>
+</div>
+
+<!-- COMMENTS STRIP -->
+<div class="comments-strip">
+  <div class="comment-panel">
+    <div class="speech-bubble">
+      "La référence à McCloud est exacte et sous-citée dans le monde du design web. 'Understanding Comics' devrait être obligatoire."
+    </div>
+    <div class="comment-name">InkMaster_99</div>
+    <div class="comment-date">14 Mars 2026</div>
+  </div>
+  <div class="comment-panel">
+    <div class="speech-bubble">
+      "KA-BOOM c'est parfait comme onomatopée pour représenter l'impact visuel. L'esthétique sert le propos ici, c'est rare !"
+    </div>
+    <div class="comment-name">PanelQueen</div>
+    <div class="comment-date">15 Mars 2026</div>
+  </div>
+  <div class="comment-panel">
+    <div class="speech-bubble">
+      "Quelqu'un a fait un projet de thèse sur les UI comics-inspired — la navigation par panels améliore la rétention mémorielle de 23%. À chercher !"
+    </div>
+    <div class="comment-name">UX_Researcher_K</div>
+    <div class="comment-date">16 Mars 2026</div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">DARK STRIP!</div>
+  <div class="footer-copy">© 2026 Dark Strip Comics — Tous droits réservés — POW!</div>
+</footer>
+
+</body>
+</html>
