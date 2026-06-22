@@ -2,8 +2,8 @@ import os
 from datetime import timedelta
 
 class Config:
-    # Secret key for Flask
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your_secret_key'
+    # Secret key for Flask — required, no predictable default (public repo)
+    SECRET_KEY = os.environ['SECRET_KEY']
 
     # Base directory path
     BASEDIR = os.path.abspath(os.path.dirname(__file__))

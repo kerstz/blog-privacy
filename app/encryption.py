@@ -11,13 +11,22 @@ class MessageEncryption:
     def __init__(self, password: str = None):
         """
         Initialise le système de chiffrement.
-        Password is read from ENCRYPTION_KEY env variable; falls back to a default
-        that should be overridden in production.
+
+        La clé (ENCRYPTION_KEY) et le sel (ENCRYPTION_SALT) sont obligatoires et
+        lus dans l'environnement. Aucune valeur par défaut : un défaut prévisible
+        rendrait tous les messages déchiffrables par quiconque lit le code source.
         """
         if password is None:
-            password = os.environ.get('ENCRYPTION_KEY', 'blog_secure_key_2024')
+            password = os.environ.get('ENCRYPTION_KEY')
+        salt_str = os.environ.get('ENCRYPTION_SALT')
 
-        salt_str = os.environ.get('ENCRYPTION_SALT', 'blog_salt_2024')
+        if not password or not salt_str:
+            raise RuntimeError(
+                "ENCRYPTION_KEY et ENCRYPTION_SALT sont obligatoires (voir .env.example). "
+                "Aucune valeur par défaut n'est fournie : les messages chiffrés en "
+                "dépendent."
+            )
+
         salt = salt_str.encode()
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),

@@ -11,12 +11,24 @@ from markupsafe import Markup
 import re
 import os
 
+from dotenv import load_dotenv
+
+# Charge les variables d'environnement depuis un fichier .env local (jamais commité)
+load_dotenv()
+
 from flask_socketio import SocketIO
 # Initialisation de l'application
 app = Flask(__name__)
 
 # Configuration de l'application
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_default_secret_key_here')
+# SECRET_KEY est obligatoire : pas de valeur par défaut prévisible (le dépôt est public)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY manquante. Définissez-la dans un fichier .env ou une variable "
+        "d'environnement (voir .env.example). Aucune valeur par défaut n'est fournie."
+    )
+app.config['SECRET_KEY'] = SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///blog.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=4)
