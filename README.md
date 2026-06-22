@@ -2,14 +2,14 @@
 
 A modern, feature-rich blogging platform built with Flask. TechBlog offers a clean and responsive interface for sharing articles, engaging with readers, and building a community around technology and programming.
 
-<img width="1220" height="697" alt="Screenshot_20251106_094244" src="https://github.com/user-attachments/assets/9171f892-1a29-4b51-bf4f-dbb18a71dee3" />
-<img width="1753" height="871" alt="Screenshot_20251106_132715" src="https://github.com/user-attachments/assets/c97b897a-adf6-4e90-b799-4cd99183ffbc" />
-<img width="1773" height="876" alt="Screenshot_20251106_132701" src="https://github.com/user-attachments/assets/0bf5e3c3-aff8-4cc3-b91f-62f9fe4b3fae" />
+<img alt="Home page" src="docs/screenshots/home.png" />
+<img alt="Reading a post" src="docs/screenshots/post.png" />
+<img alt="About page" src="docs/screenshots/about.png" />
 
 
 ## Features
 
-- **Modern UI**: Clean, responsive design with a beautiful green/orange color scheme (fully customizable!)
+- **Night Desk UI**: Warm, lamplit dark theme — espresso base, parchment text, muted brass accent (fully customizable!)
 - **Easy Theme Customization**: Change colors and styling without coding knowledge - see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md)
 - **User Authentication**: Secure registration and login system
 - **Article Management**: Create, edit, and publish articles with rich text editor
@@ -30,7 +30,8 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 - **Forms**: Flask-WTF
 - **Real-time**: Flask-SocketIO
 - **Frontend**: HTML5, CSS3, JavaScript
-- **Styling**: Custom CSS with modern gradients and animations
+- **Typography**: Fraunces (display) + IBM Plex Sans (UI) + IBM Plex Mono (metadata)
+- **Icons**: Monochrome SVG mask icons — no JS, no web font (NoScript / Tor friendly)
 
 ## Quick Start
 
@@ -47,8 +48,8 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/berstz/blog-privacy.git
-cd techblog
+git clone https://github.com/kerstz/blog-privacy.git
+cd blog-privacy
 ```
 
 2. **Create a virtual environment**
