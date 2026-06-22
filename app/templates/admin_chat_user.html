@@ -1,12 +1,20 @@
 {% extends 'layout.html' %}
 
 {% block title %}Chat with {{ target_user.username }} - Blog{% endblock %}
+{% block extra_head %}
+{% if latest_message_id is defined %}
+<meta http-equiv="refresh" content="12;url={{ url_for('admin_chat_user', user_id=target_user.id, wait=1, last_seen_id=latest_message_id) }}">
+{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="admin-chat-container">
     <div class="chat-header">
         <h2><span class="icon-comments"></span> Chat with {{ target_user.username }}</h2>
         <p>Level {{ target_user.level }} • {{ target_user.experience_points }} XP</p>
+        {% if telegram_bridge_enabled %}
+            <p class="telegram-bridge-note">Telegram bridge active. Reply from Telegram with: <code>/reply {{ target_user.id }} your message</code></p>
+        {% endif %}
     </div>
 
     <div class="chat-layout">
@@ -130,6 +138,19 @@
 .chat-header p {
     color: #c3c4cb;
     margin: 0;
+}
+
+.telegram-bridge-note {
+    margin-top: 10px !important;
+    font-size: 0.9rem;
+    color: #d8e4ff !important;
+}
+
+.telegram-bridge-note code {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 2px 6px;
 }
 
 .chat-layout {

@@ -20,7 +20,7 @@
                             <div class="user-header">
                                 <div class="user-avatar">
                                     {% if user.profile_picture %}
-                                        <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Avatar" class="avatar-img">
+                                        <img src="{{ url_for('uploaded_file', filename=user.profile_picture.split('/')[-1]) }}" alt="Avatar" class="avatar-img">
                                     {% else %}
                                         <span class="icon-user-circle"></span>
                                     {% endif %}

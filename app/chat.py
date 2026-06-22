@@ -1,10 +1,8 @@
 # app/chat.py
 
-from flask_socketio import SocketIO, emit
-from app import app, db
+from flask_socketio import emit
+from app import app, db, socketio
 from app.models import User, Message
-
-socketio = SocketIO(app)
 
 @socketio.on('message')
 def handleMessage(data):

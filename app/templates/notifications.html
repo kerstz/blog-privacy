@@ -10,7 +10,7 @@
                 <form method="POST" action="{{ url_for('mark_all_notifications_read') }}" style="display: inline;">
                     {{ form.hidden_tag() }}
                     <button type="submit" class="btn-mark-all-read">
-                        <span class="icon-check-double"></span> Tout marquer comme lu
+                        <span class="icon-check-double"></span> Mark all as read
                     </button>
                 </form>
             </div>
@@ -37,7 +37,7 @@
                                 <h4>{{ notification.title }}</h4>
                                 <p>{{ notification.message }}</p>
                                 <span class="notification-time">
-                                    <span class="icon-clock"></span> {{ notification.created_at.strftime('%d/%m/%Y à %H:%M') }}
+                                    <span class="icon-clock"></span> {{ notification.created_at.strftime('%d/%m/%Y at %H:%M') }}
                                 </span>
                             </div>
                             
@@ -63,8 +63,8 @@
             {% else %}
                 <div class="no-notifications">
                     <span class="icon-bell-slash"></span>
-                    <h3>Aucune notification</h3>
-                    <p>Vous n'avez pas encore de notifications.</p>
+                    <h3>No notifications</h3>
+                    <p>You don't have any notifications yet.</p>
                 </div>
             {% endif %}
         </div>

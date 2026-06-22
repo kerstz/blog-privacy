@@ -108,7 +108,9 @@ class User(db.Model, UserMixin):
     experience_points = db.Column(db.Integer, default=0)
     badges = db.Column(db.Text, default='')  # JSON string of badges
     profile_picture = db.Column(db.String(255), nullable=True)  # Path to profile picture
-    
+    totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
+    totp_secret = db.Column(db.String(64), nullable=True)
+
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
@@ -252,3 +254,17 @@ class Badge(db.Model):
 
     def __repr__(self):
         return f"Badge('{self.name}')"
+
+
+class ContactMessage(db.Model):
+    __tablename__ = 'contact_message'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    is_read = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        return f"ContactMessage('{self.name}', '{self.timestamp}')"

@@ -3,32 +3,33 @@
 {% block content %}
     <!-- Hero Section -->
     <section class="hero">
-        <h1>Welcome to TechBlog</h1>
-        <p>Exploring technology, programming, and digital innovation.</p>
-        <p>Sharing knowledge and insights with the community.</p>
-        <a href="/posts" class="cta-button no-shadow">Explore Articles</a>
+        <h1>A quiet place to think out loud.</h1>
+        <p>My corner of the internet — notes on music, technology, privacy, and whatever happens to be on my mind. No tracking, no noise. Just writing.</p>
+        <a href="/posts" class="cta-button">Read the latest</a>
     </section>
 
     <!-- Latest Blog Posts -->
-    <div class="container">
-        <h2>📜 Latest Articles</h2>
+    <h2>Recent entries</h2>
 
-        <div id="posts">
+    <div id="posts-grid">
+        {% if posts %}
             {% for post in posts %}
-            <div class="blog-post no-shadow">
-                <h2><a href="{{ url_for('post_detail', post_id=post.id) }}" class="post-title read-more-btn-color">{{ post.title }}</a></h2>
-                <p class="post-meta">Published on {{ post.date_posted.strftime('%B %d, %Y') }}</p>
-                <p class="post-excerpt">{{ post.content[:150] }}...</p>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read More</a>
-            </div>
+            <article class="blog-post">
+                <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
+                <h2><a href="{{ url_for('post_detail', post_id=post.id) }}" class="post-title">{{ post.title }}</a></h2>
+                <p class="post-excerpt">{{ post.content[:180] }}…</p>
+                <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
+            </article>
             {% endfor %}
-        </div>
+        {% else %}
+            <p class="no-posts">Nothing published yet. Check back soon.</p>
+        {% endif %}
+    </div>
 
-        <!-- Contact Box -->
-        <div class="contact-box">
-            <h3>💬 Get in Touch</h3>
-            <p>Have questions or feedback? Feel free to reach out and start a conversation.</p>
-            <a href="{{ url_for('contact') }}" class="contact-btn">Send a Message</a>
-        </div>
+    <!-- Contact Box -->
+    <div class="contact-box">
+        <h3>Let's talk</h3>
+        <p>Questions, thoughts, or just want to say hello? I'll gladly reply.</p>
+        <a href="{{ url_for('contact') }}" class="plain-link">Send a message</a>
     </div>
 {% endblock %}

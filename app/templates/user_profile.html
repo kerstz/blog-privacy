@@ -8,7 +8,11 @@
             <!-- Profile Header -->
             <div class="profile-header">
                 <div class="profile-avatar">
-                    <span class="icon-user-circle"></span>
+                    {% if user.profile_picture %}
+                        <img src="{{ url_for('uploaded_file', filename=user.profile_picture.split('/')[-1]) }}" alt="Profile picture" class="profile-picture">
+                    {% else %}
+                        <span class="icon-user-circle"></span>
+                    {% endif %}
                 </div>
                 <div class="profile-info">
                     <h2>{% if current_user.is_authenticated and current_user.id == user.id %}My Profile{% else %}User Profile{% endif %}</h2>

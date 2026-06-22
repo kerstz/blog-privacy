@@ -159,6 +159,32 @@ Access the admin panel at `/admin` with admin credentials. Features include:
 - Create static pages
 - Admin chat
 
+### Admin Mobile Chat API
+
+You can now access admin conversations from a phone app (or mobile web client) through dedicated endpoints:
+
+- `GET /api/admin/mobile/ping` - test admin authentication
+- `GET /api/admin/mobile/conversations` - list users and last message per conversation
+- `GET /api/admin/mobile/conversations/<user_id>/messages?limit=50` - fetch a conversation history
+- `POST /api/admin/mobile/conversations/<user_id>/messages` - send/reply to a user
+- `GET /api/admin/mobile/stream` - real-time event stream (SSE) for incoming messages/updates
+
+Authentication uses HTTP Basic Auth with your existing admin username/password.
+
+Example:
+```bash
+curl -u admin:your_password http://localhost:5000/api/admin/mobile/conversations
+```
+
+Send message:
+```bash
+curl -u admin:your_password \
+  -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"content":"Hello from mobile admin"}' \
+  http://localhost:5000/api/admin/mobile/conversations/2/messages
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

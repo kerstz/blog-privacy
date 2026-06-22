@@ -3,16 +3,16 @@
 
 {% block content %}
 <div class="post-list-container">
-    <h1>📜 All Blog Posts</h1>
+    <h1>All entries</h1>
 
     {% if posts %}
         {% for post in posts %}
-        <div class="post-card">
+        <article class="post-card">
+            <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
             <h2><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h2>
-            <p class="post-meta">Posted by <span class="author">{{ post.author.username }}</span> on {{ post.date_posted.strftime('%B %d, %Y') }}</p>
-            <p class="post-excerpt">{{ post.content[:150] }}...</p>
-            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read More</a>
-        </div>
+            <p class="post-excerpt">{{ post.content[:180] }}…</p>
+            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
+        </article>
         {% endfor %}
     {% else %}
         <p class="no-posts">No posts available yet.</p>

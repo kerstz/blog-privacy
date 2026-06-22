@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNTHWAVE — OUTRUN GRID</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Audiowide&family=Exo+2:ital,wght@0,100;0,300;0,700;1,300&display=swap');
+
+:root {
+  --bg: #0D0221;
+  --pink: #FF2D78;
+  --cyan: #00F5FF;
+  --purple: #7B0FFF;
+  --orange: #FF6E00;
+  --yellow: #FFE500;
+  --mid-purple: #2A0550;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: #F0E0FF;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 300;
+  overflow-x: hidden;
+}
+
+/* RETROWAVE GRID */
+.retro-grid {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 55vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.retro-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(transparent 0%, var(--bg) 100%);
+  z-index: 2;
+}
+.grid-svg {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+}
+
+/* GRADIENT SKY */
+.sky {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 60vh;
+  background: linear-gradient(
+    180deg,
+    #0D0221 0%,
+    #1A0540 25%,
+    #3D0B6F 50%,
+    #7B1FA2 65%,
+    #FF2D78 80%,
+    #FF6E00 90%,
+    #FFE500 100%
+  );
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SUN */
+.retro-sun {
+  position: fixed;
+  bottom: 40vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px; height: 100px;
+  background: linear-gradient(180deg, #FF6E00 0%, #FFE500 50%, #FF2D78 100%);
+  border-radius: 200px 200px 0 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.retro-sun::before {
+  content: '';
+  position: absolute;
+  top: 30%; left: 0; right: 0;
+  height: 4px;
+  background: var(--bg);
+  box-shadow: 0 12px 0 var(--bg), 0 22px 0 var(--bg), 0 30px 0 var(--bg);
+}
+.retro-sun-glow {
+  position: fixed;
+  bottom: 36vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px; height: 200px;
+  background: radial-gradient(ellipse at center bottom, rgba(255,110,0,0.4) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* SCANLINES */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.1) 3px,
+    rgba(0,0,0,0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* NEON GLOW ANIMATIONS */
+@keyframes neonPink {
+  0%, 100% { text-shadow: 0 0 10px var(--pink), 0 0 30px var(--pink), 0 0 60px rgba(255,45,120,0.3); }
+  50% { text-shadow: 0 0 20px var(--pink), 0 0 60px var(--pink), 0 0 100px rgba(255,45,120,0.5); }
+}
+@keyframes neonCyan {
+  0%, 100% { text-shadow: 0 0 10px var(--cyan), 0 0 30px var(--cyan); }
+  50% { text-shadow: 0 0 20px var(--cyan), 0 0 60px var(--cyan), 0 0 80px rgba(0,245,255,0.4); }
+}
+@keyframes gridMove {
+  0% { transform: perspective(400px) rotateX(85deg) translateY(0); }
+  100% { transform: perspective(400px) rotateX(85deg) translateY(80px); }
+}
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+@keyframes horizonGlow {
+  0%, 100% { box-shadow: 0 0 30px var(--pink), 0 0 60px var(--orange); }
+  50% { box-shadow: 0 0 60px var(--pink), 0 0 120px var(--orange), 0 2px 200px rgba(255,45,120,0.3); }
+}
+
+/* STARS */
+.stars {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.star {
+  position: absolute;
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: white;
+  animation: starTwinkle linear infinite;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 64px;
+  background: rgba(13,2,33,0.9);
+  border-bottom: 1px solid var(--pink);
+  box-shadow: 0 0 30px rgba(255,45,120,0.2), inset 0 -1px 0 rgba(255,45,120,0.5);
+  display: flex;
+  align-items: center;
+  padding: 0 2.5rem;
+}
+.nav-logo {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 1.1rem;
+  color: var(--cyan);
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  animation: neonCyan 4s ease-in-out infinite;
+}
+nav ul {
+  list-style: none;
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+}
+nav ul li a {
+  display: block;
+  padding: 0 1.5rem;
+  height: 64px;
+  line-height: 64px;
+  color: rgba(240,224,255,0.6);
+  text-decoration: none;
+  font-family: 'Audiowide', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-left: 1px solid rgba(255,45,120,0.2);
+  transition: all 0.3s;
+}
+nav ul li a:hover {
+  color: var(--pink);
+  text-shadow: 0 0 10px var(--pink);
+}
+
+/* HERO */
+.hero {
+  position: relative; z-index: 1;
+  margin-top: 64px;
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 3rem;
+}
+.hero-label {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 2rem;
+  text-shadow: 0 0 10px var(--orange);
+}
+.hero-title {
+  font-family: 'Audiowide', sans-serif;
+  font-size: clamp(2rem, 7vw, 6rem);
+  line-height: 1.1;
+  margin-bottom: 1rem;
+}
+.hero-title .line1 {
+  color: var(--pink);
+  display: block;
+  animation: neonPink 3s ease-in-out infinite;
+}
+.hero-title .line2 {
+  color: var(--cyan);
+  display: block;
+  animation: neonCyan 3s 0.5s ease-in-out infinite;
+}
+.hero-meta {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(240,224,255,0.5);
+  margin-top: 1.5rem;
+  font-family: 'Audiowide', sans-serif;
+}
+.hero-meta .sep { color: var(--pink); }
+
+/* HORIZON LINE */
+.horizon {
+  position: relative; z-index: 1;
+  height: 4px;
+  background: linear-gradient(90deg, transparent, var(--pink), var(--orange), var(--pink), transparent);
+  animation: horizonGlow 4s ease-in-out infinite;
+}
+
+/* ARTICLE */
+.article {
+  position: relative; z-index: 2;
+  padding: 4rem 3rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.article-box {
+  background: rgba(13,2,33,0.85);
+  border: 1px solid rgba(255,45,120,0.3);
+  padding: 3rem;
+  position: relative;
+}
+.article-box::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  box-shadow: 0 0 10px var(--cyan);
+}
+.article-box::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 20%; right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--pink), transparent);
+  box-shadow: 0 0 10px var(--pink);
+}
+.article-box h2 {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 1.3rem;
+  color: var(--cyan);
+  margin-bottom: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  animation: neonCyan 5s ease-in-out infinite;
+}
+.article-box p {
+  font-size: 1rem;
+  line-height: 1.85;
+  color: rgba(240,224,255,0.8);
+  margin-bottom: 1.2rem;
+}
+.article-box .neon-word { color: var(--pink); text-shadow: 0 0 8px var(--pink); }
+.article-box .neon-cyan { color: var(--cyan); text-shadow: 0 0 8px var(--cyan); }
+
+/* COMMENTS */
+.comments {
+  position: relative; z-index: 2;
+  padding: 4rem 3rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.comments h2 {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 1rem;
+  color: var(--pink);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  margin-bottom: 2rem;
+  animation: neonPink 4s ease-in-out infinite;
+}
+.comment {
+  border-left: 3px solid var(--purple);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(26,5,64,0.5);
+  position: relative;
+}
+.comment::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -3px;
+  height: 30px;
+  width: 3px;
+  background: var(--pink);
+  box-shadow: 0 0 10px var(--pink);
+}
+.comment-name {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 0.8rem;
+  color: var(--cyan);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 0 8px rgba(0,245,255,0.5);
+}
+.comment-date {
+  font-size: 0.7rem;
+  color: rgba(240,224,255,0.3);
+  font-family: 'Audiowide', sans-serif;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.75rem;
+}
+.comment p {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(240,224,255,0.7);
+}
+
+/* FOOTER */
+footer {
+  position: relative; z-index: 2;
+  padding: 2.5rem 3rem;
+  border-top: 1px solid rgba(255,45,120,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(13,2,33,0.95);
+}
+.footer-logo {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 1rem;
+  color: var(--pink);
+  letter-spacing: 0.15em;
+  animation: neonPink 5s ease-in-out infinite;
+}
+.footer-copy {
+  font-family: 'Audiowide', sans-serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  color: rgba(240,224,255,0.3);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<div class="sky"></div>
+<div class="retro-sun"></div>
+<div class="retro-sun-glow"></div>
+
+<div class="stars" id="stars"></div>
+
+<div class="retro-grid">
+  <svg class="grid-svg" viewBox="0 0 1000 300" preserveAspectRatio="xMidYMax slice">
+    <defs>
+      <style>
+        .grid-line { stroke: rgba(255,45,120,0.3); stroke-width: 0.5; fill: none; }
+        .grid-line-h { stroke: rgba(255,45,120,0.4); stroke-width: 0.8; fill: none; }
+      </style>
+    </defs>
+    <!-- Vertical lines converging to vanishing point -->
+    <line class="grid-line" x1="500" y1="0" x2="0" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="100" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="200" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="300" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="400" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="500" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="600" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="700" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="800" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="900" y2="300"/>
+    <line class="grid-line" x1="500" y1="0" x2="1000" y2="300"/>
+    <!-- Horizontal lines -->
+    <line class="grid-line-h" x1="0" y1="300" x2="1000" y2="300"/>
+    <line class="grid-line-h" x1="50" y1="240" x2="950" y2="240"/>
+    <line class="grid-line-h" x1="120" y1="190" x2="880" y2="190"/>
+    <line class="grid-line-h" x1="180" y1="148" x2="820" y2="148"/>
+    <line class="grid-line-h" x1="230" y1="113" x2="770" y2="113"/>
+    <line class="grid-line-h" x1="275" y1="83" x2="725" y2="83"/>
+    <line class="grid-line-h" x1="310" y1="58" x2="690" y2="58"/>
+    <line class="grid-line-h" x1="340" y1="35" x2="660" y2="35"/>
+    <line class="grid-line-h" x1="365" y1="16" x2="635" y2="16"/>
+  </svg>
+</div>
+
+<nav>
+  <a href="#" class="nav-logo">OUTRUN GRID</a>
+  <ul>
+    <li><a href="#">Accueil</a></li>
+    <li><a href="#">About</a></li>
+    <li><a href="#">Contact</a></li>
+    <li><a href="#">Login</a></li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <p class="hero-label">▶ Transmission nocturne — 2026 ▶</p>
+  <h1 class="hero-title">
+    <span class="line1">OUTRUN</span>
+    <span class="line2">THE NIGHT</span>
+  </h1>
+  <div class="hero-meta">
+    <span>Kira Neon</span>
+    <span class="sep">◈</span>
+    <span>16 Mars 2026</span>
+    <span class="sep">◈</span>
+    <span>5 min</span>
+  </div>
+</section>
+
+<div class="horizon"></div>
+
+<section class="article">
+  <div class="article-box">
+    <h2>►► LA NOSTALGIE DU FUTUR</h2>
+    <p>Le synthwave est une contradiction temporelle fascinante : c'est la nostalgie d'un <span class="neon-word">futur qui n'a jamais existé</span>. Un futur que les années 80 imaginaient — chromé, néonisé, peuplé de voitures volantes et de grilles perspectives infinies.</p>
+    <p>Keziah Slater, compositrice synthwave basée à Paris, l'explique mieux que quiconque : <span class="neon-cyan">"On ne pleure pas les années 80. On pleure le sentiment d'ouverture de ces années — cette croyance naive que la technologie allait nous libérer."</span> Le synthwave est le deuil d'une promesse non tenue.</p>
+    <p>Et pourtant, il y a dans cette esthétique quelque chose de profondément <span class="neon-word">vivifiant</span>. La grille perspective qui fuit vers l'horizon — c'est toujours l'avenir qu'on court vers lui. La vitesse. L'illusion du progrès perpétuel. Le futur comme destination permanente.</p>
+  </div>
+</section>
+
+<section class="comments">
+  <h2>►► TRANSMISSIONS</h2>
+  <div class="comment">
+    <div class="comment-name">CHROME_RIDER_88</div>
+    <div class="comment-date">14.03.26 // 22:17</div>
+    <p>La citation de Keziah Slater est parfaite. Retrowave = deuil de la naïveté techno-optimiste. C'est pas de la nostalgie, c'est de la mélancolie prospective.</p>
+  </div>
+  <div class="comment">
+    <div class="comment-name">NEON_DRIFTER</div>
+    <div class="comment-date">15.03.26 // 01:33</div>
+    <p>Synthwave m'a redonné goût à la production musicale après 5 ans de blocage. Quelque chose dans la grille perspective et les arpegiators... l'espace visuel et sonore se répondent.</p>
+  </div>
+  <div class="comment">
+    <div class="comment-name">OUTRUN_ARCHIVIST</div>
+    <div class="comment-date">16.03.26 // 09:05</div>
+    <p>Note historique : la grille perspective de l'Outrun n'est pas inventée par le synthwave digital. Elle vient du jeu arcade OUTRUN de Sega (1986). L'origine est littéralement un jeu de course.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">OUTRUN GRID</div>
+  <div class="footer-copy">© 2026 — Drive into the sunset</div>
+</footer>
+
+<script>
+const starsEl = document.getElementById('stars');
+for (let i = 0; i < 150; i++) {
+  const star = document.createElement('div');
+  star.className = 'star';
+  star.style.left = Math.random() * 100 + '%';
+  star.style.top = Math.random() * 100 + '%';
+  star.style.animationDuration = (2 + Math.random() * 3) + 's';
+  star.style.animationDelay = Math.random() * 4 + 's';
+  starsEl.appendChild(star);
+}
+</script>
+</body>
+</html>
