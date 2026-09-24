@@ -5,6 +5,59 @@
 > La version de référence est l'anglaise ([SECURITY.md](SECURITY.md), avec le
 > détail complet des CVE) ; ce fichier en est la traduction.
 
+## Version sécurité des comptes — septembre 2026 (3)
+
+**Mettez à jour avec `./update.sh`.** Après cette première mise à jour, lancez
+une fois `flask encrypt-legacy` (ou laissez la prochaine mise à jour
+automatique le faire) pour chiffrer les anciennes données.
+
+### Comptes
+- **Changement de mot de passe** (`/account/security`) : demande le mot de passe
+  actuel et déconnecte tous les autres appareils.
+- **Déconnexion partout** : invalide toutes les autres sessions et cookies « se
+  souvenir de moi ».
+- **Codes de secours 2FA** : 10 codes à usage unique affichés une seule fois à
+  l'activation de la 2FA (seule leur empreinte SHA-256 est stockée), utilisables
+  à la place d'un code TOTP ; régénérables après ré-authentification. Perdre son
+  téléphone ne bloque plus un admin.
+- **Supprimer mon compte** (mot de passe + 2FA + taper DELETE) : messages,
+  pièces jointes, likes et notifications effacés, commentaires anonymisés. Le
+  dernier admin ne peut pas se supprimer.
+- **Télécharger mes données** : export JSON (compte, commentaires, articles,
+  messages déchiffrés, likes, notifications), après ré-authentification.
+- **La déconnexion se fait en POST avec jeton CSRF** (un site tiers pouvait déconnecter les utilisateurs).
+
+### Chiffrement au repos
+- **Les fichiers envoyés (pièces jointes du chat, photos de profil) sont
+  chiffrés sur le disque** avec la même clé que les messages, et déchiffrés
+  seulement pour un utilisateur autorisé.
+- `flask encrypt-legacy` : chiffre les messages et fichiers restés en clair.
+  Idempotent ; `update.sh` le lance automatiquement.
+
+### Alertes
+- Alertes de sécurité Telegram (si le bot est configuré) : connexions admin
+  (et connexions sans 2FA), échecs de mot de passe / 2FA sur un compte admin,
+  2FA activée / désactivée, code de secours utilisé ou régénéré, mot de passe
+  changé, promotions / rétrogradations / suppressions, suppression de compte.
+
+### Durcissement
+- **CSP stricte pour les styles** : tous les blocs `<style>` déplacés dans
+  `static/css/pages/*.css` ; `style-src 'self'`. La CI refuse `<style>` dans les templates.
+- **Anti-spam sans JS** (inscription, commentaires, contact) : champ piège +
+  délai minimum signé, sans captcha ni service tiers.
+- **bandit** (analyse statique) dans la CI.
+- `update.sh` s'exécute depuis une copie de lui-même et passe la main à la
+  nouvelle version juste après le `git pull`.
+
+### Fonctionnalités (sans JavaScript)
+- **Catégories et tags** (`/category/<slug>`, `/tag/<slug>`), **recherche**
+  (`/search?q=`), **flux RSS** (`/feed.xml`).
+
+### Corrections
+- Les articles créés depuis le panneau admin ne pouvaient plus être publiés
+  (régression de la version (1)) : corrigé.
+- Les extraits d'articles affichaient le BBCode brut.
+
 ## Version vie privée & durcissement — septembre 2026 (2)
 
 Suite de la mise à jour de sécurité ci-dessous. **Mettez à jour avec `./update.sh`.**
@@ -139,6 +192,10 @@ copie distante optionnelle (rsync).
 - `style-src 'unsafe-inline'` reste nécessaire (blocs `<style>` et attributs `style` dans les templates). Les scripts sont entièrement bloqués.
 - Le poller Telegram tourne dans le processus : un seul worker gunicorn (montez en charge avec des threads).
 - `[img]` uniquement pour les images hébergées sur le blog ; pas encore d'interface de bibliothèque d'images.
+- Le fichier de base de données n'est pas chiffré lui-même (les messages et les
+  fichiers le sont) : utilisez le chiffrement du disque du serveur.
+- Pas de réinitialisation de mot de passe par email (aucun email n'est stocké,
+  par choix) : un utilisateur qui oublie son mot de passe doit demander à un admin.
 
 ## Signaler une faille
 

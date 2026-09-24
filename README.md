@@ -26,10 +26,14 @@ a `.onion` site.
 - **No third-party requests**: self-hosted fonts, no CDN, no embedded widgets, external images shown as links
 - **Tor ready**: `Onion-Location` header, onion service config in `deploy/`
 - **Night Desk UI**: warm, lamplit dark theme (customizable, see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md))
-- **Posts** written in BBCode (or basic HTML), drafts, scheduled posts, revisions
+- **Posts** written in BBCode (or basic HTML), drafts, scheduled posts, revisions, **categories and tags**
+- **Search** and **RSS feed** (`/feed.xml`)
 - **Nested comments** with BBCode, likes, notifications, XP, levels and badges
-- **Private encrypted chat** between each user and the admin (Fernet, at rest)
-- **TOTP two-factor authentication**
+- **Private encrypted chat** between each user and the admin (messages **and attachments** encrypted at rest)
+- **TOTP two-factor authentication** with one-time **recovery codes**
+- **Account security page**: change password, log out everywhere, download my data, delete my account
+- **Telegram security alerts** (admin logins, failed attempts, 2FA changes...)
+- **No-JS anti-spam** (honeypot + minimum form time, no captcha)
 - **Telegram admin bot** (optional) and **mobile admin API** (Basic Auth + TOTP, SSE)
 - **Static pages, banners, contact form, crypto donations** (QR codes generated server-side)
 - **Safe updates**: `./update.sh` (backup, update, health check, automatic rollback), optional automatic updates at the frequency you choose, encrypted backups
@@ -95,7 +99,8 @@ New vulnerabilities are published every week. **Keep the blog updated.**
 `update.sh` backs up the database and uploads, pulls the code (fast-forward only),
 upgrades the dependencies, applies migrations, checks the app starts (and runs the
 tests when pytest is installed) and **rolls back automatically** if anything fails.
-It never touches the database content, `uploads/` or `.env`. Automatic updates are
+It never touches `.env`, never deletes data, and only converts old plaintext
+messages / files to their encrypted form (`flask encrypt-legacy`). Automatic updates are
 **off by default**; with `UPDATE_RESTART_CMD` set in `.env` the app is restarted
 after each successful update, and the Telegram bot (if configured) tells you what
 happened.
@@ -149,8 +154,9 @@ app/
   services.py       shared helpers (auth, uploads, chat, deletion cascades)
   telegram_bot.py   optional Telegram admin bot
   mobile_api.py     mobile admin REST API
+  cli.py            maintenance commands (flask encrypt-legacy)
   models.py forms.py utils.py encryption.py
-  static/           css/, fonts/ (self-hosted)
+  static/           css/ (+ css/pages/ per-page styles), fonts/ (self-hosted)
   templates/        Jinja2 templates (no JavaScript)
 deploy/             systemd, Caddy, nginx, Tor examples
 docs/               screenshots, UI demos
@@ -165,6 +171,7 @@ update.sh auto-update.sh backup.sh
 pip install -r requirements-dev.txt
 pytest -q tests/
 pip-audit -r requirements.txt
+bandit -r app -q
 ```
 
 The same checks run on GitHub Actions for every push and every Monday, and
@@ -172,10 +179,11 @@ Dependabot opens pull requests for dependency updates.
 
 ## Security
 
-- Passwords hashed with bcrypt; TOTP 2FA (brute-force and replay protected)
-- CSRF protection, strict CSP (`script-src 'none'`), HSTS in HTTPS, COOP/CORP
-- All user HTML escaped and sanitized (`nh3`); uploads access controlled, metadata stripped
-- Chat messages encrypted at rest, private per user
+- Passwords hashed with bcrypt; TOTP 2FA (brute-force and replay protected) + recovery codes
+- Password change and "log out everywhere" invalidate every other session
+- CSRF protection (logout included), strict CSP (`script-src 'none'`, `style-src 'self'`), HSTS in HTTPS, COOP/CORP
+- All user HTML escaped and sanitized (`nh3`); uploads access controlled, metadata stripped, encrypted at rest
+- Chat messages encrypted at rest, private per user; GDPR-style export and self-deletion
 - Persistent rate limiting (login, 2FA, API, comments, chat, Telegram PIN)
 - Encrypted backups, safe updates with rollback
 
@@ -188,9 +196,9 @@ step-by-step instructions and an AI prompt template.
 
 ## Future Enhancements
  I don't really know if i have the time for this but why not add this in the future :)
-- [ ] Search functionality
-- [ ] Categories and tags
-- [ ] RSS feed
+- [x] Search functionality
+- [x] Categories and tags
+- [x] RSS feed
 - [ ] Email notifications
 - [ ] OAuth integration
 - [ ] Image upload and management

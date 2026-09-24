@@ -761,3 +761,32 @@ footer {
     .auth-container { margin: 36px auto; padding: 28px 22px; }
     .navbar-brand { font-size: 1.15rem; }
 }
+
+/* Anti-spam honeypot: invisible to humans (and to screen readers), bots fill it */
+.hp-field { position: absolute !important; left: -10000px !important; width: 1px; height: 1px; overflow: hidden; }
+
+/* Logout is a POST form (CSRF-protected), styled like the other nav buttons */
+.logout-form { display: inline; margin: 0; }
+button.logout-btn { cursor: pointer; font: inherit; }
+.nav-link-button { background: none; border: 0; width: 100%; text-align: left; font: inherit; cursor: pointer; }
+
+/* Search */
+.search-form { display: flex; gap: .4rem; margin: 0; }
+.search-form input[type="search"] {
+    width: 9rem; padding: .35rem .6rem; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--ink-850); color: var(--paper); font: inherit; font-size: .88rem;
+}
+.search-form-page { margin: 1rem 0 2rem; }
+.search-form-page input[type="search"] { width: 100%; max-width: 28rem; }
+.search-form button {
+    padding: .35rem .9rem; border: 1px solid var(--brass); border-radius: var(--radius);
+    background: transparent; color: var(--brass-bright); font: inherit; cursor: pointer;
+}
+
+/* Category + tags */
+.post-taxonomy { display: flex; flex-wrap: wrap; gap: .4rem .7rem; margin: .3rem 0 .8rem;
+    font-family: var(--font-mono); font-size: .78rem; letter-spacing: .03em; }
+.post-taxonomy a { color: var(--paper-dim); text-decoration: none; }
+.post-taxonomy a:hover { color: var(--brass-bright); }
+.post-category { color: var(--brass) !important; text-transform: uppercase; }
+.account-link { margin: 1rem 0; }

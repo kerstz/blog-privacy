@@ -36,7 +36,7 @@ PASSWORD = 'Correct-Horse-42'
 
 @pytest.fixture(autouse=True)
 def fresh_db():
-    app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
+    app.config.update(TESTING=True, WTF_CSRF_ENABLED=False, ANTISPAM_ENABLED=False)
     utils.reset_security_state()
     with app.app_context():
         db.drop_all()
@@ -169,10 +169,16 @@ def test_upload_access_control_and_exif_strip():
         path = m.file_path
     name = path.split('/')[-1]
     assert 'holiday' not in name  # random name, no user filename on disk
-    assert name.endswith('.webp')
-    with Image.open(path) as img:
+    assert name.endswith('.webp.enc')  # re-encoded to WebP, then encrypted at rest
+    with open(path, 'rb') as f:
+        raw = f.read()
+    assert b'WEBP' not in raw[:64] and b'SpyCam' not in raw  # unreadable on disk
+    from app.services import read_upload_bytes
+    with Image.open(io.BytesIO(read_upload_bytes(path))) as img:
+        assert img.format == 'WEBP'
         assert not img.info.get('exif')
-    assert a.get(f'/uploads/{name}').status_code == 200
+    r = a.get(f'/uploads/{name}')
+    assert r.status_code == 200 and r.mimetype == 'image/webp' and r.data[8:12] == b'WEBP'
     assert login('admin').get(f'/uploads/{name}').status_code == 200
     assert login('bob').get(f'/uploads/{name}').status_code == 404
     assert app.test_client().get(f'/uploads/{name}').status_code == 404
@@ -218,7 +224,7 @@ def test_totp_bruteforce_limited_and_no_replay():
     c1.post('/login', data={'username': 'alice', 'password': PASSWORD})
     c1.post('/login/totp', data={'code': code})
     with c1.session_transaction() as s:
-        assert s.get('_user_id') == str(uid('alice'))
+        assert s.get('_user_id') == f"{uid('alice')}:0"
     c2 = app.test_client()
     c2.post('/login', data={'username': 'alice', 'password': PASSWORD})
     c2.post('/login/totp', data={'code': code})  # replay of the same code
@@ -434,3 +440,222 @@ def test_onion_location_header():
         assert r.headers['Onion-Location'] == f"http://{'a' * 56}.onion/about"
     finally:
         routes.ONION_ADDRESS = old
+
+
+# ---------------------------------------------------------------- account security release
+def _enable_2fa(name):
+    from app.services import generate_recovery_codes
+    secret = pyotp.random_base32()
+    with app.app_context():
+        u = User.query.filter_by(username=name).first()
+        u.totp_secret, u.totp_enabled = secret, True
+        codes = generate_recovery_codes(u)
+        db.session.commit()
+    return secret, codes
+
+
+def _logged_in(client):
+    with client.session_transaction() as s:
+        return '_user_id' in s
+
+
+def test_change_password_logs_out_other_sessions():
+    phone, laptop = login('alice'), login('alice')
+    r = laptop.post('/account/password', data={'current_password': PASSWORD,
+                                               'new_password': 'Brand-New-Pass-99',
+                                               'confirm_password': 'Brand-New-Pass-99'})
+    assert r.status_code == 302
+    assert laptop.get('/chat').status_code == 200          # current browser stays logged in
+    assert phone.get('/chat').status_code == 302            # stolen/other session is dead
+    c = app.test_client()
+    c.post('/login', data={'username': 'alice', 'password': 'Brand-New-Pass-99'})
+    assert _logged_in(c)
+
+
+def test_change_password_requires_current_password():
+    a = login('alice')
+    a.post('/account/password', data={'current_password': 'wrong-password-x',
+                                      'new_password': 'Brand-New-Pass-99', 'confirm_password': 'Brand-New-Pass-99'})
+    c = app.test_client()
+    c.post('/login', data={'username': 'alice', 'password': PASSWORD})
+    assert _logged_in(c)
+
+
+def test_logout_everywhere():
+    phone, laptop = login('alice'), login('alice')
+    laptop.post('/account/logout-everywhere')
+    assert laptop.get('/chat').status_code == 200
+    assert phone.get('/chat').status_code == 302
+
+
+def test_logout_requires_post():
+    a = login('alice')
+    assert a.get('/logout').status_code == 405
+    a.post('/logout')
+    assert not _logged_in(a)
+
+
+def test_recovery_code_login_single_use():
+    _, codes = _enable_2fa('alice')
+    c = app.test_client()
+    c.post('/login', data={'username': 'alice', 'password': PASSWORD})
+    c.post('/login/totp', data={'code': codes[0]})
+    assert _logged_in(c)
+    c2 = app.test_client()
+    c2.post('/login', data={'username': 'alice', 'password': PASSWORD})
+    c2.post('/login/totp', data={'code': codes[0]})     # already used
+    assert not _logged_in(c2)
+    with app.app_context():
+        from app.services import recovery_codes_left
+        assert recovery_codes_left(User.query.filter_by(username='alice').first()) == 9
+        assert codes[1] not in (User.query.filter_by(username='alice').first().recovery_codes or '')
+
+
+def test_recovery_codes_shown_once_when_enabling_2fa():
+    a = login('alice')
+    a.get('/totp/setup')
+    with a.session_transaction() as s:
+        secret = s['totp_pending_secret']
+    html = a.post('/totp/setup', data={'code': pyotp.TOTP(secret).now()}).data.decode()
+    import re as _re
+    shown = _re.findall(r'<span>([A-Z0-9]{5}-[A-Z0-9]{5})</span>', html)
+    assert len(shown) == 10
+    with app.app_context():
+        stored = User.query.filter_by(username='alice').first().recovery_codes
+        assert all(code not in stored for code in shown)   # only hashes stored
+
+
+def test_export_my_data_requires_password_and_decrypts():
+    a = login('alice')
+    a.post('/chat', data={'message': 'my secret message'})
+    assert a.post('/account/export', data={'ex-password': 'nope-nope-nope'}).status_code == 200
+    r = a.post('/account/export', data={'ex-password': PASSWORD})
+    assert r.mimetype == 'application/json' and 'attachment' in r.headers['Content-Disposition']
+    data = r.get_json()
+    assert data['account']['username'] == 'alice'
+    assert data['messages'][0]['content'] == 'my secret message'
+    assert '$2b$' not in r.data.decode()   # no password hash in the export
+
+
+def test_export_requires_2fa_code_when_enabled():
+    secret, _ = _enable_2fa('alice')
+    c = app.test_client()
+    c.post('/login', data={'username': 'alice', 'password': PASSWORD})
+    c.post('/login/totp', data={'code': pyotp.TOTP(secret).now()})
+    r = c.post('/account/export', data={'ex-password': PASSWORD})
+    assert r.mimetype != 'application/json'
+
+
+def test_delete_own_account():
+    a = login('alice')
+    a.post('/post/1', data={'content': 'bye'})
+    a.post('/chat', data={'message': 'private'})
+    a.post('/account/delete', data={'del-password': PASSWORD, 'del-confirm': 'delete'})  # wrong confirm
+    with app.app_context():
+        assert User.query.filter_by(username='alice').first()
+    a.post('/account/delete', data={'del-password': PASSWORD, 'del-confirm': 'DELETE'})
+    with app.app_context():
+        assert not User.query.filter_by(username='alice').first()
+        assert Message.query.count() == 0
+        assert Comment.query.first().author_id is None
+    assert not _logged_in(a)
+
+
+def test_last_admin_cannot_delete_own_account():
+    adm = login('admin')
+    adm.post('/account/delete', data={'del-password': PASSWORD, 'del-confirm': 'DELETE'})
+    with app.app_context():
+        assert User.query.filter_by(username='admin').first()
+
+
+def test_security_alerts_sent(monkeypatch):
+    from app import services
+    sent = []
+    monkeypatch.setattr(services.app.logger, 'warning', lambda fmt, *a: sent.append(fmt % a if a else fmt))
+    login('admin')
+    app.test_client().post('/login', data={'username': 'admin', 'password': 'wrong-password'})
+    assert any('admin login' in m for m in sent)
+    assert any('failed login on admin' in m for m in sent)
+
+
+def test_encrypt_legacy_command(tmp_path):
+    from app.encryption import message_encryption
+    legacy_file = os.path.join('uploads', 'legacy_test_file.txt')
+    with open(legacy_file, 'w') as f:
+        f.write('old plaintext attachment')
+    with app.app_context():
+        db.session.add(Message(sender_id=uid('alice'), receiver_id=uid('admin'), content='old plaintext',
+                               file_path='uploads/legacy_test_file.txt', file_type='file'))
+        db.session.commit()
+    runner = app.test_cli_runner()
+    assert 'Encrypted 1 legacy message(s) and 1 file(s)' in runner.invoke(args=['encrypt-legacy']).output
+    assert 'Encrypted 0 legacy message(s) and 0 file(s)' in runner.invoke(args=['encrypt-legacy']).output
+    with app.app_context():
+        m = Message.query.first()
+        assert message_encryption.is_ciphertext(m.content) and m.get_decrypted_content() == 'old plaintext'
+        assert m.file_path.endswith('.enc') and not os.path.exists(legacy_file)
+        from app.services import read_upload_bytes
+        assert read_upload_bytes(m.file_path) == b'old plaintext attachment'
+        os.remove(m.file_path)
+
+
+def test_antispam_honeypot_and_timing():
+    app.config['ANTISPAM_ENABLED'] = True
+    try:
+        from app.forms import _new_antispam_token
+        with app.test_request_context():
+            fresh = _new_antispam_token()
+        data = {'username': 'spambot', 'password': 'a-long-password-1', 'confirm_password': 'a-long-password-1'}
+        c = app.test_client()
+        c.post('/register', data={**data, 'form_ts': fresh})                    # too fast
+        c.post('/register', data={**data})                                      # no token
+        import time as _time
+        with app.test_request_context():
+            import itsdangerous
+            s = itsdangerous.URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='antispam-form')
+            old = s.dumps(int(_time.time()) - 10)
+        c.post('/register', data={**data, 'form_ts': old, 'website': 'http://spam'})  # honeypot filled
+        with app.app_context():
+            assert not User.query.filter_by(username='spambot').first()
+        c.post('/register', data={**data, 'form_ts': old})                      # human
+        with app.app_context():
+            assert User.query.filter_by(username='spambot').first()
+    finally:
+        app.config['ANTISPAM_ENABLED'] = False
+
+
+def test_new_post_can_be_published_with_category_and_tags():
+    adm = login('admin')
+    adm.post('/manage_posts', data={'title': 'Tagged post', 'content': 'hello', 'is_published': 'y',
+                                    'category': 'Privacy', 'tags': 'Tor, linux, tor'})
+    with app.app_context():
+        p = Post.query.filter_by(title='Tagged post').first()
+        assert p.is_published and p.category == 'Privacy'
+        assert sorted(t.slug for t in p.tags) == ['linux', 'tor']
+    anon = app.test_client()
+    assert b'Tagged post' in anon.get('/tag/tor').data
+    assert b'Tagged post' in anon.get('/category/privacy').data
+    assert b'Tagged post' in anon.get('/search?q=tagged').data
+    assert b'SECRET-DRAFT' not in anon.get('/search?q=SECRET').data
+    feed = anon.get('/feed.xml')
+    assert feed.mimetype == 'application/rss+xml' and b'Tagged post' in feed.data and b'SECRET-DRAFT' not in feed.data
+
+
+def test_edit_post_can_unpublish_and_publish():
+    adm = login('admin')
+    adm.post('/edit_post/1', data={'title': 'Public', 'content': 'x'})       # checkbox unticked
+    assert app.test_client().get('/post/1').status_code == 404
+    adm.post('/edit_post/1', data={'title': 'Public', 'content': 'x', 'is_published': 'y'})
+    assert app.test_client().get('/post/1').status_code == 200
+
+
+def test_search_wildcards_are_literal():
+    html = app.test_client().get('/search?q=%25%25').data.decode()
+    assert 'Public' not in html   # "%%" must not match every post
+
+
+def test_strict_style_csp():
+    r = login('admin').get('/manage_posts')
+    csp = r.headers['Content-Security-Policy']
+    assert "style-src 'self';" in csp and "'unsafe-inline'" not in csp.split('style-src-attr')[0]
+    assert '<style' not in r.data.decode()

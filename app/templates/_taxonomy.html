@@ -1,0 +1,9 @@
+{# Category + tags of a post, as plain links (no JS) #}
+{% macro taxonomy(post) %}
+{% if post.category or post.tags %}
+<p class="post-taxonomy">
+    {% if post.category %}<a class="post-category" href="{{ url_for('posts_by_category', slug=post.category|slug) }}">{{ post.category }}</a>{% endif %}
+    {% for tag in post.tags %}<a class="post-tag" href="{{ url_for('posts_by_tag', slug=tag.slug) }}">#{{ tag.name }}</a>{% endfor %}
+</p>
+{% endif %}
+{% endmacro %}

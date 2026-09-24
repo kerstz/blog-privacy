@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+    <title>MyBlog</title>
+    <link>{{ base_url }}/</link>
+    <description>Latest posts</description>
+    <atom:link href="{{ base_url }}{{ url_for('rss_feed') }}" rel="self" type="application/rss+xml"/>
+    {% for post in posts %}
+    <item>
+        <title>{{ post.title }}</title>
+        <link>{{ base_url }}{{ url_for('post_detail', post_id=post.id) }}</link>
+        <guid isPermaLink="true">{{ base_url }}{{ url_for('post_detail', post_id=post.id) }}</guid>
+        <pubDate>{{ post.date_posted.strftime('%a, %d %b %Y %H:%M:%S +0000') }}</pubDate>
+        {% if post.category %}<category>{{ post.category }}</category>{% endif %}
+        {% for tag in post.tags %}<category>{{ tag.name }}</category>{% endfor %}
+        <description>{{ post.content|excerpt(400) }}</description>
+    </item>
+    {% endfor %}
+</channel>
+</rss>

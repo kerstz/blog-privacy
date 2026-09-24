@@ -1,21 +1,31 @@
- 
 {% extends 'layout.html' %}
+{% from '_taxonomy.html' import taxonomy %}
+
+{% block title %}{{ heading or 'All entries' }} - Blog{% endblock %}
 
 {% block content %}
 <div class="post-list-container">
-    <h1>All entries</h1>
+    <h1>{{ heading or 'All entries' }}</h1>
+
+    {% if query is not none %}
+    <form method="GET" action="{{ url_for('search') }}" class="search-form search-form-page" role="search">
+        <input type="search" name="q" value="{{ query }}" placeholder="Search posts" aria-label="Search posts" maxlength="100">
+        <button type="submit">Search</button>
+    </form>
+    {% endif %}
 
     {% if posts %}
         {% for post in posts %}
         <article class="post-card">
             <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
             <h2><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h2>
-            <p class="post-excerpt">{{ post.content|striptags|truncate(180) }}</p>
+            {{ taxonomy(post) }}
+            <p class="post-excerpt">{{ post.content|excerpt(180) }}</p>
             <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
         </article>
         {% endfor %}
     {% else %}
-        <p class="no-posts">No posts available yet.</p>
+        <p class="no-posts">{{ empty_message or 'No posts available yet.' }}</p>
     {% endif %}
 </div>
 {% endblock %}
