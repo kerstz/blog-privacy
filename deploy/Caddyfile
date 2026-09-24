@@ -1,0 +1,25 @@
+# Caddy (automatic HTTPS). Replace blog.example.org with your domain.
+blog.example.org {
+    encode zstd gzip
+    request_body {
+        max_size 12MB
+    }
+    reverse_proxy 127.0.0.1:8000
+    # The app sets its own security headers; hide the server banner.
+    header -Server
+    log {
+        # Privacy: do not keep visitor IPs in access logs.
+        output discard
+    }
+}
+
+# Onion service entry point (see torrc.example). Plain HTTP is fine: Tor
+# already encrypts end to end and authenticates the .onion address.
+http://:8080 {
+    bind 127.0.0.1
+    reverse_proxy 127.0.0.1:8000
+    header -Server
+    log {
+        output discard
+    }
+}

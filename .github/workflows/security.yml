@@ -1,0 +1,52 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Every Monday 06:00 UTC: catches CVEs published since the last push.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Security tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: pytest -q tests/
+
+  dependency-audit:
+    name: Dependency CVE scan (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit
+      - run: pip-audit -r requirements.txt --desc on
+
+  no-javascript:
+    name: No JavaScript / no third-party resources in templates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check templates
+        run: |
+          set -e
+          if grep -rnE "<script|\son[a-z]+=|javascript:" app/templates/; then
+            echo "::error::JavaScript found in templates (the site must work without JS)"; exit 1
+          fi
+          if grep -rnE "(src|href)=\"https?://" app/templates/ | grep -vE "rel=\"[^\"]*noreferrer"; then
+            echo "::error::Third-party resource or link without rel=noreferrer found"; exit 1
+          fi

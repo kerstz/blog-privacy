@@ -135,7 +135,7 @@ Before going live, make sure you've:
 - [ ] Customized colors (optional)
 - [ ] Configured donation options
 - [ ] Created an admin account
-- [ ] Changed the secret key in `config.py`
+- [ ] Filled in the secrets in `.env` (see `.env.example`)
 - [ ] Updated About page with your information
 - [ ] Tested the site locally with `flask run`
 - [ ] Committed and pushed to GitHub

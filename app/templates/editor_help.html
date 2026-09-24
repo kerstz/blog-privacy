@@ -1,159 +1,136 @@
 {% extends 'layout.html' %}
 
-{% block title %}Aide de l'Éditeur - Blog{% endblock %}
+{% block title %}Editor Help - Blog{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="editor-help-container">
-        <h2><span class="icon-info"></span> Aide de l'Éditeur de Texte</h2>
-        
+        <h2><span class="icon-info"></span> Text Editor Help (BBCode)</h2>
+        <p>Comments, replies and posts use BBCode. Raw HTML in comments is never executed: everything is escaped and sanitized on the server.</p>
+
         <div class="help-section">
-            <h3>Balises de Formatage</h3>
+            <h3>Formatting</h3>
             <div class="help-grid">
                 <div class="help-item">
-                    <code>[b]Texte en gras[/b]</code>
-                    <p>Met le texte en <strong>gras</strong></p>
+                    <code>[b]Bold text[/b]</code>
+                    <p>Makes text <strong>bold</strong></p>
                 </div>
                 <div class="help-item">
-                    <code>[i]Texte en italique[/i]</code>
-                    <p>Met le texte en <em>italique</em></p>
+                    <code>[i]Italic text[/i]</code>
+                    <p>Makes text <em>italic</em></p>
                 </div>
                 <div class="help-item">
-                    <code>[u]Texte souligné[/u]</code>
-                    <p>Met le texte en <u>souligné</u></p>
+                    <code>[u]Underlined text[/u]</code>
+                    <p><u>Underlines</u> text</p>
                 </div>
                 <div class="help-item">
-                    <code>[s]Texte barré[/s]</code>
-                    <p>Met le texte en <s>barré</s></p>
+                    <code>[s]Struck text[/s]</code>
+                    <p><s>Strikes through</s> text</p>
                 </div>
             </div>
         </div>
 
         <div class="help-section">
-            <h3>Liens et Images</h3>
+            <h3>Links and images</h3>
             <div class="help-grid">
                 <div class="help-item">
                     <code>[url]https://example.com[/url]</code>
-                    <p>Crée un lien vers une URL</p>
+                    <p>Link to a URL</p>
                 </div>
                 <div class="help-item">
-                    <code>[url=https://example.com]Texte du lien[/url]</code>
-                    <p>Crée un lien avec un texte personnalisé</p>
+                    <code>[url=https://example.com]Link text[/url]</code>
+                    <p>Link with custom text</p>
                 </div>
                 <div class="help-item">
-                    <code>[img]https://example.com/image.jpg[/img]</code>
-                    <p>Insère une image depuis une URL</p>
+                    <code>[img]/uploads/image.webp[/img]</code>
+                    <p>Image hosted on this blog</p>
                 </div>
                 <div class="help-item">
-                    <code>[img=width,height]https://example.com/image.jpg[/img]</code>
-                    <p>Insère une image avec des dimensions spécifiques</p>
+                    <code>[img=400,300]/uploads/image.webp[/img]</code>
+                    <p>Image with a maximum width / height (px)</p>
+                </div>
+                <div class="help-item">
+                    <code>[img]https://example.com/a.jpg[/img]</code>
+                    <p>External images are shown as a <em>link</em>, never loaded: loading them would reveal every reader&#39;s IP address to that site</p>
                 </div>
             </div>
         </div>
 
         <div class="help-section">
-            <h3>Listes et Structure</h3>
+            <h3>Lists and blocks</h3>
             <div class="help-grid">
                 <div class="help-item">
-                    <code>[list]<br>[*]Élément 1<br>[*]Élément 2<br>[/list]</code>
-                    <p>Crée une liste à puces</p>
+                    <code>[list]<br>[*]Item 1<br>[*]Item 2<br>[/list]</code>
+                    <p>Bulleted list</p>
                 </div>
                 <div class="help-item">
-                    <code>[list=1]<br>[*]Élément 1<br>[*]Élément 2<br>[/list]</code>
-                    <p>Crée une liste numérotée</p>
+                    <code>[list=1]<br>[*]Item 1<br>[*]Item 2<br>[/list]</code>
+                    <p>Numbered list</p>
                 </div>
                 <div class="help-item">
-                    <code>[quote]Citation[/quote]</code>
-                    <p>Crée un bloc de citation</p>
+                    <code>[quote]Quotation[/quote]</code>
+                    <p>Quote block</p>
                 </div>
                 <div class="help-item">
-                    <code>[code]Code source[/code]</code>
-                    <p>Crée un bloc de code</p>
+                    <code>[code]Source code[/code]</code>
+                    <p>Code block</p>
                 </div>
             </div>
         </div>
 
         <div class="help-section">
-            <h3>Couleurs et Tailles</h3>
+            <h3>Colors and sizes</h3>
             <div class="help-grid">
                 <div class="help-item">
-                    <code>[color=red]Texte rouge[/color]</code>
-                    <p>Change la couleur du texte</p>
+                    <code>[color=red]Red text[/color]</code>
+                    <p>Text color (name or #hex)</p>
                 </div>
                 <div class="help-item">
-                    <code>[size=18]Texte plus grand[/size]</code>
-                    <p>Change la taille du texte (en pixels)</p>
-                </div>
-                <div class="help-item">
-                    <code>[font=Arial]Texte avec police[/font]</code>
-                    <p>Change la police du texte</p>
+                    <code>[size=18]Bigger text[/size]</code>
+                    <p>Text size in pixels (8 to 48)</p>
                 </div>
             </div>
         </div>
 
         <div class="help-section">
-            <h3>Alignement</h3>
+            <h3>Alignment</h3>
             <div class="help-grid">
                 <div class="help-item">
-                    <code>[center]Texte centré[/center]</code>
-                    <p>Centre le texte</p>
+                    <code>[center]Centered[/center]</code>
+                    <p>Centers the text</p>
                 </div>
                 <div class="help-item">
-                    <code>[left]Texte aligné à gauche[/left]</code>
-                    <p>Aligne le texte à gauche</p>
+                    <code>[left]Left[/left]</code>
+                    <p>Aligns left</p>
                 </div>
                 <div class="help-item">
-                    <code>[right]Texte aligné à droite[/right]</code>
-                    <p>Aligne le texte à droite</p>
+                    <code>[right]Right[/right]</code>
+                    <p>Aligns right</p>
                 </div>
                 <div class="help-item">
-                    <code>[justify]Texte justifié[/justify]</code>
-                    <p>Justifie le texte</p>
+                    <code>[justify]Justified[/justify]</code>
+                    <p>Justifies the text</p>
                 </div>
             </div>
         </div>
 
         <div class="help-section">
-            <h3>Média et Fichiers</h3>
-            <div class="help-grid">
-                <div class="help-item">
-                    <code>[video]https://example.com/video.mp4[/video]</code>
-                    <p>Insère une vidéo</p>
-                </div>
-                <div class="help-item">
-                    <code>[audio]https://example.com/audio.mp3[/audio]</code>
-                    <p>Insère un fichier audio</p>
-                </div>
-                <div class="help-item">
-                    <code>[file]https://example.com/document.pdf[/file]</code>
-                    <p>Crée un lien de téléchargement</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="help-section">
-            <h3>Exemple Complet</h3>
+            <h3>Full example</h3>
             <div class="example-box">
-                <pre><code>[b]Titre en gras[/b]
-
-[i]Paragraphe en italique[/i]
-
-[img]https://example.com/image.jpg[/img]
-
+                <pre><code>[b]Bold title[/b]
+[i]Italic paragraph[/i]
 [list]
-[*]Premier point
-[*]Deuxième point
+[*]First point
+[*]Second point
 [/list]
-
-[quote]Citation importante[/quote]
-
-[url=https://example.com]Lien vers un site[/url]</code></pre>
+[quote]Important quote[/quote]
+[url=https://example.com]Link to a site[/url]</code></pre>
             </div>
         </div>
 
         <div class="help-footer">
-            <p><span class="icon-info"></span> <strong>Astuce :</strong> Vous pouvez combiner plusieurs balises pour créer des effets complexes.</p>
-            <p><span class="icon-warning"></span> <strong>Attention :</strong> Assurez-vous que les URLs d'images et de médias sont accessibles publiquement.</p>
+            <p><span class="icon-info"></span> <strong>Tip:</strong> tags can be combined.</p>
+            <p><span class="icon-warning"></span> <strong>Privacy:</strong> this blog never loads third-party content, so external images appear as links.</p>
         </div>
     </div>
 </div>
