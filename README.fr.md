@@ -23,10 +23,14 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Aucun JavaScript** : toutes les pages fonctionnent JS désactivé (la CSP impose même `script-src 'none'`)
 - **Aucune requête vers des tiers** : polices hébergées localement, pas de CDN, pas de widget intégré, images externes affichées en lien
 - **Prêt pour Tor** : en-tête `Onion-Location`, configuration du service onion dans `deploy/`
-- **Articles** en BBCode (ou HTML simple), brouillons, publication programmée, révisions
+- **Articles** en BBCode (ou HTML simple), brouillons, publication programmée, révisions, **catégories et tags**
+- **Recherche** et **flux RSS** (`/feed.xml`)
 - **Commentaires imbriqués**, likes, notifications, XP, niveaux et badges
-- **Chat privé chiffré** entre chaque utilisateur et l'admin
-- **Double authentification TOTP**
+- **Chat privé chiffré** entre chaque utilisateur et l'admin (messages **et pièces jointes** chiffrés au repos)
+- **Double authentification TOTP** avec **codes de secours** à usage unique
+- **Page sécurité du compte** : changer de mot de passe, se déconnecter partout, télécharger ses données, supprimer son compte
+- **Alertes de sécurité Telegram** (connexions admin, tentatives échouées, changements de 2FA...)
+- **Anti-spam sans JS** (champ piège + délai minimum, sans captcha)
 - **Bot Telegram d'administration** (optionnel) et **API mobile admin**
 - **Pages statiques, bannières, contact, dons en crypto** (QR codes générés côté serveur)
 - **Mises à jour sûres** : `./update.sh` (sauvegarde, mise à jour, vérification, retour arrière automatique), mises à jour automatiques optionnelles à la fréquence de votre choix, sauvegardes chiffrées
@@ -82,8 +86,9 @@ De nouvelles failles sont publiées chaque semaine. **Gardez le blog à jour.**
 `update.sh` sauvegarde la base et les uploads, récupère le code (fast-forward
 uniquement), met à jour les dépendances, applique les migrations, vérifie que
 l'application démarre (et lance les tests si pytest est installé), et **revient
-automatiquement en arrière** en cas d'échec. Il ne touche jamais au contenu de la
-base, à `uploads/` ni au `.env`. Les mises à jour automatiques sont **désactivées
+automatiquement en arrière** en cas d'échec. Il ne touche jamais au `.env`, ne supprime
+aucune donnée, et se contente de convertir les anciens messages / fichiers en
+clair vers leur forme chiffrée (`flask encrypt-legacy`). Les mises à jour automatiques sont **désactivées
 par défaut** ; si `UPDATE_RESTART_CMD` est défini dans `.env`, l'application est
 redémarrée après chaque mise à jour réussie, et le bot Telegram (s'il est
 configuré) vous prévient.
@@ -118,6 +123,7 @@ le code du moment dans l'en-tête `X-TOTP-Code`. Liste des routes dans le
 pip install -r requirements-dev.txt
 pytest -q tests/
 pip-audit -r requirements.txt
+bandit -r app -q
 ```
 
 Les mêmes vérifications tournent sur GitHub Actions à chaque push et chaque lundi,

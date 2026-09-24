@@ -1,8 +1,11 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, TextAreaField, BooleanField, DateTimeField, SelectField
+from wtforms import StringField, PasswordField, SubmitField, TextAreaField, BooleanField, DateTimeField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, URL, Optional, Email, Regexp
 from app.models import User
+from flask import current_app
+from itsdangerous import URLSafeTimedSerializer, BadData
+import time
 
 # Usernames are shown in many places (admin panel, Telegram, chat): restrict
 # them to a safe charset so they can never carry markup or script payloads.
@@ -13,6 +16,58 @@ USERNAME_VALIDATORS = [
 # bcrypt only uses the first 72 bytes of a password.
 PASSWORD_MAX = 72
 TOTP_CODE_VALIDATORS = [DataRequired(), Length(min=6, max=6), Regexp(r'^\d{6}$', message='6 digits.')]
+# 6-digit TOTP code or a recovery code (XXXXX-XXXXX)
+SECOND_FACTOR_VALIDATORS = [
+    DataRequired(), Length(min=6, max=11),
+    Regexp(r'^(\d{6}|[A-Za-z0-9]{5}-?[A-Za-z0-9]{5})$', message='6-digit code or recovery code.'),
+]
+def max_utf8_bytes(limit=PASSWORD_MAX):
+    """bcrypt works on the first 72 *bytes* (and bcrypt>=5 rejects longer
+    input): 72 characters with accents or emoji can be more than that."""
+    def _check(form, field):
+        if field.data and len(field.data.encode('utf-8')) > limit:
+            raise ValidationError(f'Password is too long (max {limit} bytes; accented letters and emoji count double or more).')
+    return _check
+
+
+NEW_PASSWORD_VALIDATORS = [
+    DataRequired(),
+    Length(min=12, max=PASSWORD_MAX, message='Password must be 12 to 72 characters long.'),
+    max_utf8_bytes(),
+]
+
+
+# ---------------------------------------------------------------- anti-spam
+def _antispam_serializer():
+    return URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='antispam-form')
+
+
+def _new_antispam_token():
+    return _antispam_serializer().dumps(int(time.time()))
+
+
+class AntiSpamMixin:
+    """No-JS, no third-party anti-spam for public forms:
+    - `website` is a honeypot: hidden with CSS, humans leave it empty;
+    - `form_ts` is a signed render time: the form must be at least
+      ANTISPAM_MIN_SECONDS old (bots post instantly) and at most one day old.
+    Disabled when app.config['ANTISPAM_ENABLED'] is False."""
+    website = StringField('Leave this field empty', render_kw={'autocomplete': 'off', 'tabindex': '-1'})
+    form_ts = HiddenField(default=_new_antispam_token)
+
+    def validate_website(self, field):
+        if current_app.config.get('ANTISPAM_ENABLED', True) and (field.data or '').strip():
+            raise ValidationError('Spam detected.')
+
+    def validate_form_ts(self, field):
+        if not current_app.config.get('ANTISPAM_ENABLED', True):
+            return
+        try:
+            issued = _antispam_serializer().loads(field.data or '', max_age=86400)
+        except BadData:
+            raise ValidationError('This form expired, please reload the page.')
+        if time.time() - int(issued) < current_app.config.get('ANTISPAM_MIN_SECONDS', 3):
+            raise ValidationError('Please wait a few seconds before submitting.')
 
 
 class LoginForm(FlaskForm):
@@ -21,12 +76,9 @@ class LoginForm(FlaskForm):
     remember_me = BooleanField('Remember Me')
     submit = SubmitField('Login')
 
-class RegistrationForm(FlaskForm):
+class RegistrationForm(AntiSpamMixin, FlaskForm):
     username = StringField('Username', validators=USERNAME_VALIDATORS)
-    password = PasswordField('Password', validators=[
-        DataRequired(),
-        Length(min=12, max=PASSWORD_MAX, message='Password must be 12 to 72 characters long.'),
-    ])
+    password = PasswordField('Password', validators=NEW_PASSWORD_VALIDATORS)
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
 
@@ -38,11 +90,13 @@ class RegistrationForm(FlaskForm):
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(max=100)])
     content = TextAreaField('Content', validators=[DataRequired()])
+    category = StringField('Category', validators=[Optional(), Length(max=60)])
+    tags = StringField('Tags (comma separated)', validators=[Optional(), Length(max=300)])
     scheduled_date = DateTimeField('Scheduled Date', format='%Y-%m-%d %H:%M:%S', validators=[Optional()])
     is_published = BooleanField('Publish Now')
     submit = SubmitField('Submit')
 
-class CommentForm(FlaskForm):
+class CommentForm(AntiSpamMixin, FlaskForm):
     content = TextAreaField('Content', validators=[DataRequired(), Length(max=5000)])
     submit = SubmitField('Post Comment')
 
@@ -75,7 +129,7 @@ class StaticPageForm(FlaskForm):
     content = TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField('Save Changes')
 
-class ContactForm(FlaskForm):
+class ContactForm(AntiSpamMixin, FlaskForm):
     name = StringField('Your Name', validators=[DataRequired(), Length(max=100)])
     email = StringField('Your Email', validators=[DataRequired(), Email(), Length(max=120)])
     message = TextAreaField('Your Message', validators=[DataRequired(), Length(max=5000)])
@@ -104,13 +158,35 @@ class TOTPSetupForm(FlaskForm):
 
 
 class TOTPDisableForm(FlaskForm):
-    """Confirm current password + a valid TOTP code to disable 2FA."""
+    """Confirm current password + a valid TOTP (or recovery) code to disable 2FA."""
     password = PasswordField('Current password', validators=[DataRequired(), Length(max=PASSWORD_MAX)])
-    code = StringField('6-digit code', validators=TOTP_CODE_VALIDATORS)
+    code = StringField('6-digit code or recovery code', validators=SECOND_FACTOR_VALIDATORS)
     submit = SubmitField('Disable 2FA')
 
 
 class TOTPVerifyForm(FlaskForm):
     """Second-step form shown at login when 2FA is enabled."""
-    code = StringField('6-digit code', validators=TOTP_CODE_VALIDATORS)
+    code = StringField('6-digit code or recovery code', validators=SECOND_FACTOR_VALIDATORS)
     submit = SubmitField('Verify')
+
+
+class ChangePasswordForm(FlaskForm):
+    current_password = PasswordField('Current password', validators=[DataRequired(), Length(max=PASSWORD_MAX)])
+    new_password = PasswordField('New password', validators=NEW_PASSWORD_VALIDATORS)
+    confirm_password = PasswordField('Confirm new password', validators=[DataRequired(), EqualTo('new_password', message='Passwords do not match.')])
+    submit = SubmitField('Change password')
+
+
+class ReauthForm(FlaskForm):
+    """Re-enter the password (and the 2FA code when enabled) before a sensitive action."""
+    password = PasswordField('Current password', validators=[DataRequired(), Length(max=PASSWORD_MAX)])
+    code = StringField('2FA code or recovery code (if 2FA is enabled)', validators=[
+        Optional(), Length(min=6, max=11),
+        Regexp(r'^(\d{6}|[A-Za-z0-9]{5}-?[A-Za-z0-9]{5})$', message='6-digit code or recovery code.'),
+    ])
+    submit = SubmitField('Confirm')
+
+
+class DeleteAccountForm(ReauthForm):
+    confirm = StringField('Type DELETE to confirm', validators=[DataRequired(), Regexp(r'^DELETE$', message='Type DELETE in capital letters.')])
+    submit = SubmitField('Delete my account')
