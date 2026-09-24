@@ -2,6 +2,62 @@
 
 🇬🇧 English · [🇫🇷 Français](SECURITY.fr.md)
 
+## Account security release — September 2026 (3)
+
+**Update with `./update.sh`.** After this first update, run `flask encrypt-legacy`
+once (or let the next automatic update do it) to encrypt old data.
+
+### Accounts
+- **Change password** (`/account/security`): requires the current password and
+  logs the account out of every other device.
+- **Log out everywhere**: invalidates every other session and "remember me"
+  cookie (a per-user session version is embedded in the session id).
+- **2FA recovery codes**: 10 one-time codes shown once when 2FA is enabled
+  (only their SHA-256 is stored), usable instead of a TOTP code at login and to
+  disable 2FA; can be regenerated after re-authentication. Losing the phone no
+  longer locks an admin out.
+- **Delete my account** (password + 2FA + typing DELETE): messages, attachments,
+  likes and notifications are erased, comments anonymized. The last admin
+  cannot delete itself.
+- **Download my data**: JSON export (account, comments, posts, decrypted
+  messages, likes, notifications), after re-authentication.
+- **Logout is now a POST with a CSRF token** (a third-party page could log users out).
+
+### Encryption at rest
+- **Uploaded files (chat attachments, profile pictures) are now encrypted on
+  disk** with the same key as chat messages (Fernet, authenticated) and only
+  decrypted when an authorized user downloads them.
+- `flask encrypt-legacy`: encrypts chat messages and files still stored in
+  plaintext by older versions. Idempotent; `update.sh` runs it automatically.
+
+### Alerts
+- Telegram security alerts (when the bot is configured): admin logins (and
+  logins without 2FA), failed password / 2FA attempts on admin accounts,
+  2FA enabled / disabled, recovery code used or regenerated, password changed,
+  promotions / demotions / deletions, account self-deletion.
+
+### Hardening
+- **Strict CSP for styles**: every inline `<style>` block moved to
+  `static/css/pages/*.css`; `style-src 'self'` (only sanitized `style`
+  attributes remain allowed through `style-src-attr`). CI rejects `<style>` in templates.
+- **No-JS anti-spam** on registration, comments and the contact endpoint:
+  honeypot field + signed minimum form age (bots post instantly), no captcha,
+  no third party.
+- **bandit** static analysis in CI (all findings reviewed; false positives annotated).
+- `update.sh` now always runs from a private copy of itself (a `git pull`
+  rewriting the running script could execute a half-old, half-new file) and
+  hands over to the new updater right after the pull.
+
+### Features (no JavaScript)
+- **Categories and tags** on posts (`/category/<slug>`, `/tag/<slug>`).
+- **Search** (`/search?q=`, published posts only, rate limited, SQL wildcards escaped).
+- **RSS feed** (`/feed.xml`, linked from every page).
+
+### Bug fixes
+- Posts created from the admin panel could not be published any more (no
+  "publish" checkbox, edit page ignored it): regression of release (1), fixed.
+- Post excerpts showed raw BBCode.
+
 ## Privacy & hardening release — September 2026 (2)
 
 Follow-up to the security update below. **Update with `./update.sh`.**
@@ -218,6 +274,10 @@ rsync target for an off-site copy.
 - `style-src 'unsafe-inline'` is still needed (inline `<style>` blocks and `style` attributes in templates). Scripts are fully blocked (`script-src 'none'`).
 - The in-process Telegram poller means one gunicorn worker (use threads to scale).
 - `[img]` for images hosted on the blog only; there is no image library UI yet.
+- The database file itself is not encrypted (chat messages and uploaded files
+  inside it / next to it are). Use full-disk encryption on the server.
+- Password reset by email does not exist (no email is stored, by design): a
+  user who forgets their password must ask an admin.
 
 ## Reporting a vulnerability
 

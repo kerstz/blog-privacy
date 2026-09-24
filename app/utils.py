@@ -7,7 +7,7 @@ from app.models import Post
 from datetime import datetime
 import time
 import threading
-import random
+import secrets
 import sqlite3
 import re
 from PIL import Image
@@ -208,7 +208,8 @@ def strip_exif(image: Image.Image) -> Image.Image:
     comments...). Orientation is applied first so the photo is not rotated."""
     try:
         image = ImageOps.exif_transpose(image)
-    except Exception:
+    # bandit B110: no/invalid EXIF orientation: keep the image as is
+    except Exception:  # nosec B110
         pass
     if image.mode not in ('RGB', 'RGBA', 'L', 'LA'):
         image = image.convert('RGBA' if 'A' in image.getbands() or 'transparency' in image.info else 'RGB')
@@ -316,7 +317,8 @@ def _client_id():
     try:
         if current_user.is_authenticated:
             return f"user:{current_user.id}"
-    except Exception:
+    # bandit B110: outside a request/login context: fall back to the IP
+    except Exception:  # nosec B110
         pass
     return f"ip:{request.remote_addr}"
 
@@ -328,7 +330,7 @@ def hit_rate_limit(key: str, max_calls: int, window_seconds: int, record: bool =
         conn = _state_db()
         conn.execute('BEGIN IMMEDIATE')
         try:
-            if random.random() < 0.01:
+            if secrets.randbelow(100) == 0:  # occasional cleanup of old entries
                 conn.execute('DELETE FROM hits WHERE ts < ?', (now - 86400,))
             count = conn.execute('SELECT COUNT(*) FROM hits WHERE key = ? AND ts > ?',
                                  (key, now - window_seconds)).fetchone()[0]

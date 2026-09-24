@@ -22,10 +22,11 @@ app/
   services.py       - shared helpers: auth (password/TOTP), uploads, chat, deletion cascades, badges
   telegram_bot.py   - Telegram admin bot (poller thread, commands, PIN lock)
   mobile_api.py     - mobile admin REST API (Basic Auth + X-TOTP-Code, SSE)
+  cli.py            - maintenance commands (`flask encrypt-legacy`)
   forms.py          - WTForms classes
   utils.py          - BBCode parser, sanitizers, image pipeline, persistent rate limiter
   encryption.py     - Fernet message encryption
-  static/css/       - style.css (Night Desk theme), icons.css, fonts.css
+  static/css/       - style.css (Night Desk theme), icons.css, fonts.css, pages/*.css (per-page styles)
   static/fonts/     - self-hosted fonts (SIL OFL)
   templates/        - Jinja2 templates (NO JavaScript)
 deploy/             - systemd unit, Caddyfile, nginx.conf, torrc example
@@ -52,7 +53,13 @@ pytest -q tests/                # security regression tests (requirements-dev.tx
 
 ## Conventions
 - English only in code, comments, UI strings and main docs; update the `*.fr.md` translations when docs change
-- No JavaScript in templates and no third-party resources (CI enforces it; CSP is `script-src 'none'`)
+- No JavaScript and no `<style>` blocks in templates, no third-party resources (CI enforces it; CSP is `script-src 'none'`, `style-src 'self'`): put CSS in `static/css/pages/`
+- Public forms use `AntiSpamMixin` (honeypot `website` field rendered with class `hp-field` + signed `form_ts`)
+- Uploaded files are encrypted at rest (`.enc`); read them with `read_upload_bytes()`
+- Sensitive account actions re-authenticate (`ReauthForm` + `_reauthenticate()`) and call `security_alert()`
+- Sessions carry `User.session_version` (via `get_id()`): bump it with `invalidate_other_sessions()`
+- Logout is POST + CSRF
+- `bandit -r app -q` must stay clean (annotate reviewed false positives with a reason line + `# nosec <ID>`)
 - Never use `|safe` on user/admin HTML: use `|comment_html` (BBCode) or `|rich_html` (posts/pages)
 - Uploads go through `_store_upload()` (random name, metadata stripped) and are served by `_send_upload()` (access controlled)
 - Real-time events: `_notify_user()` / per-user rooms only, never broadcast
