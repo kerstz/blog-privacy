@@ -44,6 +44,7 @@
                 <h3><span class="icon-comment-dots"></span> Conversation with {{ target_user.username }}</h3>
             </div>
             <div class="messages-container" id="messages-container">
+              <div class="messages-inner">
                 {% for message in messages %}
                     <div class="message-item {% if message.sender.is_admin %}admin-message{% else %}user-message{% endif %}">
                         <div class="message-header">
@@ -83,6 +84,7 @@
                         </div>
                     </div>
                 {% endfor %}
+              </div>
                 {% if not messages %}
                     <div class="no-messages">
                         <span class="icon-comment-slash"></span>
@@ -99,11 +101,10 @@
                         <textarea name="content" class="form-control" placeholder="Type your message here..." rows="3"></textarea>
                     </div>
                     <div class="file-upload-group">
-                        <input type="file" name="file" id="file-input" accept=".png,.jpg,.jpeg,.gif,.mp4" style="display: none;">
                         <label for="file-input" class="file-upload-btn">
                             <span class="icon-paperclip"></span> Attach file
                         </label>
-                        <span id="file-name" class="file-name"></span>
+                        <input type="file" name="file" id="file-input" class="file-input-visible">
                     </div>
                     <button type="submit" class="send-btn">
                         <span class="icon-paper-plane"></span> Send
@@ -259,12 +260,14 @@
     font-size: 1.2rem;
 }
 
+/* column-reverse + one inner wrapper: opens scrolled to the newest message, no JS */
+.messages-inner { display: flex; flex-direction: column; gap: 15px; }
 .messages-container {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 15px;
     max-height: 400px;
 }
@@ -480,44 +483,6 @@
         justify-content: center;
     }
 }
+.file-input-visible { font-size: .8rem; color: #a0a0a0; max-width: 16rem; }
 </style>
-
-<script>
-// Auto-scroll vers le bas des messages
-function scrollToBottom() {
-    const container = document.getElementById('messages-container');
-    container.scrollTop = container.scrollHeight;
-}
-
-// Scroll vers le bas au chargement de la page
-window.addEventListener('load', scrollToBottom);
-
-// Scroll vers le bas après envoi de message
-document.querySelector('.message-form').addEventListener('submit', function() {
-    setTimeout(scrollToBottom, 100);
-});
-
-// Gestion de l'upload de fichier
-document.getElementById('file-input').addEventListener('change', function(e) {
-    const fileName = document.getElementById('file-name');
-    if (e.target.files.length > 0) {
-        fileName.textContent = e.target.files[0].name;
-        fileName.style.color = '#8b93ff';
-    } else {
-        fileName.textContent = '';
-    }
-});
-
-// Validation du formulaire
-document.querySelector('.message-form').addEventListener('submit', function(e) {
-    const content = document.querySelector('textarea[name="content"]').value.trim();
-    const file = document.querySelector('input[name="file"]').files[0];
-    
-    if (!content && !file) {
-        e.preventDefault();
-        alert('Veuillez saisir un message ou sélectionner un fichier.');
-        return false;
-    }
-});
-</script>
 {% endblock %}

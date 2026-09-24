@@ -64,7 +64,7 @@ def create_admin():
             db.session.commit()
             
             print(f"\n✅ Admin user '{username}' created successfully!")
-            print(f"\nYou can now login at: http://localhost:5000/login")
+            print("\nYou can now log in at: http://localhost:5000/login")
             print(f"Username: {username}")
             print("\n" + "="*50 + "\n")
             

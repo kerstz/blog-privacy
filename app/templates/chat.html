@@ -9,6 +9,7 @@
 
     <div class="chat-container">
         <div class="chat-messages" id="chat-messages">
+          <div class="chat-messages-inner">
             {% for message in messages %}
             <div class="message {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}">
                 <div class="message-header">
@@ -35,6 +36,7 @@
                 </div>
             </div>
             {% endfor %}
+          </div>
         </div>
 
         <div class="chat-input-container">
@@ -43,11 +45,10 @@
                 <div class="input-group">
                     <textarea name="message" placeholder="Type your message..." rows="2" class="message-input"></textarea>
                     <div class="file-upload-group">
-                        <input type="file" name="file" id="file-input" style="display: none;">
-                        <label for="file-input" class="file-upload-btn">
+                        <input type="file" name="file" id="file-input" class="file-input-visible">
+                        <label for="file-input" class="file-upload-btn" title="Attach a file">
                             <span class="icon-paperclip"></span>
                         </label>
-                        <span id="file-name" class="file-name"></span>
                     </div>
                     <button type="submit" class="send-btn">
                         <span class="icon-paper-plane"></span>
@@ -90,12 +91,16 @@
     flex-direction: column;
 }
 
+/* column-reverse + single inner wrapper: the list starts scrolled to the
+   newest message without any JavaScript */
+.chat-messages-inner { display: flex; flex-direction: column; gap: 1rem; }
+.file-input-visible { max-width: 12rem; font-size: .75rem; color: #a0a0a0; }
 .chat-messages {
     flex: 1;
     padding: 1rem;
     overflow-y: auto;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 1rem;
 }
 
@@ -235,25 +240,4 @@
     color: #60a5fa;
 }
 </style>
-
-<script>
-// Auto-scroll to bottom
-function scrollToBottom() {
-    const chatMessages = document.getElementById('chat-messages');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Display selected file name
-document.getElementById('file-input').addEventListener('change', function(e) {
-    const fileName = document.getElementById('file-name');
-    if (e.target.files.length > 0) {
-        fileName.textContent = e.target.files[0].name;
-    } else {
-        fileName.textContent = '';
-    }
-});
-
-// Initial scroll
-scrollToBottom();
-</script>
 {% endblock %}

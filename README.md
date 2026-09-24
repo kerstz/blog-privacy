@@ -1,11 +1,19 @@
 # TechBlog
 
-> **⚠️ Security update (September 2026):** critical vulnerabilities fixed (private chat
-> exposure, XSS, unauthenticated WebSocket, 2FA brute-force…) and all dependencies
-> upgraded past their CVEs. **Update now with `./update.sh` and keep updating regularly.**
-> Details in [SECURITY.md](SECURITY.md).
+🇬🇧 English · [🇫🇷 Français](README.fr.md)
 
-A modern, feature-rich blogging platform built with Flask. TechBlog offers a clean and responsive interface for sharing articles, engaging with readers, and building a community around technology and programming.
+> **⚠️ Security updates (September 2026):** critical vulnerabilities fixed, all
+> dependencies upgraded past their CVEs, the site now runs with **zero JavaScript
+> and zero third-party requests**. **Update with `./update.sh`, or turn on
+> automatic updates (`./auto-update.sh enable weekly`).** Details in [SECURITY.md](SECURITY.md).
+
+> **Vibe coded.** This project was built with heavy help from AI coding tools.
+> It has been reviewed and is covered by security regression tests, but read the
+> code before trusting it with anything sensitive, and report anything odd.
+
+A privacy-first blog built with Flask. No JavaScript, no trackers, no third-party
+fonts or CDNs: it works in Tor Browser at the "Safest" level and can be served as
+a `.onion` site.
 
 <img alt="Home page" src="docs/screenshots/home.png" />
 <img alt="Reading a post" src="docs/screenshots/post.png" />
@@ -14,229 +22,169 @@ A modern, feature-rich blogging platform built with Flask. TechBlog offers a cle
 
 ## Features
 
-- **Night Desk UI**: Warm, lamplit dark theme — espresso base, parchment text, muted brass accent (fully customizable!)
-- **Easy Theme Customization**: Change colors and styling without coding knowledge - see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md)
-- **User Authentication**: Secure registration and login system
-- **Article Management**: Create, edit, and publish articles with rich text editor
-- **Comments System**: Nested comment threads with replies
-- **Like System**: Users can like posts and comments
-- **User Profiles**: Customizable user profiles with experience points and badges
-- **Admin Panel**: Comprehensive dashboard for managing content and users
-- **Notifications**: Real-time notification system for user interactions
-- **Chat System**: Built-in messaging between users
-- **Static Pages**: Create custom pages (About, Contact, etc.)
-- **Responsive Design**: Fully mobile-friendly interface
+- **No JavaScript at all**: every page works with JS disabled (the CSP even sets `script-src 'none'`)
+- **No third-party requests**: self-hosted fonts, no CDN, no embedded widgets, external images shown as links
+- **Tor ready**: `Onion-Location` header, onion service config in `deploy/`
+- **Night Desk UI**: warm, lamplit dark theme (customizable, see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md))
+- **Posts** written in BBCode (or basic HTML), drafts, scheduled posts, revisions
+- **Nested comments** with BBCode, likes, notifications, XP, levels and badges
+- **Private encrypted chat** between each user and the admin (Fernet, at rest)
+- **TOTP two-factor authentication**
+- **Telegram admin bot** (optional) and **mobile admin API** (Basic Auth + TOTP, SSE)
+- **Static pages, banners, contact form, crypto donations** (QR codes generated server-side)
+- **Safe updates**: `./update.sh` (backup, update, health check, automatic rollback), optional automatic updates at the frequency you choose, encrypted backups
 
 ## Tech Stack
 
-- **Backend**: Flask (Python)
-- **Database**: SQLAlchemy with SQLite
-- **Authentication**: Flask-Login
-- **Forms**: Flask-WTF
-- **Real-time**: Flask-SocketIO
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Typography**: Fraunces (display) + IBM Plex Sans (UI) + IBM Plex Mono (metadata)
-- **Icons**: Monochrome SVG mask icons — no JS, no web font (NoScript / Tor friendly)
+- **Backend**: Flask, SQLAlchemy (SQLite), Flask-Login, Flask-WTF, Flask-SocketIO
+- **Security**: bcrypt, Fernet encryption, pyotp (TOTP), nh3 (HTML sanitizer), strict CSP
+- **Frontend**: HTML5 + CSS3 only
+- **Typography**: Fraunces + IBM Plex Sans + IBM Plex Mono (self-hosted, SIL OFL)
+- **Icons**: monochrome SVG mask icons (no JS, no web font)
 
 ## Quick Start
 
-**New to this?** Check out our [5-Minute Setup Guide](SETUP_GUIDE.md) to quickly personalize your blog!
+New to this? The [5-Minute Setup Guide](SETUP_GUIDE.md) helps you personalize the blog.
 
-## Installation
-
-### Prerequisites
-
-- Python 3.8 or higher
-- pip package manager
-
-### Setup
-
-1. **Clone the repository**
 ```bash
 git clone https://github.com/kerstz/blog-privacy.git
 cd blog-privacy
-```
-
-2. **Create a virtual environment**
-```bash
-python -m venv venv
-```
-
-3. **Activate the virtual environment**
-   - On Windows:
-   ```bash
-   venv\Scripts\activate
-   ```
-   - On macOS/Linux:
-   ```bash
-   source venv/bin/activate
-   ```
-
-4. **Install dependencies**
-```bash
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
-
-5. **Set up environment variables** (optional)
-```bash
-export SECRET_KEY='your-secret-key-here'
-export DATABASE_URL='sqlite:///instance/blog.db'
-```
-
-6. **Initialize the database**
-```bash
-flask db init
-flask db migrate -m "Initial migration"
+cp .env.example .env        # then fill in the secrets (see below)
 flask db upgrade
+python create_admin.py
+python wsgi.py              # development server on http://127.0.0.1:5000
 ```
 
-7. **Run the application**
-```bash
-python wsgi.py
-```
-
-The application will be available at `http://localhost:5000`
-
-## Configuration
-
-Edit `config.py` to customize:
-- Secret key
-- Database URI
-- Session configuration
-- Cookie settings
-
-## Project Structure
-
-```
-techblog/
-├── app/
-│   ├── __init__.py
-│   ├── models.py          # Database models
-│   ├── routes.py          # Application routes
-│   ├── forms.py           # Form definitions
-│   ├── utils.py           # Utility functions
-│   ├── encryption.py      # Encryption utilities
-│   ├── chat.py            # Chat functionality
-│   ├── static/
-│   │   └── css/
-│   │       ├── style.css  # Main stylesheet
-│   │       └── icons.css  # Icon fonts
-│   └── templates/         # HTML templates
-├── migrations/            # Database migrations
-├── instance/             # Instance-specific files
-├── config.py             # Configuration
-├── wsgi.py              # Application entry point
-├── requirements.txt      # Python dependencies
-└── README.md            # This file
-```
-
-## Usage
-
-### Creating an Admin User
-
-To create an admin user, you can use the Python shell:
+Generate each secret in `.env` with:
 
 ```bash
-flask shell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
 ```
 
-```python
-from app import db
-from app.models import User
-from flask_bcrypt import generate_password_hash
+The app refuses to start with missing or example secrets. **Back up
+`ENCRYPTION_KEY` and `ENCRYPTION_SALT`**: without them the chat history can never
+be decrypted again.
 
-admin = User(
-    username='admin',
-    password=generate_password_hash('your_password').decode('utf-8'),
-    is_admin=True
-)
-db.session.add(admin)
-db.session.commit()
+## Production
+
+Ready-to-use files are in [`deploy/`](deploy/):
+
+| File | Purpose |
+|------|---------|
+| `blog.service` | systemd unit: dedicated unprivileged user, sandboxing, gunicorn on 127.0.0.1 |
+| `Caddyfile` | reverse proxy with automatic HTTPS, no access logs |
+| `nginx.conf` | alternative reverse proxy (with certbot) |
+| `torrc.example` | onion service (then set `ONION_ADDRESS` in `.env`) |
+
+In `.env`: `SESSION_COOKIE_SECURE=true` (HTTPS) and `TRUSTED_PROXY_COUNT=1`
+(behind the reverse proxy). Enable 2FA on every admin account.
+
+## Updates (important)
+
+New vulnerabilities are published every week. **Keep the blog updated.**
+
+```bash
+./update.sh                          # update now
+./auto-update.sh enable weekly       # automatic updates: daily | weekly | monthly | "<cron>"
+./auto-update.sh status
+./auto-update.sh disable
 ```
 
-### Admin Panel
+`update.sh` backs up the database and uploads, pulls the code (fast-forward only),
+upgrades the dependencies, applies migrations, checks the app starts (and runs the
+tests when pytest is installed) and **rolls back automatically** if anything fails.
+It never touches the database content, `uploads/` or `.env`. Automatic updates are
+**off by default**; with `UPDATE_RESTART_CMD` set in `.env` the app is restarted
+after each successful update, and the Telegram bot (if configured) tells you what
+happened.
 
-Access the admin panel at `/admin` with admin credentials. Features include:
-- Manage posts
-- Manage users
-- Manage comments
-- View statistics
-- Manage banners
-- Create static pages
-- Admin chat
+## Backups
+
+```bash
+./backup.sh run                     # encrypted backup of databases + uploads + .env
+./backup.sh enable daily            # daily | weekly | "<cron>"
+./backup.sh restore <file> <dir>    # decrypt into a NEW folder (never overwrites live data)
+```
+
+Set `BACKUP_PASSPHRASE` in `.env` and keep a copy of it outside the server.
+`BACKUP_REMOTE` (optional) copies each backup off-site with rsync.
+
+## Writing posts
+
+Posts, comments and replies use BBCode: see `/editor_help` on your blog.
+External images (`[img]https://...[/img]`) are shown as links and never loaded,
+so readers' IP addresses are never sent to other sites. Upload images to the blog
+to embed them.
+
+## Admin
+
+- Web admin panel: `/admin_dashboard` (posts, users, comments, banners, pages, statistics, chat)
+- Telegram bot: set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_CHAT_ID`, `TELEGRAM_ADMIN_USER_ID` and `TELEGRAM_ADMIN_PIN`
 
 ### Admin Mobile Chat API
-
-You can now access admin conversations from a phone app (or mobile web client) through dedicated endpoints:
 
 - `GET /api/admin/mobile/ping` - test admin authentication
 - `GET /api/admin/mobile/conversations` - list users and last message per conversation
 - `GET /api/admin/mobile/conversations/<user_id>/messages?limit=50` - fetch a conversation history
 - `POST /api/admin/mobile/conversations/<user_id>/messages` - send/reply to a user
-- `GET /api/admin/mobile/stream` - real-time event stream (SSE) for incoming messages/updates
+- `GET /api/admin/mobile/stream` - real-time event stream (SSE)
 
-Authentication uses HTTP Basic Auth with your existing admin username/password.
-If the admin account has 2FA enabled, also send the current code in the
-`X-TOTP-Code` header. Failed logins are rate limited.
+Authentication: HTTP Basic Auth with an admin account. If the account has 2FA
+enabled, also send the current code in the `X-TOTP-Code` header. Failed logins
+are rate limited.
 
-Example:
 ```bash
-curl -u admin:your_password http://localhost:5000/api/admin/mobile/conversations
+curl -u admin:your_password -H "X-TOTP-Code: 123456" \
+  https://blog.example.org/api/admin/mobile/conversations
 ```
 
-Send message:
-```bash
-curl -u admin:your_password \
-  -H "Content-Type: application/json" \
-  -X POST \
-  -d '{"content":"Hello from mobile admin"}' \
-  http://localhost:5000/api/admin/mobile/conversations/2/messages
+## Project Structure
+
+```
+app/
+  __init__.py       app setup, extensions, template filters
+  routes.py         web routes + SocketIO handlers
+  services.py       shared helpers (auth, uploads, chat, deletion cascades)
+  telegram_bot.py   optional Telegram admin bot
+  mobile_api.py     mobile admin REST API
+  models.py forms.py utils.py encryption.py
+  static/           css/, fonts/ (self-hosted)
+  templates/        Jinja2 templates (no JavaScript)
+deploy/             systemd, Caddy, nginx, Tor examples
+docs/               screenshots, UI demos
+migrations/         Alembic migrations
+tests/              security regression tests
+update.sh auto-update.sh backup.sh
 ```
 
-## Contributing
+## Tests
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+```bash
+pip install -r requirements-dev.txt
+pytest -q tests/
+pip-audit -r requirements.txt
+```
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is open source and available under the MIT License.
+The same checks run on GitHub Actions for every push and every Monday, and
+Dependabot opens pull requests for dependency updates.
 
 ## Security
 
-- Passwords are hashed using bcrypt; TOTP 2FA (brute-force and replay protected)
-- CSRF protection, strict security headers (CSP, HSTS in HTTPS, COOP/CORP)
-- All user HTML escaped/sanitized (`nh3`), private uploads access controlled, metadata stripped
-- Chat messages encrypted at rest (Fernet), private per user
-- Rate limiting on login, 2FA, API, comments, chat
-- SQL injection prevention through SQLAlchemy ORM
+- Passwords hashed with bcrypt; TOTP 2FA (brute-force and replay protected)
+- CSRF protection, strict CSP (`script-src 'none'`), HSTS in HTTPS, COOP/CORP
+- All user HTML escaped and sanitized (`nh3`); uploads access controlled, metadata stripped
+- Chat messages encrypted at rest, private per user
+- Persistent rate limiting (login, 2FA, API, comments, chat, Telegram PIN)
+- Encrypted backups, safe updates with rollback
 
-**Keep the blog up to date.** New vulnerabilities are published every week:
-run `./update.sh` at least monthly (it backs up your data first and never
-touches the database content, uploads or `.env`), and check for CVEs with
-`pip-audit -r requirements.txt`. See [SECURITY.md](SECURITY.md).
+See [SECURITY.md](SECURITY.md) for the full changelog and how to report a vulnerability.
 
 ## Theme Customization
 
-Want to change the look and feel of your blog? Check out our comprehensive [Theme Customization Guide](CUSTOMIZE_THEME.md) which includes:
-
-- Pre-made color schemes (Blue, Purple, Red, Monochrome, etc.)
-- Step-by-step instructions for beginners
-- AI prompt template for generating custom themes
-- Tips and tools for creating your perfect design
-
-**Quick Example:**
-```css
-/* Change these 3 colors in style.css to transform your entire blog! */
---primary-color: #YOUR_COLOR_1;
---secondary-color: #YOUR_COLOR_2;  
---accent-color: #YOUR_COLOR_3;
-```
+See the [Theme Customization Guide](CUSTOMIZE_THEME.md): pre-made color schemes,
+step-by-step instructions and an AI prompt template.
 
 ## Future Enhancements
  I don't really know if i have the time for this but why not add this in the future :)
@@ -250,11 +198,10 @@ Want to change the look and feel of your blog? Check out our comprehensive [Them
 - [ ] SEO optimization
 - [ ] Multi-language support
 
-## Support
+## Contributing
 
-For issues, questions, or contributions, please open an issue on GitHub.
+Contributions are welcome! Fork the project, create a feature branch, commit and open a Pull Request.
 
-## Acknowledgments
+## License
 
-Built with Flask and modern web technologies for a seamless blogging experience.
-
+MIT License.
