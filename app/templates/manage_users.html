@@ -84,14 +84,14 @@
                                 {% if user.is_admin %}
                                     <form method="POST" action="{{ url_for('demote_user', user_id=user.id) }}" class="action-form">
                                         {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-warning" onclick="return confirm('Confirmer la rétrogradation de {{ user.username }} ?')">
+                                        <button type="submit" class="btn-warning" onclick='return confirm("Confirmer la rétrogradation de " + {{ user.username|tojson }} + " ?")'>
                                             <span class="icon-arrow-down"></span> Rétrograder
                                         </button>
                                     </form>
                                 {% else %}
                                     <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" class="action-form">
                                         {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-success" onclick="return confirm('Confirmer la promotion de {{ user.username }} en admin ?')">
+                                        <button type="submit" class="btn-success" onclick='return confirm("Confirmer la promotion de " + {{ user.username|tojson }} + " en admin ?")'>
                                             <span class="icon-arrow-up"></span> Promouvoir
                                         </button>
                                     </form>
@@ -99,7 +99,7 @@
 
                                 <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="action-form">
                                     {{ form.hidden_tag() }}
-                                    <button type="submit" class="btn-danger" onclick="return confirm('Voulez-vous vraiment supprimer {{ user.username }} ? Cette action est irréversible.')">
+                                    <button type="submit" class="btn-danger" onclick='return confirm("Voulez-vous vraiment supprimer " + {{ user.username|tojson }} + " ? Cette action est irréversible.")'>
                                         <span class="icon-trash"></span> Supprimer
                                     </button>
                                 </form>

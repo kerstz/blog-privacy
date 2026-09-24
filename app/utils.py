@@ -5,11 +5,15 @@ from flask import redirect, url_for, flash, request
 from flask_login import current_user
 from app.models import Post
 from datetime import datetime
-from flask_bcrypt import Bcrypt, check_password_hash, generate_password_hash
 import time
+import threading
 import re
 from PIL import Image, ExifTags
 import os
+import nh3
+from markupsafe import escape
+from urllib.parse import urlparse, urljoin
+from PIL import ImageOps
 
 
 # -----------------------------
@@ -26,31 +30,35 @@ _BB_TAGS = [
 ]
 
 def _sanitize_url(url: str) -> str:
+    """Allow only absolute http(s) URLs. Input is already HTML-escaped."""
     url = (url or '').strip()
-    if not url:
-        return '#'
-    # allow only http/https/data:image
-    if not (url.lower().startswith('http://') or url.lower().startswith('https://') or url.lower().startswith('data:image')):
+    if not re.match(r'^https?://[^\s"\'<>]+$', url, re.IGNORECASE):
         return '#'
     return url
 
 def parse_bbcode(text: str) -> str:
+    """Convert user BBCode to HTML.
+
+    SECURITY: the raw text is HTML-escaped *before* any tag is generated, so
+    user input can never inject markup or attributes. The output is still
+    passed through sanitize_user_html() at render time (defense in depth).
+    """
     if not text:
         return ''
-    html = text
+    html = str(escape(text))
     # [url=...]text[/url] and [url]link[/url]
-    html = re.sub(r"\[url=(.+?)\](.*?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener\">{m.group(2)}</a>", html, flags=re.IGNORECASE)
-    html = re.sub(r"\[url\](.+?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener\">{m.group(1)}</a>", html, flags=re.IGNORECASE)
+    html = re.sub(r"\[url=(.+?)\](.*?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(2)}</a>", html, flags=re.IGNORECASE)
+    html = re.sub(r"\[url\](.+?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(1)}</a>", html, flags=re.IGNORECASE)
     # [img]...[/img] and [img=width,height]...[/img]
     def _img_simple(m):
         src = _sanitize_url(m.group(1))
-        return f"<img src=\"{src}\" alt=\"image\" style=\"max-width:100%;height:auto;\">"
+        return f"<img src=\"{src}\" alt=\"image\" referrerpolicy=\"no-referrer\" loading=\"lazy\" style=\"max-width:100%;height:auto\">"
     html = re.sub(r"\[img\](.+?)\[/img\]", _img_simple, html, flags=re.IGNORECASE)
     def _img_sized(m):
         dims = m.group(1).split(',')
         try:
-            w = int(dims[0]) if dims[0] else 0
-            h = int(dims[1]) if len(dims) > 1 else 0
+            w = min(int(dims[0]), 2000) if dims[0] else 0
+            h = min(int(dims[1]), 2000) if len(dims) > 1 else 0
         except Exception:
             w, h = 0, 0
         src = _sanitize_url(m.group(2))
@@ -60,35 +68,111 @@ def parse_bbcode(text: str) -> str:
         if h > 0:
             style.append(f"max-height:{h}px")
         style.append("height:auto")
-        return f"<img src=\"{src}\" alt=\"image\" style=\"{' ; '.join(style)}\">"
-    html = re.sub(r"\[img=(.*?)\](.+?)\[/img\]", _img_sized, html, flags=re.IGNORECASE)
+        return f"<img src=\"{src}\" alt=\"image\" referrerpolicy=\"no-referrer\" loading=\"lazy\" style=\"{';'.join(style)}\">"
+    html = re.sub(r"\[img=(\d{0,4}(?:,\d{0,4})?)\](.+?)\[/img\]", _img_sized, html, flags=re.IGNORECASE)
     # lists [list] [*]item
     def _list_repl(m):
         items = re.findall(r"\[\*\](.+)", m.group(1))
         li = ''.join([f"<li>{it.strip()}</li>" for it in items])
         return f"<ul>{li}</ul>"
     html = re.sub(r"\[list\](.*?)\[/list\]", _list_repl, html, flags=re.IGNORECASE | re.DOTALL)
-    # colors and sizes
-    html = re.sub(r"\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]+)\](.*?)\[/color\]", r"<span style=\"color:\1\">\2</span>", html, flags=re.IGNORECASE | re.DOTALL)
-    html = re.sub(r"\[size=(\d{1,3})\](.*?)\[/size\]", r"<span style=\"font-size:\1px\">\2</span>", html, flags=re.IGNORECASE | re.DOTALL)
+    # colors and sizes (strictly validated values)
+    html = re.sub(r"\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]{1,20})\](.*?)\[/color\]", r"<span style=\"color:\1\">\2</span>", html, flags=re.IGNORECASE | re.DOTALL)
+    def _size_repl(m):
+        size = max(8, min(int(m.group(1)), 48))
+        return f"<span style=\"font-size:{size}px\">{m.group(2)}</span>"
+    html = re.sub(r"\[size=(\d{1,3})\](.*?)\[/size\]", _size_repl, html, flags=re.IGNORECASE | re.DOTALL)
     # basic tags
     for pattern, repl in _BB_TAGS:
         html = pattern.sub(repl, html)
+    # keep line breaks readable
+    html = html.replace('\n', '<br>\n')
     return html
+
+
+# -----------------------------
+# HTML sanitization (nh3 / ammonia allow-list)
+# -----------------------------
+
+_URL_SCHEMES = {'http', 'https', 'mailto'}
+_SAFE_STYLE_PROPS = {'color', 'font-size', 'max-width', 'max-height', 'height', 'width',
+                     'text-align', 'font-weight', 'font-style', 'text-decoration'}
+
+_USER_TAGS = {'a', 'b', 'strong', 'i', 'em', 'u', 's', 'blockquote', 'pre', 'code',
+              'ul', 'ol', 'li', 'span', 'img', 'br', 'p'}
+_USER_ATTRS = {
+    'a': {'href'},
+    'img': {'src', 'alt', 'style', 'referrerpolicy', 'loading'},
+    'span': {'style'},
+}
+
+_RICH_TAGS = _USER_TAGS | {'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 'thead', 'tbody',
+                           'tfoot', 'tr', 'th', 'td', 'caption', 'figure', 'figcaption',
+                           'sub', 'sup', 'mark', 'small', 'del', 'ins', 'div', 'kbd', 'abbr'}
+_RICH_ATTRS = {
+    '*': {'class', 'style', 'title'},
+    'a': {'href'},
+    'img': {'src', 'alt', 'width', 'height', 'referrerpolicy', 'loading'},
+    'td': {'colspan', 'rowspan'},
+    'th': {'colspan', 'rowspan'},
+}
+
+
+def sanitize_user_html(html: str) -> str:
+    """Sanitize HTML produced from user BBCode (comments/replies)."""
+    return nh3.clean(html or '', tags=_USER_TAGS, attributes=_USER_ATTRS,
+                     url_schemes=_URL_SCHEMES, link_rel='nofollow noopener noreferrer',
+                     filter_style_properties=_SAFE_STYLE_PROPS)
+
+
+def sanitize_rich_html(html: str) -> str:
+    """Sanitize CKEditor / admin HTML (posts, static pages, banners)."""
+    return nh3.clean(html or '', tags=_RICH_TAGS, attributes=_RICH_ATTRS,
+                     url_schemes=_URL_SCHEMES, link_rel='noopener noreferrer',
+                     filter_style_properties=_SAFE_STYLE_PROPS)
+
+
+def render_comment_html(text: str) -> str:
+    """Render a stored comment. New comments are stored as raw BBCode; legacy
+    rows may contain pre-rendered HTML. Both go through the sanitizer."""
+    text = text or ''
+    if _LEGACY_HTML_RE.search(text):
+        return sanitize_user_html(text)
+    return sanitize_user_html(parse_bbcode(text))
+
+
+_LEGACY_HTML_RE = re.compile(r'</?(?:strong|em|u|s|blockquote|pre|code|a|img|ul|li|span|br|p)\b', re.IGNORECASE)
+
+
+def is_safe_redirect_url(target: str) -> bool:
+    if not target:
+        return False
+    ref = urlparse(request.host_url)
+    test = urlparse(urljoin(request.host_url, target))
+    return test.scheme in ('http', 'https') and ref.netloc == test.netloc
 
 
 # -----------------------------
 # Media pipeline: strip EXIF, resize, convert to WebP
 # -----------------------------
 
+# Refuse absurdly large images (decompression bombs) early.
+Image.MAX_IMAGE_PIXELS = 40_000_000
+
+
 def strip_exif(image: Image.Image) -> Image.Image:
+    """Return a copy of *image* with no metadata at all (EXIF, GPS, XMP, ICC,
+    comments...). Orientation is applied first so the photo is not rotated."""
     try:
-        data = list(image.getdata())
-        clean = Image.new(image.mode, image.size)
-        clean.putdata(data)
-        return clean
+        image = ImageOps.exif_transpose(image)
     except Exception:
-        return image
+        pass
+    if image.mode not in ('RGB', 'RGBA', 'L', 'LA'):
+        image = image.convert('RGBA' if 'A' in image.getbands() or 'transparency' in image.info else 'RGB')
+    clean = Image.new(image.mode, image.size)
+    clean.paste(image)
+    clean.info = {}
+    return clean
 
 def resize_image(image: Image.Image, max_px: int = 1600) -> Image.Image:
     w, h = image.size
@@ -99,26 +183,30 @@ def resize_image(image: Image.Image, max_px: int = 1600) -> Image.Image:
     return image
 
 def process_image_file(src_path: str, max_px: int = 1600, save_webp: bool = True) -> str:
-    """Process uploaded image: strip EXIF, resize, save as WebP next to original.
-    Returns path to processed file (webp if enabled else original updated).
-    """
+    """Process uploaded image: strip ALL metadata, resize, re-encode as WebP.
+    Returns the path of the processed file, or None if the file is not a
+    decodable image (callers must then reject it)."""
     try:
         with Image.open(src_path) as img:
+            img.load()
             img = strip_exif(img)
             img = resize_image(img, max_px=max_px)
             base, ext = os.path.splitext(src_path)
             if save_webp:
                 out_path = base + '.webp'
                 img.save(out_path, 'WEBP', quality=88, method=6)
-                return out_path
             else:
-                # overwrite original as JPEG to drop metadata
                 out_path = base + '.jpg'
                 img.convert('RGB').save(out_path, 'JPEG', quality=88)
-                return out_path
+        if os.path.abspath(out_path) != os.path.abspath(src_path):
+            try:
+                os.remove(src_path)
+            except OSError:
+                pass
+        return out_path
     except Exception as e:
         print('Image processing error:', e)
-        return src_path
+        return None
 
 
 # -----------------------------
@@ -163,38 +251,56 @@ def role_required(allowed_roles):
 # Compatible NoScript (server-side only)
 # -----------------------------
 _RATE_LIMIT_STORE = {}
+_RATE_LIMIT_LOCK = threading.Lock()
 
-def rate_limit(key_prefix: str, max_calls: int, window_seconds: int):
+def _client_id():
+    try:
+        if current_user.is_authenticated:
+            return f"user:{current_user.id}"
+    except Exception:
+        pass
+    return f"ip:{request.remote_addr}"
+
+
+def _prune_rate_store(now: float, max_window: int = 3600):
+    # Bound memory: drop buckets that are entirely expired.
+    if len(_RATE_LIMIT_STORE) < 5000:
+        return
+    for key in list(_RATE_LIMIT_STORE.keys()):
+        if not any(t > now - max_window for t in _RATE_LIMIT_STORE.get(key, [])):
+            _RATE_LIMIT_STORE.pop(key, None)
+
+
+def hit_rate_limit(key: str, max_calls: int, window_seconds: int, record: bool = True) -> bool:
+    """Return True if *key* exceeded max_calls in the window (and optionally record a hit)."""
+    now = time.time()
+    with _RATE_LIMIT_LOCK:
+        _prune_rate_store(now)
+        bucket = [t for t in _RATE_LIMIT_STORE.get(key, []) if t > now - window_seconds]
+        if len(bucket) >= max_calls:
+            _RATE_LIMIT_STORE[key] = bucket
+            return True
+        if record:
+            bucket.append(now)
+        _RATE_LIMIT_STORE[key] = bucket
+    return False
+
+
+def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('POST',)):
     """Simple rate limit decorator using in-memory store per IP/user.
-    - key_prefix: logical endpoint name
-    - max_calls: allowed calls within the window
-    - window_seconds: time window
-    """
+    Only the given HTTP methods are counted (GET page views are free)."""
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            now = time.time()
-            client_id = None
-            try:
-                from flask_login import current_user
-                if current_user.is_authenticated:
-                    client_id = f"user:{current_user.id}"
-            except Exception:
-                client_id = None
-            if not client_id:
-                client_id = f"ip:{request.remote_addr}"
-
-            key = f"{key_prefix}:{client_id}"
-            bucket = _RATE_LIMIT_STORE.get(key, [])
-            # purge old timestamps
-            bucket = [t for t in bucket if t > now - window_seconds]
-            if len(bucket) >= max_calls:
-                flash('Too many requests. Please slow down.', 'danger')
-                # Gently redirect back
-                ref = request.referrer or url_for('index')
-                return redirect(ref)
-            bucket.append(now)
-            _RATE_LIMIT_STORE[key] = bucket
+            if request.method in methods:
+                key = f"{key_prefix}:{_client_id()}"
+                # Also limit per IP so switching accounts does not bypass it.
+                ip_key = f"{key_prefix}:ip:{request.remote_addr}"
+                if hit_rate_limit(key, max_calls, window_seconds) or \
+                        (ip_key != key and hit_rate_limit(ip_key, max_calls * 3, window_seconds)):
+                    flash('Too many requests. Please slow down.', 'danger')
+                    ref = request.referrer
+                    return redirect(ref if is_safe_redirect_url(ref) else url_for('index'))
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -203,7 +309,7 @@ def rate_limit(key_prefix: str, max_calls: int, window_seconds: int):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not current_user.is_admin:
+        if not current_user.is_authenticated or not current_user.is_admin:
             flash('Admin access required', 'danger')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
@@ -211,8 +317,11 @@ def admin_required(f):
 
 
 def publish_scheduled_posts():
+    """Publish posts explicitly scheduled (not drafts) whose date has passed."""
     now = datetime.utcnow()
-    scheduled_posts = Post.query.filter_by(is_published=False).filter(Post.scheduled_date <= now).all()
+    scheduled_posts = Post.query.filter_by(is_published=False, is_draft=False)\
+        .filter(Post.scheduled_date.isnot(None), Post.scheduled_date <= now).all()
     for post in scheduled_posts:
         post.is_published = True
+    if scheduled_posts:
         db.session.commit()
