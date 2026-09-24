@@ -28,87 +28,87 @@
         </div>
 
         <div class="trocador-widget">
-            <iframe src="https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=47wJbYtPB6SLd4P9PCwLcKfTgXCTnZGPwUuGSv3dPTGuG1RmhcB8LVQUVHATAAW1Q6ZVJQQ82EeC9Rzox7aWt6jgCtw54Pj&donation=True&amount=0.0001&name=Blog+Support&description=Thanks+for+supporting+the+blog&bgcolor=" 
-                    width="100%" height="600" frameborder="0"></iframe>
+            <!-- Privacy: no embedded iframe. Trocador is only contacted if the visitor clicks. -->
+            <a class="btn-trocador" href="https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=47wJbYtPB6SLd4P9PCwLcKfTgXCTnZGPwUuGSv3dPTGuG1RmhcB8LVQUVHATAAW1Q6ZVJQQ82EeC9Rzox7aWt6jgCtw54Pj&donation=True&amount=0.0001&name=Blog+Support&description=Thanks+for+supporting+the+blog" target="_blank" rel="noopener noreferrer nofollow">Open Trocador (external site) &rarr;</a>
         </div>
     </div>
 
     <!-- Direct Cryptocurrency Donation Section -->
     <div class="direct-crypto">
         <h3>Donate with crypto</h3>
-        <p>Choose your preferred cryptocurrency and scan the QR code, or tap an address to copy it.</p>
+        <p>Choose your preferred cryptocurrency and scan the QR code, or click an address to select it, then copy.</p>
         
         <div class="crypto-grid">
             <!-- Bitcoin -->
             <div class="crypto-card">
                 <h4>Bitcoin (BTC)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ 'bc1qpcla6t8ldyk092essl3q8r3lav7xu50ktwnq7f'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">bc1qpcla6t8ldyk092essl3q8r3lav7xu50ktwnq7f</p>
+                <p class="crypto-address" title="Click to select, then copy">bc1qpcla6t8ldyk092essl3q8r3lav7xu50ktwnq7f</p>
             </div>
 
             <!-- Monero -->
             <div class="crypto-card">
                 <h4>Monero (XMR)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ '4ShjzTudhUd6JLywpU2mP1sKzUNEYaNh1TvjBJVKTN26Ha7xEd0jHTB7vCrW1GaHRGLEPrmxxCjwVMKKWkdadLXA'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">4ShjzTudhUd6JLywpU2mP1sKzUNEYaNh1TvjBJVKTN26Ha7xEd0jHTB7vCrW1GaHRGLEPrmxxCjwVMKKWkdadLXA</p>
+                <p class="crypto-address" title="Click to select, then copy">4ShjzTudhUd6JLywpU2mP1sKzUNEYaNh1TvjBJVKTN26Ha7xEd0jHTB7vCrW1GaHRGLEPrmxxCjwVMKKWkdadLXA</p>
             </div>
 
             <!-- Litecoin -->
             <div class="crypto-card">
                 <h4>Litecoin (LTC)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ 'LUcfXBKQoB74efn9rHreG3neujWyKmHSeC'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">LUcfXBKQoB74efn9rHreG3neujWyKmHSeC</p>
+                <p class="crypto-address" title="Click to select, then copy">LUcfXBKQoB74efn9rHreG3neujWyKmHSeC</p>
             </div>
 
             <!-- Ethereum -->
             <div class="crypto-card">
                 <h4>Ethereum (ETH)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ '0xf855AA9e085C38E2c3e39c7dce905498520fe988'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
+                <p class="crypto-address" title="Click to select, then copy">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
             </div>
 
             <!-- Solana -->
             <div class="crypto-card">
                 <h4>Solana (SOL)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ 'GRSXMYRC6G8dZczwWhgH25GHDwAkKGLGntQd5Vstv'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">GRSXMYRC6G8dZczwWhgH25GHDwAkKGLGntQd5Vstv</p>
+                <p class="crypto-address" title="Click to select, then copy">GRSXMYRC6G8dZczwWhgH25GHDwAkKGLGntQd5Vstv</p>
             </div>
 
             <!-- Tether -->
             <div class="crypto-card">
                 <h4>Tether (USDT-ERC20)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ '0xf855AA9e085C38E2c3e39c7dce905498520fe988'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
+                <p class="crypto-address" title="Click to select, then copy">0xf855AA9e085C38E2c3e39c7dce905498520fe988</p>
             </div>
 
             <!-- Tron -->
             <div class="crypto-card">
                 <h4>Tron (TRX)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ 'TXtjY9h2K2S2rH7uTQJKco4sr5eFhuJwvy'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">TXtjY9h2K2S2rH7uTQJKco4sr5eFhuJwvy</p>
+                <p class="crypto-address" title="Click to select, then copy">TXtjY9h2K2S2rH7uTQJKco4sr5eFhuJwvy</p>
             </div>
 
             <!-- Ripple -->
             <div class="crypto-card">
                 <h4>Ripple (XRP)</h4>
                 <div class="qr-code">
-                    <div class="qr-placeholder">QR Code</div>
+                    <img src="{{ 'rNfTZ1htYGXaNNoRfHX4XgqmL5FfK52NM2'|qr_data_uri }}" alt="QR code" class="qr-img" width="140" height="140">
                 </div>
-                <p class="crypto-address">rNfTZ1htYGXaNNoRfHX4XgqmL5FfK52NM2</p>
+                <p class="crypto-address" title="Click to select, then copy">rNfTZ1htYGXaNNoRfHX4XgqmL5FfK52NM2</p>
             </div>
         </div>
     </div>
@@ -272,6 +272,8 @@
 }
 
 .crypto-address {
+    user-select: all; /* one click selects the whole address, no JS needed */
+    -webkit-user-select: all;
     color: var(--paper-mid);
     font-family: var(--font-mono);
     font-size: 0.8rem;
@@ -351,79 +353,9 @@
         font-size: 0.8rem;
     }
 }
+.qr-img { display: block; margin: 0 auto; background: #fff; padding: 6px; border-radius: 6px; image-rendering: pixelated; }
+.btn-trocador { display: inline-block; padding: 0.8rem 1.2rem; border: 1px solid currentColor; border-radius: 8px; text-decoration: none; }
 </style>
 
-<script>
-function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(function() {
-        // Créer une notification de succès
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #51cf66, #40c057);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            z-index: 1000;
-            box-shadow: 0 4px 15px rgba(81, 207, 102, 0.3);
-            animation: slideIn 0.3s ease;
-        `;
-        notification.innerHTML = '<span class="icon-check"></span> Address copied!';
-        document.body.appendChild(notification);
-        
-        // Supprimer la notification après 3 secondes
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                document.body.removeChild(notification);
-            }, 300);
-        }, 3000);
-    }).catch(function(err) {
-        console.error('Erreur lors de la copie: ', err);
-        alert('Erreur lors de la copie de l\'adresse');
-    });
-}
 
-// Ajouter les animations CSS
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-// Ajouter des boutons de copie pour chaque adresse crypto
-document.addEventListener('DOMContentLoaded', function() {
-    const cryptoAddresses = document.querySelectorAll('.crypto-address');
-    cryptoAddresses.forEach(address => {
-        address.style.cursor = 'pointer';
-        address.title = 'Click to copy';
-        address.addEventListener('click', function() {
-            copyToClipboard(this.textContent);
-        });
-    });
-});
-</script>
 {% endblock %}

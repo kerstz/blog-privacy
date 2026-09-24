@@ -1,12 +1,12 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}Modifier l'Article - Admin{% endblock %}
+{% block title %}Edit Post - Admin{% endblock %}
 
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-edit"></span> Modifier l'Article</h2>
-        <p>Modifiez le contenu de votre article</p>
+        <h2><span class="icon-edit"></span> Edit Post</h2>
+        <p>Edit the content of your post</p>
     </div>
 
     <div class="edit-post-section">
@@ -15,7 +15,7 @@
                 {{ form.hidden_tag() }}
 
                 <div class="form-group">
-                    <label for="title">Titre de l'article</label>
+                    <label for="title">Post title</label>
                     {{ form.title(class="form-control", id="title", placeholder="Entrez le titre de l'article") }}
                     {% if form.title.errors %}
                         <div class="error-messages">
@@ -27,8 +27,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="content">Contenu</label>
-                    <textarea name="content" id="content" class="form-control ckeditor-textarea" required>{{ post.content }}</textarea>
+                    <label for="content">Content</label>
+                    <textarea name="content" id="content" class="form-control ckeditor-textarea" rows="18" required>{{ post.content }}</textarea>
+                    <small class="form-hint">BBCode (<a href="{{ url_for('editor_help') }}">help</a>) or basic HTML. Everything is sanitized on display; external images are shown as links (privacy).</small>
                     {% if form.content.errors %}
                         <div class="error-messages">
                             {% for error in form.content.errors %}
@@ -39,7 +40,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="scheduled_date">Date de publication programmée</label>
+                    <label for="scheduled_date">Scheduled publication date</label>
                     {{ form.scheduled_date(class="form-control", id="scheduled_date") }}
                     {% if form.scheduled_date.errors %}
                         <div class="error-messages">
@@ -54,7 +55,7 @@
                     <div class="checkbox-wrapper">
                         {{ form.is_published(class="form-check-input", id="is_published") }}
                         <label for="is_published" class="checkbox-label">
-                            <span class="icon-check"></span> Publier immédiatement
+                            <span class="icon-check"></span> Publish now
                         </label>
                     </div>
                     {% if form.is_published.errors %}
@@ -71,7 +72,7 @@
                         <span class="icon-save"></span> {{ form.submit.label.text }}
                     </button>
                     <a href="{{ url_for('manage_posts') }}" class="btn-secondary">
-                        <span class="icon-arrow-left"></span> Retour
+                        <span class="icon-arrow-left"></span> Back
                     </a>
                 </div>
             </form>
@@ -241,7 +242,7 @@
     color: #e0e0e0;
 }
 
-/* Styles pour CKEditor */
+/* Editor textarea */
 .ck-editor__editable {
     background: rgba(255, 255, 255, 0.1) !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
@@ -301,49 +302,4 @@
     min-height: 400px !important;
 }
 </style>
-
-<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialiser CKEditor
-    ClassicEditor
-        .create(document.querySelector('#content'), {
-            toolbar: {
-                items: [
-                    'heading', '|',
-                    'bold', 'italic', 'underline', '|',
-                    'fontSize', 'fontFamily', 'fontColor', 'fontBackgroundColor', '|',
-                    'bulletedList', 'numberedList', '|',
-                    'alignment', '|',
-                    'link', 'insertImage', 'insertTable', '|',
-                    'blockQuote', 'codeBlock', '|',
-                    'undo', 'redo'
-                ]
-            },
-            language: 'fr',
-            fontSize: {
-                options: [9, 11, 13, 'default', 17, 19, 21, 27, 35]
-            },
-            fontFamily: {
-                options: [
-                    'default',
-                    'Arial, Helvetica, sans-serif',
-                    'Courier New, Courier, monospace',
-                    'Georgia, serif',
-                    'Lucida Sans Unicode, Lucida Grande, sans-serif',
-                    'Tahoma, Geneva, sans-serif',
-                    'Times New Roman, Times, serif',
-                    'Trebuchet MS, Helvetica, sans-serif',
-                    'Verdana, Geneva, sans-serif'
-                ]
-            }
-        })
-        .then(editor => {
-            console.log('CKEditor initialisé avec succès');
-        })
-        .catch(error => {
-            console.error('Erreur lors de l\'initialisation de CKEditor:', error);
-        });
-});
-</script>
 {% endblock %}

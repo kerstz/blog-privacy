@@ -1,6 +1,70 @@
 # Security
 
-## ⚠️ Security update — September 2026
+🇬🇧 English · [🇫🇷 Français](SECURITY.fr.md)
+
+## Privacy & hardening release — September 2026 (2)
+
+Follow-up to the security update below. **Update with `./update.sh`.**
+
+### Privacy
+- **No more third-party requests**: Google Fonts replaced by self-hosted fonts
+  (every visitor's IP was sent to Google on every page); Bootstrap / Font
+  Awesome CDN links removed; the Trocador donation iframe is now a plain link;
+  CKEditor (loaded from `cdn.ckeditor.com`) removed.
+- **External images are never loaded** (comments and posts): they are shown as
+  links, so readers' IPs are not leaked to other sites. CSP `img-src 'self' data:`.
+- **Tor**: optional `ONION_ADDRESS` adds an `Onion-Location` header; onion
+  service config in `deploy/` (goes through the reverse proxy so Tor clients
+  cannot spoof `X-Forwarded-For`).
+
+### No JavaScript
+- Every inline script and `onclick` handler removed (chat auto-scroll, delete
+  confirmations, comment filter, admin menu, donation "copy" button, editor).
+  Replacements use HTML/CSS only (`<details>` confirmations, `column-reverse`
+  scrolling, server-side filtering, `user-select: all`).
+- CSP is now `script-src 'none'`: even if an XSS bug appeared, no script could run.
+- Flask-CKEditor removed: it also served CKEditor 4.14 files (known CVEs) at `/ckeditor/static`.
+- UI demo pages (with scripts) moved from `app/static/` to `docs/` (no longer served).
+
+### Security fixes
+- **2FA codes could be rejected on servers not running in UTC** (naive
+  datetime read as local time): fixed, codes are checked against Unix time.
+- **Delete post button always failed** (missing CSRF token): fixed.
+- **Rate limits and 2FA replay protection are now persistent** (SQLite,
+  `instance/security_state.db`): they survive restarts and are shared by all
+  worker processes.
+- `gunicorn` pinned (production server).
+
+### Operations
+- `./auto-update.sh enable daily|weekly|monthly|"<cron>"`: **optional**
+  automatic updates at the frequency you choose (off by default).
+- `update.sh`: lock (no concurrent runs), "nothing new" fast path, health check
+  + test suite, **automatic rollback** of code and dependencies on failure,
+  optional restart (`UPDATE_RESTART_CMD`) and Telegram notification.
+- `./backup.sh`: encrypted backups (gpg AES-256) of databases, uploads and
+  `.env`, scheduling, retention, optional off-site copy, safe restore.
+- GitHub Actions: tests + `pip-audit` on every push, pull request and every
+  Monday; a check that templates contain no JavaScript / third-party resource.
+  Dependabot for pip and GitHub Actions.
+- `deploy/`: sandboxed systemd unit, Caddy and nginx configs without access
+  logs, Tor onion service.
+
+### Code
+- `routes.py` (3,600 lines) split into `routes.py`, `services.py`,
+  `telegram_bot.py` and `mobile_api.py`.
+- Unused templates removed (they referenced routes that did not exist).
+- Everything is in English (code, comments, UI); French documentation in `*.fr.md`.
+- Default badges renamed to English (existing badges are renamed in place when
+  an admin opens `/init_badges`; nobody loses or re-earns a badge).
+- The editor help page now documents only the BBCode tags that exist; `[list=1]`
+  and `[center]`/`[left]`/`[right]`/`[justify]` were added.
+
+### Upgrade notes
+- Posts written with the old editor (HTML) are still displayed (sanitized).
+- External images in existing posts/comments now appear as links.
+- If you run behind a proxy, re-read `deploy/` (Tor must go through the proxy).
+
+## ⚠️ Security update — September 2026 (1)
 
 **This release is a security update. Everyone running this blog should update now**
 (`./update.sh`, see below). It fixes critical vulnerabilities in the code and
@@ -86,22 +150,34 @@ New dependencies: `nh3` (HTML sanitizer), `email-validator` (was missing).
 
 New vulnerabilities are published every week. A site that was secure last
 month can be vulnerable today. **Update at least once a month, and
-immediately when a security release is announced.**
+immediately when a security release is announced**, or let it happen
+automatically:
 
 ```bash
-./update.sh
+./update.sh                          # update now
+./auto-update.sh enable weekly       # daily | weekly | monthly | "<cron expression>"
+./auto-update.sh status
+./auto-update.sh disable
 ```
 
 `update.sh` backs up your database and uploads to `backups/`, pulls the code
 (fast-forward only, it refuses to overwrite local changes), upgrades the
-pinned dependencies, applies database migrations, and runs `pip-audit`. It
-never modifies `.env`, the database content or `uploads/`. Then restart the app.
+pinned dependencies, applies database migrations, checks the app still starts
+(and runs the tests when pytest is installed) and **rolls back** code and
+dependencies if anything fails. It never modifies `.env`, the database content
+or `uploads/`.
 
-Automate it, e.g. weekly with cron (then restart your service):
+For unattended updates set `UPDATE_RESTART_CMD` in `.env`, e.g.
+`UPDATE_RESTART_CMD=sudo systemctl restart blog`, and allow exactly that
+command for the user that owns the cron job:
 
-```cron
-0 4 * * 1  cd /path/to/blog-privacy && ./update.sh >> update.log 2>&1 && systemctl restart blog
 ```
+# /etc/sudoers.d/blog  (edit with: sudo visudo -f /etc/sudoers.d/blog)
+blog ALL=(root) NOPASSWD: /usr/bin/systemctl restart blog
+```
+
+Logs go to `logs/update.log`; with the Telegram bot configured, the admin is
+notified after each update, failure or rollback.
 
 Check for new CVEs at any time without changing anything:
 
@@ -115,22 +191,33 @@ Run the security regression tests:
 pip install -r requirements-dev.txt && pytest -q tests/
 ```
 
+## Backups
+
+```bash
+./backup.sh run                     # encrypted: databases + uploads + .env
+./backup.sh enable daily            # daily | weekly | "<cron expression>"
+./backup.sh restore <file> <dir>    # decrypt into a NEW folder
+```
+
+`BACKUP_PASSPHRASE` (in `.env`) is required: keep a copy outside the server.
+`BACKUP_KEEP` sets the retention (default 14), `BACKUP_REMOTE` an optional
+rsync target for an off-site copy.
+
 ## Production checklist
 
 - `SESSION_COOKIE_SECURE=true` and serve **only over HTTPS** (enables HSTS + `__Host-` cookie).
-- Strong random `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` (never the example values). **Back up** `ENCRYPTION_KEY`/`ENCRYPTION_SALT`: without them the chat history cannot be decrypted.
-- Behind nginx/Caddy set `TRUSTED_PROXY_COUNT=1`, otherwise rate limiting sees only the proxy IP.
-- Run with gunicorn (one worker, or a shared rate-limit store: the limiter is in memory per process).
+- Strong random `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` (never the example values). **Back up** `ENCRYPTION_KEY`/`ENCRYPTION_SALT` (`./backup.sh` includes `.env`).
+- Behind Caddy/nginx set `TRUSTED_PROXY_COUNT=1`, otherwise rate limiting sees only the proxy IP. Route Tor through the proxy too (see `deploy/torrc.example`).
+- Run with the provided systemd unit (`deploy/blog.service`): dedicated user, sandboxing, one gunicorn worker with threads (the Telegram poller and the SSE stream live in the process).
 - Enable 2FA on every admin account; set `TELEGRAM_ADMIN_USER_ID` and `TELEGRAM_ADMIN_PIN` if you use the bot.
+- Enable scheduled encrypted backups and, ideally, automatic updates.
 - Never run with Flask debug mode.
 
-## Known limitations (not fixed in this release)
+## Known limitations
 
-- `script-src 'unsafe-inline'` is still required by inline scripts/handlers in the templates (moving them to static files would allow a nonce-based CSP).
-- CKEditor 5 is loaded from `cdn.ckeditor.com` without Subresource Integrity: self-hosting it would remove the third-party dependency and the admin IP leak.
-- `[img]` in comments may load external images (the reader's IP is visible to that host; `referrerpolicy=no-referrer` is set).
-- The donation widget iframe (trocador.app) is loaded on the donate page.
-- Rate limits are in-memory (reset on restart, per process).
+- `style-src 'unsafe-inline'` is still needed (inline `<style>` blocks and `style` attributes in templates). Scripts are fully blocked (`script-src 'none'`).
+- The in-process Telegram poller means one gunicorn worker (use threads to scale).
+- `[img]` for images hosted on the blog only; there is no image library UI yet.
 
 ## Reporting a vulnerability
 
