@@ -4,15 +4,12 @@ Script to create an admin user for TechBlog
 Usage: python create_admin.py
 """
 
-from app import create_app, db
+from app import app, db, bcrypt
 from app.models import User
-from flask_bcrypt import Bcrypt
 import getpass
+import re
 
 def create_admin():
-    app = create_app()
-    bcrypt = Bcrypt(app)
-    
     with app.app_context():
         print("\n=== TechBlog - Create Admin User ===\n")
         
@@ -28,8 +25,8 @@ def create_admin():
         # Get username
         while True:
             username = input("Enter admin username: ").strip()
-            if len(username) < 3:
-                print("❌ Username must be at least 3 characters long")
+            if not re.fullmatch(r'[A-Za-z0-9_.-]{3,20}', username):
+                print("❌ Username: 3-20 characters, letters/digits/_ . - only")
                 continue
             
             # Check if username exists
@@ -42,8 +39,8 @@ def create_admin():
         # Get password
         while True:
             password = getpass.getpass("Enter admin password: ")
-            if len(password) < 6:
-                print("❌ Password must be at least 6 characters long")
+            if len(password) < 12 or len(password.encode('utf-8')) > 72:
+                print("❌ Password must be 12 to 72 characters long")
                 continue
             
             password_confirm = getpass.getpass("Confirm password: ")

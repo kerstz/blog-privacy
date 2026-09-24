@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Manage Banners</h2>
 
-<form method="POST" action="{{ url_for('manage_banners') }}">
+<form method="POST" action="{{ form_action or url_for('manage_banners') }}">
     {{ form.hidden_tag() }}
     <div class="form-group">
         {{ form.title.label }} {{ form.title(class="form-control") }}
