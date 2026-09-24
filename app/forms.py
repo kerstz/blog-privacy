@@ -1,9 +1,8 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField, BooleanField, DateTimeField, SelectField
-from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, URL, Optional, NumberRange, Email, Regexp
+from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, URL, Optional, Email, Regexp
 from app.models import User
-from flask_ckeditor import CKEditorField
 
 # Usernames are shown in many places (admin panel, Telegram, chat): restrict
 # them to a safe charset so they can never carry markup or script payloads.
@@ -38,7 +37,7 @@ class RegistrationForm(FlaskForm):
 
 class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(max=100)])
-    content = CKEditorField('Content', validators=[DataRequired()])
+    content = TextAreaField('Content', validators=[DataRequired()])
     scheduled_date = DateTimeField('Scheduled Date', format='%Y-%m-%d %H:%M:%S', validators=[Optional()])
     is_published = BooleanField('Publish Now')
     submit = SubmitField('Submit')

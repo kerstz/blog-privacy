@@ -5,49 +5,50 @@
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-newspaper"></span> Gérer les Articles</h2>
-        <p>Créez, modifiez et supprimez les articles du blog</p>
+        <h2><span class="icon-newspaper"></span> Manage Posts</h2>
+        <p>Create, edit and delete blog posts</p>
     </div>
 
-    <!-- Formulaire de création d'article -->
+    <!-- New post form -->
     <div class="create-post-section">
         <div class="section-card">
             <div class="section-header">
-                <h3><span class="icon-plus-circle"></span> Créer un Nouvel Article</h3>
+                <h3><span class="icon-plus-circle"></span> New Post</h3>
                 <a href="{{ url_for('editor_help') }}" class="help-link" target="_blank">
-                    <span class="icon-info"></span> Aide pour les balises
+                    <span class="icon-info"></span> Markup help
                 </a>
             </div>
             <form method="POST" action="{{ url_for('manage_posts') }}" class="post-form">
                 {{ form.hidden_tag() }}
                 <div class="form-group">
-                    <label for="title">Titre de l'article</label>
+                    <label for="title">Post title</label>
                     <input type="text" name="title" id="title" class="form-control" required placeholder="Entrez le titre de l'article">
                 </div>
                 <div class="form-group">
-                    <label for="content">Contenu</label>
+                    <label for="content">Content</label>
                     <div class="editor-help-inline">
-                        <p><strong>Balises disponibles :</strong></p>
+                        <p><strong>Available tags:</strong></p>
                         <div class="tags-examples">
-                            <code>[b]gras[/b]</code> <code>[i]italique[/i]</code> <code>[u]souligné[/u]</code>
-                            <code>[img]url_image[/img]</code> <code>[url]lien[/url]</code>
+                            <code>[b]bold[/b]</code> <code>[i]italic[/i]</code> <code>[u]underline[/u]</code>
+                            <code>[img]/uploads/image.webp[/img]</code> <code>[url]https://link[/url]</code>
                             <code>[list][*]item1[*]item2[/list]</code>
                         </div>
-                        <p><em>Voir l'aide complète pour plus de balises</em></p>
+                        <p><em>See the full help for more tags</em></p>
                     </div>
-                    <textarea name="content" id="content" class="form-control ckeditor-textarea" required placeholder="Rédigez le contenu de votre article..."></textarea>
+                    <textarea name="content" id="content" class="form-control ckeditor-textarea" rows="14" required placeholder="Write your post..."></textarea>
+                    <small class="form-hint">BBCode (<a href="{{ url_for('editor_help') }}">help</a>) or basic HTML. Everything is sanitized on display; external images are shown as links (privacy).</small>
                 </div>
                 <button type="submit" class="btn-primary">
-                    <span class="icon-save"></span> Publier l'Article
+                    <span class="icon-save"></span> Save Post
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Liste des articles existants -->
+    <!-- Existing posts -->
     <div class="posts-section">
         <div class="section-card">
-            <h3><span class="icon-list"></span> Articles Existants ({{ posts|length }})</h3>
+            <h3><span class="icon-list"></span> Existing Posts ({{ posts|length }})</h3>
             
             {% if posts %}
                 <div class="posts-grid">
@@ -60,7 +61,7 @@
                                         <span class="icon-user"></span> {{ post.author.username }}
                                     </span>
                                     <span class="date">
-                                        <span class="icon-calendar"></span> {{ post.date_posted.strftime('%d/%m/%Y à %H:%M') }}
+                                        <span class="icon-calendar"></span> {{ post.date_posted.strftime('%Y-%m-%d %H:%M') }}
                                     </span>
                                 </div>
                             </div>
@@ -71,25 +72,27 @@
                             
                             <div class="post-stats">
                                 <span class="stat">
-                                    <span class="icon-eye"></span> {{ post.views_count or 0 }} vues
+                                    <span class="icon-eye"></span> {{ post.views_count or 0 }} views
                                 </span>
                                 <span class="stat">
                                     <span class="icon-heart"></span> {{ post.likes_count or 0 }} likes
                                 </span>
                                 <span class="stat">
-                                    <span class="icon-comments"></span> {{ post.comments|length }} commentaires
+                                    <span class="icon-comments"></span> {{ post.comments|length }} comments
                                 </span>
                             </div>
                             
                             <div class="post-actions">
                                 <a href="{{ url_for('edit_post', post_id=post.id) }}" class="btn-edit">
-                                    <span class="icon-edit"></span> Modifier
+                                    <span class="icon-edit"></span> Edit
                                 </a>
-                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="delete-form">
-                                    <button type="submit" class="btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet article ?')">
-                                        <span class="icon-trash"></span> Supprimer
-                                    </button>
-                                </form>
+                                <details class="confirm-action">
+                                    <summary class="btn-delete"><span class="icon-trash"></span> Delete</summary>
+                                    <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="delete-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn-delete confirm-yes">Confirm</button>
+                                    </form>
+                                </details>
                             </div>
                         </div>
                     {% endfor %}
@@ -97,7 +100,7 @@
             {% else %}
                 <div class="no-posts">
                     <span class="icon-newspaper"></span>
-                    <p>Aucun article publié pour le moment</p>
+                    <p>No posts yet</p>
                 </div>
             {% endif %}
         </div>
@@ -335,7 +338,7 @@
     margin-bottom: 15px;
 }
 
-/* Styles pour CKEditor */
+/* Editor textarea */
 .ck-editor__editable {
     background: rgba(255, 255, 255, 0.1) !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
@@ -404,6 +407,12 @@
 .ckeditor-textarea {
     min-height: 400px !important;
 }
+/* No-JS confirmation: the real submit button only appears after opening */
+.confirm-action { display: inline-block; }
+.confirm-action > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; }
+.confirm-action > summary::-webkit-details-marker { display: none; }
+.confirm-action[open] > summary { opacity: .6; }
+.confirm-action form { display: inline; margin-left: .4rem; }
 </style>
 
 <style>
@@ -452,7 +461,7 @@
     }
 }
 
-/* Aide inline pour l'éditeur */
+/* Inline editor help */
 .editor-help-inline {
     background: rgba(139, 147, 255, 0.1);
     border: 1px solid rgba(139, 147, 255, 0.3);

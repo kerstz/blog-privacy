@@ -121,7 +121,7 @@ If you want AI to help you create a completely custom theme, use this prompt:
 
 ---
 
-**Prompt for AI (ChatGPT, Claude, etc.):**
+**Prompt for an AI assistant:**
 
 ```
 I'm using TechBlog and want to customize the CSS theme. Please provide me with:
