@@ -5,12 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel - MyBlog</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- No third-party CSS/fonts (privacy): self-hosted fonts + icons only -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
     <style>
         :root {
             --primary-color: #10b981;
@@ -35,7 +32,7 @@
         body {
             background: linear-gradient(135deg, var(--dark-bg) 0%, #203a43 100%);
             color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
+            font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
         }
@@ -292,6 +289,12 @@
             text-decoration: none;
         }
 
+        #sidebar-toggle { position: absolute; opacity: 0; pointer-events: none; }
+        .sidebar-toggle-label {
+            display: none; position: fixed; top: 12px; right: 12px; z-index: 1100;
+            padding: 8px 12px; border-radius: 8px; background: var(--card-bg); color: #fff; cursor: pointer;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar {
@@ -299,7 +302,9 @@
                 width: 100%;
             }
 
-            .sidebar.show {
+            /* No-JS menu toggle (checkbox hack) */
+            .sidebar-toggle-label { display: inline-block; }
+            #sidebar-toggle:checked ~ .sidebar {
                 transform: translateX(0);
             }
 
@@ -340,6 +345,8 @@
 </head>
 
 <body>
+    <input type="checkbox" id="sidebar-toggle" aria-label="Toggle menu">
+    <label for="sidebar-toggle" class="sidebar-toggle-label">Menu</label>
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
@@ -485,22 +492,6 @@
     <!-- Third-party jQuery/Bootstrap CDN scripts removed (security update):
          unused, blocked by the CSP, Bootstrap 4.5.2 has CVE-2024-6531, and
          they leaked admin IPs to third-party CDNs. -->
-    
-    <script>
-        // Card animation on load
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.stat-card, .action-card');
-            cards.forEach((card, index) => {
-                card.style.animationDelay = `${index * 0.1}s`;
-            });
-        });
-
-        // Toggle sidebar on mobile
-        function toggleSidebar() {
-            const sidebar = document.querySelector('.sidebar');
-            sidebar.classList.toggle('show');
-        }
-    </script>
 </body>
 
 </html>

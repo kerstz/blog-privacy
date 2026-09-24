@@ -1,24 +1,27 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}Gérer les Commentaires - Admin{% endblock %}
+{% block title %}Manage Comments - Admin{% endblock %}
 
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-comments"></span> Gérer les Commentaires</h2>
-        <p>Modérez et gérez tous les commentaires du blog</p>
+        <h2><span class="icon-comments"></span> Manage Comments</h2>
+        <p>Moderate and manage all blog comments</p>
     </div>
 
     <div class="comments-section">
         <div class="section-card">
             <div class="section-header">
-                <h3><span class="icon-list"></span> Commentaires ({{ comments|length }})</h3>
+                <h3><span class="icon-list"></span> Comments ({{ comments|length }})</h3>
                 <div class="filter-options">
-                    <select class="filter-select" id="statusFilter">
-                        <option value="all">Tous les commentaires</option>
-                        <option value="recent">Récents (7 derniers jours)</option>
-                        <option value="popular">Populaires (5+ likes)</option>
-                    </select>
+                    <form method="GET" action="{{ url_for('manage_comments') }}" class="filter-form">
+                        <select class="filter-select" id="statusFilter" name="filter">
+                            <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All comments</option>
+                            <option value="recent" {% if current_filter == 'recent' %}selected{% endif %}>Recent (last 7 days)</option>
+                            <option value="popular" {% if current_filter == 'popular' %}selected{% endif %}>Popular (5+ likes)</option>
+                        </select>
+                        <button type="submit" class="filter-apply">Filter</button>
+                    </form>
                 </div>
             </div>
             
@@ -37,10 +40,10 @@
                                     </div>
                                     <div class="author-info">
                                         <span class="author-name">
-                                            {{ comment.author.username if comment.author else '[Utilisateur supprimé]' }}
+                                            {{ comment.author.username if comment.author else '[deleted user]' }}
                                         </span>
                                         <span class="comment-date">
-                                            <span class="icon-clock"></span> {{ comment.date_posted.strftime('%d/%m/%Y à %H:%M') }}
+                                            <span class="icon-clock"></span> {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}
                                         </span>
                                     </div>
                                 </div>
@@ -57,7 +60,7 @@
                             <div class="comment-content">
                                 <div class="post-context">
                                     <span class="icon-newspaper"></span>
-                                    <strong>Article:</strong> 
+                                    <strong>Post:</strong> 
                                     <a href="{{ url_for('post_detail', post_id=comment.post_id) }}" class="post-link">
                                         {{ comment.post.title }}
                                     </a>
@@ -69,17 +72,18 @@
                             
                             <div class="comment-actions">
                                 <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="btn-edit">
-                                    <span class="icon-edit"></span> Modifier
+                                    <span class="icon-edit"></span> Edit
                                 </a>
                                 <a href="{{ url_for('post_detail', post_id=comment.post_id) }}#comment-{{ comment.id }}" class="btn-view">
-                                    <span class="icon-eye"></span> Voir
+                                    <span class="icon-eye"></span> View
                                 </a>
-                                <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="delete-form">
+                                <details class="confirm-action">
+                                    <summary class="btn-delete"><span class="icon-trash"></span> Delete</summary>
+                                    <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="delete-form">
                                     {{ form.hidden_tag() }}
-                                    <button type="submit" class="btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer ce commentaire ?')">
-                                        <span class="icon-trash"></span> Supprimer
-                                    </button>
+                                    <button type="submit" class="btn-delete confirm-yes">Confirm</button>
                                 </form>
+                                </details>
                             </div>
                         </div>
                     {% endfor %}
@@ -87,7 +91,7 @@
             {% else %}
                 <div class="no-comments">
                     <span class="icon-comments"></span>
-                    <p>Aucun commentaire à gérer pour le moment</p>
+                    <p>No comments to moderate yet</p>
                 </div>
             {% endif %}
         </div>
@@ -407,29 +411,11 @@
         justify-content: center;
     }
 }
+/* No-JS confirmation: the real submit button only appears after opening */
+.confirm-action { display: inline-block; }
+.confirm-action > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; }
+.confirm-action > summary::-webkit-details-marker { display: none; }
+.confirm-action[open] > summary { opacity: .6; }
+.confirm-action form { display: inline; margin-left: .4rem; }
 </style>
-
-<script>
-// Filtrage des commentaires
-document.getElementById('statusFilter').addEventListener('change', function() {
-    const filter = this.value;
-    const commentCards = document.querySelectorAll('.comment-card');
-    const now = new Date();
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    commentCards.forEach(card => {
-        let show = true;
-        
-        if (filter === 'recent') {
-            const commentDate = new Date(card.dataset.date);
-            show = commentDate >= weekAgo;
-        } else if (filter === 'popular') {
-            const likes = parseInt(card.dataset.likes);
-            show = likes >= 5;
-        }
-        
-        card.style.display = show ? 'block' : 'none';
-    });
-});
-</script>
 {% endblock %}

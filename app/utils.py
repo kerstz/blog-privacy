@@ -7,8 +7,10 @@ from app.models import Post
 from datetime import datetime
 import time
 import threading
+import random
+import sqlite3
 import re
-from PIL import Image, ExifTags
+from PIL import Image
 import os
 import nh3
 from markupsafe import escape
@@ -36,6 +38,20 @@ def _sanitize_url(url: str) -> str:
         return '#'
     return url
 
+def _image_markup(url: str, extra_style: str) -> str:
+    """Local images (/static/..., /uploads/...) are embedded. External images
+    become a plain link: loading them would leak every reader's IP address
+    to a third-party server (and the CSP blocks them anyway)."""
+    url = (url or '').strip()
+    if re.match(r'^/(?:static|uploads)/[A-Za-z0-9_./-]+$', url) and '..' not in url:
+        style = 'max-width:100%;height:auto' + (';' + extra_style if extra_style else '')
+        return f"<img src=\"{url}\" alt=\"image\" loading=\"lazy\" style=\"{style}\">"
+    safe = _sanitize_url(url)
+    if safe == '#':
+        return '[image]'
+    return f"<a href=\"{safe}\" rel=\"nofollow noopener noreferrer\">[external image: {safe}]</a>"
+
+
 def parse_bbcode(text: str) -> str:
     """Convert user BBCode to HTML.
 
@@ -51,24 +67,21 @@ def parse_bbcode(text: str) -> str:
     html = re.sub(r"\[url\](.+?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(1)}</a>", html, flags=re.IGNORECASE)
     # [img]...[/img] and [img=width,height]...[/img]
     def _img_simple(m):
-        src = _sanitize_url(m.group(1))
-        return f"<img src=\"{src}\" alt=\"image\" referrerpolicy=\"no-referrer\" loading=\"lazy\" style=\"max-width:100%;height:auto\">"
+        return _image_markup(m.group(1), '')
     html = re.sub(r"\[img\](.+?)\[/img\]", _img_simple, html, flags=re.IGNORECASE)
     def _img_sized(m):
         dims = m.group(1).split(',')
         try:
             w = min(int(dims[0]), 2000) if dims[0] else 0
-            h = min(int(dims[1]), 2000) if len(dims) > 1 else 0
+            h = min(int(dims[1]), 2000) if len(dims) > 1 and dims[1] else 0
         except Exception:
             w, h = 0, 0
-        src = _sanitize_url(m.group(2))
         style = []
         if w > 0:
             style.append(f"max-width:{w}px")
         if h > 0:
             style.append(f"max-height:{h}px")
-        style.append("height:auto")
-        return f"<img src=\"{src}\" alt=\"image\" referrerpolicy=\"no-referrer\" loading=\"lazy\" style=\"{';'.join(style)}\">"
+        return _image_markup(m.group(2), ';'.join(style))
     html = re.sub(r"\[img=(\d{0,4}(?:,\d{0,4})?)\](.+?)\[/img\]", _img_sized, html, flags=re.IGNORECASE)
     # lists [list] [*]item
     def _list_repl(m):
@@ -76,6 +89,13 @@ def parse_bbcode(text: str) -> str:
         li = ''.join([f"<li>{it.strip()}</li>" for it in items])
         return f"<ul>{li}</ul>"
     html = re.sub(r"\[list\](.*?)\[/list\]", _list_repl, html, flags=re.IGNORECASE | re.DOTALL)
+    def _olist_repl(m):
+        items = re.findall(r"\[\*\](.+)", m.group(1))
+        return "<ol>" + ''.join(f"<li>{it.strip()}</li>" for it in items) + "</ol>"
+    html = re.sub(r"\[list=1\](.*?)\[/list\]", _olist_repl, html, flags=re.IGNORECASE | re.DOTALL)
+    # alignment
+    for align in ('center', 'left', 'right', 'justify'):
+        html = re.sub(rf"\[{align}\](.*?)\[/{align}\]", rf'<p style="text-align:{align}">\1</p>', html, flags=re.IGNORECASE | re.DOTALL)
     # colors and sizes (strictly validated values)
     html = re.sub(r"\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]{1,20})\](.*?)\[/color\]", r"<span style=\"color:\1\">\2</span>", html, flags=re.IGNORECASE | re.DOTALL)
     def _size_repl(m):
@@ -102,7 +122,8 @@ _USER_TAGS = {'a', 'b', 'strong', 'i', 'em', 'u', 's', 'blockquote', 'pre', 'cod
               'ul', 'ol', 'li', 'span', 'img', 'br', 'p'}
 _USER_ATTRS = {
     'a': {'href'},
-    'img': {'src', 'alt', 'style', 'referrerpolicy', 'loading'},
+    'p': {'style'},
+    'img': {'src', 'alt', 'style', 'loading'},
     'span': {'style'},
 }
 
@@ -112,24 +133,46 @@ _RICH_TAGS = _USER_TAGS | {'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'table', 't
 _RICH_ATTRS = {
     '*': {'class', 'style', 'title'},
     'a': {'href'},
-    'img': {'src', 'alt', 'width', 'height', 'referrerpolicy', 'loading'},
+    'img': {'src', 'alt', 'width', 'height', 'loading'},
     'td': {'colspan', 'rowspan'},
     'th': {'colspan', 'rowspan'},
 }
+
+
+def _local_images_only(tag, attr, value):
+    """nh3 attribute filter: an <img> may only point to our own origin."""
+    if tag == 'img' and attr == 'src':
+        if re.match(r'^/(?:static|uploads)/[A-Za-z0-9_./-]+$', value or '') and '..' not in value:
+            return value
+        return None
+    return value
 
 
 def sanitize_user_html(html: str) -> str:
     """Sanitize HTML produced from user BBCode (comments/replies)."""
     return nh3.clean(html or '', tags=_USER_TAGS, attributes=_USER_ATTRS,
                      url_schemes=_URL_SCHEMES, link_rel='nofollow noopener noreferrer',
-                     filter_style_properties=_SAFE_STYLE_PROPS)
+                     filter_style_properties=_SAFE_STYLE_PROPS,
+                     attribute_filter=_local_images_only)
 
 
 def sanitize_rich_html(html: str) -> str:
-    """Sanitize CKEditor / admin HTML (posts, static pages, banners)."""
+    """Sanitize admin HTML (posts, static pages, banners)."""
     return nh3.clean(html or '', tags=_RICH_TAGS, attributes=_RICH_ATTRS,
                      url_schemes=_URL_SCHEMES, link_rel='noopener noreferrer',
-                     filter_style_properties=_SAFE_STYLE_PROPS)
+                     filter_style_properties=_SAFE_STYLE_PROPS,
+                     attribute_filter=_local_images_only)
+
+
+_ANY_HTML_TAG_RE = re.compile(r'<\s*/?\s*[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?/?>')
+
+
+def render_rich_html(text: str) -> str:
+    """Render a post / static page: HTML (legacy editor content) or BBCode."""
+    text = text or ''
+    if _ANY_HTML_TAG_RE.search(text):
+        return sanitize_rich_html(text)
+    return sanitize_rich_html(parse_bbcode(text))
 
 
 def render_comment_html(text: str) -> str:
@@ -247,11 +290,27 @@ def role_required(allowed_roles):
 
 
 # -----------------------------
-# Simple rate limiter (in-memory)
-# Compatible NoScript (server-side only)
+# Rate limiter + 2FA replay guard, persisted in SQLite
+# (survives restarts, shared by every worker process)
 # -----------------------------
-_RATE_LIMIT_STORE = {}
-_RATE_LIMIT_LOCK = threading.Lock()
+_STATE_DB_PATH = os.environ.get('SECURITY_STATE_DB') or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'instance', 'security_state.db')
+_state_local = threading.local()
+_STATE_LOCK = threading.Lock()
+
+
+def _state_db():
+    conn = getattr(_state_local, 'conn', None)
+    if conn is None:
+        os.makedirs(os.path.dirname(_STATE_DB_PATH), exist_ok=True)
+        conn = sqlite3.connect(_STATE_DB_PATH, timeout=10, isolation_level=None)
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('CREATE TABLE IF NOT EXISTS hits (key TEXT NOT NULL, ts REAL NOT NULL)')
+        conn.execute('CREATE INDEX IF NOT EXISTS hits_key_ts ON hits (key, ts)')
+        conn.execute('CREATE TABLE IF NOT EXISTS totp_used (user_id INTEGER PRIMARY KEY, step INTEGER NOT NULL)')
+        _state_local.conn = conn
+    return conn
+
 
 def _client_id():
     try:
@@ -262,28 +321,52 @@ def _client_id():
     return f"ip:{request.remote_addr}"
 
 
-def _prune_rate_store(now: float, max_window: int = 3600):
-    # Bound memory: drop buckets that are entirely expired.
-    if len(_RATE_LIMIT_STORE) < 5000:
-        return
-    for key in list(_RATE_LIMIT_STORE.keys()):
-        if not any(t > now - max_window for t in _RATE_LIMIT_STORE.get(key, [])):
-            _RATE_LIMIT_STORE.pop(key, None)
-
-
 def hit_rate_limit(key: str, max_calls: int, window_seconds: int, record: bool = True) -> bool:
     """Return True if *key* exceeded max_calls in the window (and optionally record a hit)."""
     now = time.time()
-    with _RATE_LIMIT_LOCK:
-        _prune_rate_store(now)
-        bucket = [t for t in _RATE_LIMIT_STORE.get(key, []) if t > now - window_seconds]
-        if len(bucket) >= max_calls:
-            _RATE_LIMIT_STORE[key] = bucket
-            return True
-        if record:
-            bucket.append(now)
-        _RATE_LIMIT_STORE[key] = bucket
-    return False
+    with _STATE_LOCK:
+        conn = _state_db()
+        conn.execute('BEGIN IMMEDIATE')
+        try:
+            if random.random() < 0.01:
+                conn.execute('DELETE FROM hits WHERE ts < ?', (now - 86400,))
+            count = conn.execute('SELECT COUNT(*) FROM hits WHERE key = ? AND ts > ?',
+                                 (key, now - window_seconds)).fetchone()[0]
+            limited = count >= max_calls
+            if record and not limited:
+                conn.execute('INSERT INTO hits (key, ts) VALUES (?, ?)', (key, now))
+            conn.execute('COMMIT')
+        except Exception:
+            conn.execute('ROLLBACK')
+            raise
+    return limited
+
+
+def mark_totp_step_used(user_id: int, step: int) -> bool:
+    """Record a used TOTP time-step. False if this (or a later) step was already used."""
+    with _STATE_LOCK:
+        conn = _state_db()
+        conn.execute('BEGIN IMMEDIATE')
+        try:
+            row = conn.execute('SELECT step FROM totp_used WHERE user_id = ?', (user_id,)).fetchone()
+            if row and row[0] >= step:
+                conn.execute('COMMIT')
+                return False
+            conn.execute('INSERT INTO totp_used (user_id, step) VALUES (?, ?) '
+                         'ON CONFLICT(user_id) DO UPDATE SET step = excluded.step', (user_id, step))
+            conn.execute('COMMIT')
+        except Exception:
+            conn.execute('ROLLBACK')
+            raise
+    return True
+
+
+def reset_security_state():
+    """Clear rate limits and 2FA replay state (tests / admin maintenance)."""
+    with _STATE_LOCK:
+        conn = _state_db()
+        conn.execute('DELETE FROM hits')
+        conn.execute('DELETE FROM totp_used')
 
 
 def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('POST',)):
