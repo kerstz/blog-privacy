@@ -12,6 +12,7 @@ import pytest
 
 _TMP = tempfile.mkdtemp()
 os.environ.update(
+    SECURITY_STATE_DB=f'{_TMP}/security_state.db',
     SECRET_KEY='t' * 48,
     ENCRYPTION_KEY='k' * 32,
     ENCRYPTION_SALT='s' * 16,
@@ -36,7 +37,7 @@ PASSWORD = 'Correct-Horse-42'
 @pytest.fixture(autouse=True)
 def fresh_db():
     app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
-    utils._RATE_LIMIT_STORE.clear()
+    utils.reset_security_state()
     with app.app_context():
         db.drop_all()
         db.create_all()
@@ -211,7 +212,7 @@ def test_totp_bruteforce_limited_and_no_replay():
     with c.session_transaction() as s:
         assert '_user_id' not in s  # locked out after 5 failures
 
-    utils._RATE_LIMIT_STORE.clear()
+    utils.reset_security_state()
     code = pyotp.TOTP(secret).now()
     c1 = app.test_client()
     c1.post('/login', data={'username': 'alice', 'password': PASSWORD})
@@ -326,3 +327,110 @@ def test_open_redirect_blocked_in_rate_limiter():
     for _ in range(6):
         r = c.post('/login', data={'username': 'x', 'password': 'y'}, headers={'Referer': 'https://evil.example/'})
     assert 'evil.example' not in r.headers.get('Location', '')
+
+
+# ---------------------------------------------------------------- privacy release (no JS, no third parties)
+PUBLIC_PAGES = ('/', '/posts', '/post/1', '/about', '/contact', '/donate', '/editor_help', '/login', '/register')
+
+
+def test_no_javascript_anywhere():
+    anon, alice, admin = app.test_client(), login('alice'), login('admin')
+    pages = [(anon, u) for u in PUBLIC_PAGES] + [(alice, '/chat'), (alice, '/edit_profile')] + \
+        [(admin, u) for u in ('/admin_dashboard', '/manage_posts', '/manage_users', '/manage_comments',
+                              '/admin/chat', f"/admin/chat/{uid('alice')}", '/edit_post/1', '/manage_banners')]
+    for client, url in pages:
+        r = client.get(url)
+        assert r.status_code == 200, url
+        html = r.data.decode()
+        assert '<script' not in html, url
+        assert 'onclick=' not in html, url
+        assert "script-src 'none'" in r.headers['Content-Security-Policy']
+
+
+def test_no_third_party_resources():
+    for url in PUBLIC_PAGES:
+        html = app.test_client().get(url).data.decode()
+        for host in ('googleapis', 'gstatic', 'cdn.', 'cloudflare', 'bootstrapcdn', '<iframe'):
+            assert host not in html, (url, host)
+
+
+def test_external_images_become_links():
+    a = login('alice')
+    a.post('/post/1', data={'content': '[img]https://tracker.example/pixel.png[/img]'})
+    html = a.get('/post/1').data.decode()
+    assert '<img src="https://tracker.example' not in html
+    assert 'href="https://tracker.example/pixel.png"' in html
+    with app.app_context():
+        db.session.get(Post, 1).content = '<p>x</p><img src="https://tracker.example/p.png">'
+        db.session.commit()
+    assert 'src="https://tracker.example' not in a.get('/post/1').data.decode()
+
+
+def test_donate_page_has_server_side_qr_codes():
+    html = app.test_client().get('/donate').data.decode()
+    assert html.count('src="data:image/png;base64,') >= 8
+
+
+def test_comment_filter_is_server_side():
+    a = login('alice')
+    a.post('/post/1', data={'content': 'fresh comment'})
+    adm = login('admin')
+    assert b'fresh comment' in adm.get('/manage_comments?filter=recent').data
+    assert b'fresh comment' not in adm.get('/manage_comments?filter=popular').data
+
+
+def test_delete_post_works_with_csrf():
+    app.config['WTF_CSRF_ENABLED'] = True
+    try:
+        adm = app.test_client()
+        page = adm.get('/login').data.decode()
+        import re as _re
+        token = _re.search(r'name="csrf_token" type="hidden" value="([^"]+)"', page).group(1)
+        adm.post('/login', data={'username': 'admin', 'password': PASSWORD, 'csrf_token': token})
+        page = adm.get('/manage_posts').data.decode()
+        token = _re.search(r'name="csrf_token" value="([^"]+)"', page).group(1)
+        adm.post('/delete_post/2', data={'csrf_token': token})
+        with app.app_context():
+            assert db.session.get(Post, 2) is None
+    finally:
+        app.config['WTF_CSRF_ENABLED'] = False
+
+
+def test_totp_works_when_server_is_not_utc():
+    import time as _time
+    old = os.environ.get('TZ')
+    os.environ['TZ'] = 'Pacific/Kiritimati'  # UTC+14
+    _time.tzset()
+    try:
+        from app.services import _verify_totp_once
+        secret = pyotp.random_base32()
+        with app.app_context():
+            u = User.query.filter_by(username='alice').first()
+            u.totp_secret, u.totp_enabled = secret, True
+            db.session.commit()
+            assert _verify_totp_once(u, pyotp.TOTP(secret).now())
+    finally:
+        if old is None:
+            os.environ.pop('TZ', None)
+        else:
+            os.environ['TZ'] = old
+        _time.tzset()
+
+
+def test_rate_limit_is_persistent():
+    for _ in range(3):
+        utils.hit_rate_limit('persist-test', 3, 60)
+    utils._state_local.conn.close()
+    utils._state_local.conn = None  # simulate a new process / restart
+    assert utils.hit_rate_limit('persist-test', 3, 60)
+
+
+def test_onion_location_header():
+    from app import routes
+    old = routes.ONION_ADDRESS
+    routes.ONION_ADDRESS = 'a' * 56 + '.onion'
+    try:
+        r = app.test_client().get('/about')
+        assert r.headers['Onion-Location'] == f"http://{'a' * 56}.onion/about"
+    finally:
+        routes.ONION_ADDRESS = old

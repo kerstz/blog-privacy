@@ -1,0 +1,8 @@
+# Tor onion service: add to /etc/tor/torrc, then `sudo systemctl restart tor`.
+# The address is in /var/lib/tor/blog/hostname -> put it in .env as ONION_ADDRESS.
+#
+# Tor goes through the reverse proxy on 127.0.0.1:8080 (NOT straight to the
+# app on :8000): the proxy overwrites X-Forwarded-For, so a Tor client cannot
+# spoof its "IP" to bypass rate limiting when TRUSTED_PROXY_COUNT=1.
+HiddenServiceDir /var/lib/tor/blog/
+HiddenServicePort 80 127.0.0.1:8080
