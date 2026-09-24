@@ -1,5 +1,10 @@
 # TechBlog
 
+> **⚠️ Security update (September 2026):** critical vulnerabilities fixed (private chat
+> exposure, XSS, unauthenticated WebSocket, 2FA brute-force…) and all dependencies
+> upgraded past their CVEs. **Update now with `./update.sh` and keep updating regularly.**
+> Details in [SECURITY.md](SECURITY.md).
+
 A modern, feature-rich blogging platform built with Flask. TechBlog offers a clean and responsive interface for sharing articles, engaging with readers, and building a community around technology and programming.
 
 <img alt="Home page" src="docs/screenshots/home.png" />
@@ -171,6 +176,8 @@ You can now access admin conversations from a phone app (or mobile web client) t
 - `GET /api/admin/mobile/stream` - real-time event stream (SSE) for incoming messages/updates
 
 Authentication uses HTTP Basic Auth with your existing admin username/password.
+If the admin account has 2FA enabled, also send the current code in the
+`X-TOTP-Code` header. Failed logins are rate limited.
 
 Example:
 ```bash
@@ -202,11 +209,17 @@ This project is open source and available under the MIT License.
 
 ## Security
 
-- Passwords are hashed using bcrypt
-- CSRF protection enabled
-- Secure session cookies
+- Passwords are hashed using bcrypt; TOTP 2FA (brute-force and replay protected)
+- CSRF protection, strict security headers (CSP, HSTS in HTTPS, COOP/CORP)
+- All user HTML escaped/sanitized (`nh3`), private uploads access controlled, metadata stripped
+- Chat messages encrypted at rest (Fernet), private per user
+- Rate limiting on login, 2FA, API, comments, chat
 - SQL injection prevention through SQLAlchemy ORM
-- Message encryption for chat system
+
+**Keep the blog up to date.** New vulnerabilities are published every week:
+run `./update.sh` at least monthly (it backs up your data first and never
+touches the database content, uploads or `.env`), and check for CVEs with
+`pip-audit -r requirements.txt`. See [SECURITY.md](SECURITY.md).
 
 ## Theme Customization
 

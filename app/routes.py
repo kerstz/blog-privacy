@@ -4,7 +4,7 @@ from app import app, db, bcrypt, socketio, csrf
 from app.utils import parse_bbcode
 from app.forms import LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm, StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm, TOTPVerifyForm
 from app.models import User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like, Notification, Badge, ContactMessage
-from app.utils import rate_limit, role_required, process_image_file
+from app.utils import rate_limit, role_required, process_image_file, hit_rate_limit, is_safe_redirect_url
 from functools import wraps
 from urllib.parse import urlparse, urljoin
 from datetime import datetime, timedelta
@@ -24,6 +24,9 @@ from PIL import Image
 import piexif
 import pyotp
 import io
+import hmac
+import secrets
+from flask_socketio import join_room, disconnect
 
 
 # 🔹 Admin-only Route Decorator
@@ -485,11 +488,21 @@ def authenticate_admin_api():
     if not username or not password:
         return None
 
-    user = User.query.filter_by(username=username, is_admin=True).first()
-    if not user:
+    # Brute-force protection (per IP and per account), failures only.
+    ip_key = f"api_fail_ip:{request.remote_addr}"
+    user_key = f"api_fail_user:{username.lower()}"
+    if hit_rate_limit(ip_key, 10, 900, record=False) or hit_rate_limit(user_key, 10, 900, record=False):
         return None
 
-    if not bcrypt.check_password_hash(user.password, password):
+    user = User.query.filter_by(username=username, is_admin=True).first()
+    ok = _check_user_password(user, password)
+    # 2FA is enforced on the API too: accounts with TOTP must send the current
+    # code in the X-TOTP-Code header (Basic Auth alone bypassed 2FA before).
+    if ok and user.totp_enabled:
+        ok = _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''), allow_reuse=True)
+    if not ok:
+        hit_rate_limit(ip_key, 10, 900)
+        hit_rate_limit(user_key, 10, 900)
         return None
 
     return user
@@ -705,10 +718,10 @@ def telegram_download_file_to_uploads(file_id, preferred_ext='jpg'):
         return None
 
     ext = os.path.splitext(remote_file_path)[1].lower().strip('.')
-    if not ext:
+    if not ext or len(ext) > 8 or not ext.isalnum():
         ext = preferred_ext
-    if len(ext) > 8:
-        ext = preferred_ext
+    if not ext or len(ext) > 8 or not ext.isalnum():
+        ext = 'bin'
 
     filename = f"tg_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:10]}.{ext}"
     relative_path = os.path.join('uploads', filename)
@@ -1123,11 +1136,16 @@ def process_telegram_update_message(message_data):
             and incoming_text
             and not command_token.startswith('/')
         ):
-            if incoming_text.strip() == pin:
+            if hit_rate_limit(f"tg_pin_fail:{incoming_actor_id}", 5, 900, record=False):
+                telegram_send_message("⛔ Too many wrong PINs. Locked for 15 minutes.")
+                return False
+            if hmac.compare_digest(incoming_text.strip().encode(), pin.encode()):
                 _telegram_clear_admin_state(incoming_chat_id)
                 _telegram_start_session(incoming_actor_id)
                 telegram_send_message("✅ PIN accepted. Control panel unlocked.", reply_markup=telegram_main_menu_markup())
             else:
+                hit_rate_limit(f"tg_pin_fail:{incoming_actor_id}", 5, 900)
+                _telegram_audit_log(incoming_actor_id, "wrong_pin")
                 telegram_send_message("❌ Wrong PIN. Try again or use /cancel.")
             return False
         _telegram_set_admin_state(incoming_chat_id, "await_pin", actor_user_id=incoming_actor_id)
@@ -1373,7 +1391,7 @@ def process_telegram_update_message(message_data):
                 author_id=admin_user.id,
                 is_published=False,
                 is_draft=True,
-                scheduled_date=datetime.utcnow()
+                scheduled_date=None
             )
             db.session.add(post)
             db.session.commit()
@@ -1499,8 +1517,7 @@ def process_telegram_update_message(message_data):
                 telegram_send_message("❌ Post not found anymore.", reply_markup=telegram_posts_menu_markup())
                 return False
             post_title = post.title
-            db.session.delete(post)
-            db.session.commit()
+            _delete_post_and_children(post)
             _telegram_audit_log(incoming_actor_id, "delete_post", f"post_id={post_id}")
             _telegram_clear_admin_state(incoming_chat_id)
             telegram_send_message(f"🗑️ Post deleted: #{post_id} {post_title}", reply_markup=telegram_posts_menu_markup())
@@ -1528,8 +1545,11 @@ def process_telegram_update_message(message_data):
                     telegram_send_message("🛡️ Blocked: cannot delete the last admin account.", reply_markup=telegram_users_menu_markup())
                     return False
             username = user.username
-            db.session.delete(user)
-            db.session.commit()
+            fallback_admin = User.query.filter(User.is_admin.is_(True), User.id != user.id).order_by(User.id.asc()).first()
+            if not fallback_admin:
+                telegram_send_message("🛡️ Blocked: no other admin to take over the posts.")
+                return False
+            _delete_user_and_data(user, new_post_owner_id=fallback_admin.id)
             _telegram_audit_log(incoming_actor_id, "delete_user", f"user_id={user_id} username={username}")
             _telegram_clear_admin_state(incoming_chat_id)
             telegram_send_message(f"🗑️ User @{username} deleted.", reply_markup=telegram_users_menu_markup())
@@ -1893,8 +1913,9 @@ def ensure_telegram_poller_started():
 @app.before_request
 def telegram_before_request_poll():
     # Keep Telegram bot commands responsive without JavaScript/webhooks.
+    # The background poller thread handles Telegram; do not block web
+    # requests with outbound HTTP calls (latency / DoS amplification).
     ensure_telegram_poller_started()
-    poll_telegram_updates_if_needed()
     from app.utils import publish_scheduled_posts
     publish_scheduled_posts()
 
@@ -1902,6 +1923,13 @@ def telegram_before_request_poll():
 @app.after_request
 def apply_security_headers(response):
     response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+    response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+    if app.config.get('SESSION_COOKIE_SECURE'):
+        response.headers.setdefault('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+    # Pages for logged-in users must never be stored by shared caches.
+    if current_user.is_authenticated and 'Cache-Control' not in response.headers:
+        response.headers['Cache-Control'] = 'no-store'
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
@@ -1910,9 +1938,10 @@ def apply_security_headers(response):
         "default-src 'self'; "
         "img-src 'self' data: https:; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.ckeditor.com; "
-        "connect-src 'self' ws: wss:; "
+        "script-src 'self' 'unsafe-inline' https://cdn.ckeditor.com; "
+        "connect-src 'self'; "
         "font-src 'self' data: https://fonts.gstatic.com; "
+        "frame-src https://trocador.app; "
         "object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
     )
     return response
@@ -1948,10 +1977,42 @@ def wait_for_conversation_message(admin_id, user_id, last_seen_id, timeout_secon
 
     return False
 
+def _delete_post_and_children(post):
+    comment_ids = [c.id for c in Comment.query.filter_by(post_id=post.id).all()]
+    if comment_ids:
+        Like.query.filter(Like.comment_id.in_(comment_ids)).delete(synchronize_session=False)
+        Notification.query.filter(Notification.related_comment_id.in_(comment_ids)).delete(synchronize_session=False)
+        Comment.query.filter(Comment.id.in_(comment_ids)).delete(synchronize_session=False)
+    Like.query.filter_by(post_id=post.id).delete(synchronize_session=False)
+    Notification.query.filter_by(related_post_id=post.id).delete(synchronize_session=False)
+    Revision.query.filter_by(post_id=post.id).delete(synchronize_session=False)
+    db.session.delete(post)
+    db.session.commit()
+
+
 # 🔹 Home Page
+def _visible_posts_query():
+    """Drafts / unpublished posts are only visible to admins."""
+    query = Post.query
+    if not (current_user.is_authenticated and current_user.is_admin):
+        query = query.filter(Post.is_published.is_(True))
+    return query
+
+
+def _user_room(user_id):
+    return f"user_{int(user_id)}"
+
+
+def _notify_user(user_id, payload):
+    """Real-time event for ONE user (never broadcast: it leaked usernames,
+    titles and chat content to every connected socket)."""
+    if user_id:
+        socketio.emit('notification', payload, to=_user_room(user_id))
+
+
 @app.route('/')
 def index():
-    posts = Post.query.order_by(Post.date_posted.desc()).all()
+    posts = _visible_posts_query().order_by(Post.date_posted.desc()).all()
     return render_template('index.html', posts=posts)
 
 
@@ -1993,7 +2054,7 @@ def contact():
 # 🔹 View a Blog Post
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = _visible_posts_query().filter(Post.id == post_id).first_or_404()
     form = CommentForm()
     # Increment view counter once per session
     if request.method == 'GET':
@@ -2001,7 +2062,8 @@ def post_detail(post_id):
         if post_id not in viewed_posts:
             post.views_count = (post.views_count or 0) + 1
             db.session.commit()
-            viewed_posts.append(post_id)
+            # keep the (client-side) session cookie small
+            viewed_posts = (viewed_posts + [post_id])[-100:]
             session['viewed_posts'] = viewed_posts
 
     if form.validate_on_submit():
@@ -2011,7 +2073,8 @@ def post_detail(post_id):
                 return redirect(url_for('post_detail', post_id=post.id))
             content = form.content.data.strip()
             if content:
-                comment = Comment(content=parse_bbcode(content), post_id=post.id, author_id=current_user.id)
+                # Stored as raw BBCode; rendered + sanitized by the |comment_html filter.
+                comment = Comment(content=content, post_id=post.id, author_id=current_user.id)
                 db.session.add(comment)
                 db.session.commit()
                 
@@ -2030,12 +2093,10 @@ def post_detail(post_id):
                     )
                     db.session.add(notification)
                     
-                    # Emit real-time notification
-                    socketio.emit('notification', {
+                    _notify_user(post.author_id, {
                         'type': 'comment',
                         'title': 'New comment!',
-                        'message': f'{current_user.username} commented on your article "{post.title}"',
-                        'user_id': post.author_id
+                        'message': f'Someone commented on your article "{post.title}"',
                     })
                 
                 # Check and award badges
@@ -2049,9 +2110,6 @@ def post_detail(post_id):
             flash('You must be logged in to comment.', 'danger')
         return redirect(url_for('post_detail', post_id=post.id))
 
-    # BBCode render (server-side)
-    post.content = parse_bbcode(post.content)
-
     return render_template('post_detail.html', post=post, form=form)
 
 
@@ -2063,6 +2121,9 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
+        if _action_rate_limited('register_submit', max_calls=5, window_seconds=3600):
+            flash('Too many accounts created. Please wait.', 'danger')
+            return redirect(url_for('register'))
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, password=hashed_password)
         db.session.add(user)
@@ -2074,6 +2135,30 @@ def register():
 
 
 # 🔹 Login a User
+# Constant-time-ish login: always run one bcrypt check, even for unknown users,
+# so response timing does not reveal which usernames exist.
+_DUMMY_PASSWORD_HASH = bcrypt.generate_password_hash(secrets.token_hex(16)).decode('utf-8')
+
+
+def _check_user_password(user, password):
+    if not password or len(password.encode('utf-8')) > 72:
+        bcrypt.check_password_hash(_DUMMY_PASSWORD_HASH, 'x')
+        return False
+    if not user:
+        bcrypt.check_password_hash(_DUMMY_PASSWORD_HASH, password)
+        return False
+    try:
+        return bcrypt.check_password_hash(user.password, password)
+    except ValueError:
+        return False
+
+
+def _start_fresh_session():
+    """Drop everything from the pre-login session (session fixation)."""
+    session.clear()
+    session.permanent = True
+
+
 @app.route('/login', methods=['GET', 'POST'])
 @rate_limit('login', max_calls=5, window_seconds=300)
 def login():
@@ -2082,20 +2167,58 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        user = User.query.filter_by(username=form.username.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
+        username = (form.username.data or '').strip()
+        # Per-account limit (credential stuffing from many IPs)
+        if hit_rate_limit(f"login_fail_user:{username.lower()}", 10, 900, record=False):
+            flash('Too many failed attempts for this account. Try again later.', 'danger')
+            return render_template('login.html', title='Login', form=form)
+        user = User.query.filter_by(username=username).first()
+        if _check_user_password(user, form.password.data):
+            remember = bool(form.remember_me.data)
+            _start_fresh_session()
             if user.totp_enabled:
                 # Store pre-auth state in session; do NOT log in yet
                 session['pre_2fa_user_id'] = user.id
-                session['pre_2fa_remember'] = form.remember_me.data
+                session['pre_2fa_remember'] = remember
+                session['pre_2fa_started'] = time.time()
                 return redirect(url_for('login_totp'))
-            login_user(user, remember=form.remember_me.data)
+            login_user(user, remember=remember)
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
         else:
+            hit_rate_limit(f"login_fail_user:{username.lower()}", 10, 900)
             flash('Login failed. Check your username and password.', 'danger')
 
     return render_template('login.html', title='Login', form=form)
+
+
+# Last accepted TOTP time-step per user: a code can only be used once.
+_totp_last_used = {}
+_totp_last_used_lock = Lock()
+
+
+def _verify_totp_once(user, code, allow_reuse=False):
+    """Verify a TOTP code (+/-1 step) and reject replays of an already used code
+    (allow_reuse=True for stateless API calls that send the code on every request)."""
+    if not user or not user.totp_secret or not code:
+        return False
+    code = code.strip()
+    if not re.fullmatch(r'\d{6}', code):
+        return False
+    totp = pyotp.TOTP(user.totp_secret)
+    now = datetime.utcnow()
+    for offset in (-1, 0, 1):
+        at = now + timedelta(seconds=offset * totp.interval)
+        if hmac.compare_digest(totp.at(at), code):
+            step = totp.timecode(at)
+            if allow_reuse:
+                return True
+            with _totp_last_used_lock:
+                if _totp_last_used.get(user.id, -1) >= step:
+                    return False
+                _totp_last_used[user.id] = step
+            return True
+    return False
 
 
 # 🔹 TOTP second-step verification
@@ -2107,22 +2230,29 @@ def login_totp():
         # No pending pre-auth — redirect to login
         return redirect(url_for('login'))
 
-    user = User.query.get(user_id)
-    if not user or not user.totp_enabled:
+    user = db.session.get(User, user_id)
+    started = session.get('pre_2fa_started', 0)
+    if not user or not user.totp_enabled or time.time() - started > 300:
         session.pop('pre_2fa_user_id', None)
         session.pop('pre_2fa_remember', None)
+        session.pop('pre_2fa_started', None)
         return redirect(url_for('login'))
 
     form = TOTPVerifyForm()
     if form.validate_on_submit():
-        totp = pyotp.TOTP(user.totp_secret)
-        if totp.verify(form.code.data.strip(), valid_window=1):
-            remember = session.pop('pre_2fa_remember', False)
+        # 5 tries per 5 min per account: brute-forcing 10^6 codes is impossible
+        if hit_rate_limit(f"totp_fail:{user.id}", 5, 300, record=False):
             session.pop('pre_2fa_user_id', None)
+            flash('Too many invalid codes. Please log in again later.', 'danger')
+            return redirect(url_for('login'))
+        if _verify_totp_once(user, form.code.data):
+            remember = session.get('pre_2fa_remember', False)
+            _start_fresh_session()
             login_user(user, remember=remember)
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
         else:
+            hit_rate_limit(f"totp_fail:{user.id}", 5, 300)
             flash('Invalid authentication code. Please try again.', 'danger')
 
     return render_template('login_totp.html', form=form)
@@ -2131,10 +2261,8 @@ def login_totp():
 # 🔹 Logout a User
 @app.route('/logout')
 def logout():
-    # Clear any pending pre-2FA session state
-    session.pop('pre_2fa_user_id', None)
-    session.pop('pre_2fa_remember', None)
     logout_user()
+    session.clear()
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
 
@@ -2162,7 +2290,22 @@ def donate():
     form = EmptyForm()
 
     if request.method == 'POST':
-        amount = float(request.form.get('amount', 0))
+        # Donations arrive through the external payment widget; recording an
+        # amount here is unverified, so only admins may do it (anyone could
+        # previously forge the "top donor" shown on every page).
+        if not (current_user.is_authenticated and current_user.is_admin) or not form.validate_on_submit():
+            abort(403)
+        if _action_rate_limited('donate_submit', max_calls=5, window_seconds=3600):
+            flash('Too many requests. Please wait.', 'danger')
+            return redirect(url_for('donate'))
+        try:
+            amount = round(float(request.form.get('amount', 0)), 2)
+        except (TypeError, ValueError):
+            amount = 0
+        # reject nan / inf / negative / absurd values
+        if not (0 < amount <= 100000):
+            flash('Invalid amount.', 'danger')
+            return redirect(url_for('donate'))
         if amount > 0:
             new_donor = Donor(name='Anonymous', amount=amount)
             db.session.add(new_donor)
@@ -2177,26 +2320,28 @@ def donate():
 # File Upload Configuration
 UPLOAD_FOLDER = 'uploads'
 MAX_UPLOAD_BYTES = int((os.environ.get('MAX_UPLOAD_BYTES') or str(10 * 1024 * 1024)).strip())
+# SECURITY: no svg / xml / html: they can carry scripts when served from our origin.
 CHAT_ALLOWED_EXTENSIONS = {
     'png', 'jpg', 'jpeg', 'gif', 'webp',
     'pdf', 'doc', 'docx', 'txt', 'zip', 'rar', '7z',
     'mp3', 'mp4', 'avi', 'mov', 'mkv', 'csv', 'xls', 'xlsx',
-    'ppt', 'pptx', 'json', 'xml', 'svg', 'webm', 'ogg'
+    'ppt', 'pptx', 'json', 'webm', 'ogg'
 }
 PROFILE_ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
+IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_MIME_EXACT = {
     'application/pdf', 'application/zip', 'application/json', 'application/xml',
-    'application/msword',
+    'application/msword', 'application/octet-stream',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-powerpoint',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'application/x-7z-compressed', 'application/x-rar-compressed',
-    'text/plain', 'text/csv'
+    'application/x-7z-compressed', 'application/x-rar-compressed', 'application/vnd.rar',
+    'application/x-zip-compressed', 'text/plain', 'text/csv'
 }
-ALLOWED_MIME_PREFIXES = ('image/', 'video/', 'audio/', 'text/')
+ALLOWED_MIME_PREFIXES = ('image/', 'video/', 'audio/')
+BLOCKED_MIME_TYPES = {'image/svg+xml', 'text/html', 'application/xhtml+xml', 'text/xml', 'application/xml'}
 
 
 def _file_ext(filename):
@@ -2230,6 +2375,8 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
         return False, f"File too large (max {max_bytes // (1024 * 1024)} MB)."
 
     mime = (getattr(file_obj, 'mimetype', '') or '').lower().strip()
+    if mime in BLOCKED_MIME_TYPES:
+        return False, "Unsupported MIME type."
     if image_only:
         if not mime.startswith('image/'):
             return False, "Only image uploads are allowed."
@@ -2248,25 +2395,41 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
 
     return True, ""
 
-# Function to modify image metadata
-def modify_exif_data(file_path):
-    try:
-        image = Image.open(file_path)
-        exif_dict = piexif.load(image.info.get('exif', b''))
+def _store_upload(file_obj, prefix):
+    """Save an already-validated upload under a random, unguessable name.
 
-        # Remove GPS information
-        if 'GPS' in exif_dict:
-            exif_dict['GPS'] = {}
+    Images are re-encoded (all metadata stripped, WebP). Returns
+    (relative_path, file_type) or (None, None) if processing failed.
+    The original filename is never used on disk (no overwrite of other
+    users' files, no information leak, no guessable URL).
+    """
+    ext = _file_ext(file_obj.filename)
+    filename = f"{prefix}_{secrets.token_urlsafe(18)}.{ext}"
+    # Stored relative ("uploads/<name>"), written to the project's uploads
+    # folder whatever the current working directory is.
+    absolute_path = _absolute_upload_path(f"{UPLOAD_FOLDER}/{filename}")
+    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+    file_obj.save(absolute_path)
+    if ext in IMAGE_EXTENSIONS:
+        processed = process_image_file(absolute_path)
+        if not processed:
+            try:
+                os.remove(absolute_path)
+            except OSError:
+                pass
+            return None, None
+        return f"{UPLOAD_FOLDER}/{os.path.basename(processed)}", 'image'
+    return f"{UPLOAD_FOLDER}/{filename}", get_file_type(file_obj.filename)
 
-        # Add custom tag
-        exif_dict['0th'][piexif.ImageIFD.Make] = "Modified"
-        exif_dict['0th'][piexif.ImageIFD.Model] = "Edited"
-        exif_dict['0th'][piexif.ImageIFD.Software] = "ChatUploader"
 
-        exif_bytes = piexif.dump(exif_dict)
-        image.save(file_path, "jpeg", exif=exif_bytes)
-    except Exception as e:
-        print(f"EXIF modification error: {e}")
+def _user_conversation_query(user_id):
+    """Messages between *user_id* and any admin: what a user may see."""
+    admin_ids = [u.id for u in User.query.filter_by(is_admin=True).all()]
+    return Message.query.filter(
+        ((Message.sender_id == user_id) & (Message.receiver_id.in_(admin_ids))) |
+        ((Message.receiver_id == user_id) & (Message.sender_id.in_(admin_ids)))
+    )
+
 
 @app.route('/chat', methods=['GET', 'POST'])
 @login_required
@@ -2287,71 +2450,85 @@ def chat():
                 allowed_exts=CHAT_ALLOWED_EXTENSIONS,
                 max_bytes=MAX_UPLOAD_BYTES
             )
-            if is_valid:
-                filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"chat_{current_user.id}_admin_{timestamp}_{filename}"
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                file.save(file_path)
-
-                # Modify image metadata if it's an image
-                if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                    modify_exif_data(file_path)
-
-                # Determine file type
-                file_type = get_file_type(file.filename)
-
-                # Save message with file using proper fields
+            file_path, file_type = _store_upload(file, 'chat') if is_valid else (None, None)
+            if file_path:
                 message = Message(
                     sender_id=current_user.id,
                     receiver_id=_get_admin_user_id(),  # actual admin
-                    content=message_content if message_content else "",
                     file_path=file_path,
                     file_type=file_type
                 )
+                message.set_encrypted_content(message_content)
                 db.session.add(message)
                 db.session.commit()
                 publish_mobile_event('new_message', serialize_chat_message(message))
                 notify_admin_telegram_new_message(message)
+                _notify_admins_new_message(message)
                 flash("File sent!", "success")
             else:
-                flash(f"File upload failed: {validation_msg}", "danger")
+                flash(f"File upload failed: {validation_msg or 'invalid file'}", "danger")
 
         elif message_content:
-            # Save text message
+            if len(message_content) > 5000:
+                flash("Message too long (max 5000 characters).", "danger")
+                return redirect(url_for('chat'))
+            # Save text message (encrypted at rest)
             message = Message(
                 sender_id=current_user.id,
                 receiver_id=_get_admin_user_id(),  # actual admin
-                content=message_content
             )
+            message.set_encrypted_content(message_content)
             db.session.add(message)
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
             notify_admin_telegram_new_message(message)
+            _notify_admins_new_message(message)
             flash("Message sent!", "success")
 
         return redirect(url_for('chat'))
 
-    # Get messages from most recent to oldest
-    messages = Message.query.order_by(Message.timestamp.desc()).all()
+    # SECURITY: only this user's own conversation with the admins
+    # (previously every logged-in user saw ALL private messages).
+    messages = _user_conversation_query(current_user.id).order_by(Message.timestamp.desc()).all()
 
     return render_template('chat.html', form=form, messages=messages)
 
+
+def _notify_admins_new_message(message):
+    for admin in User.query.filter_by(is_admin=True).all():
+        socketio.emit('new_message', {'message_id': message.id, 'from_user_id': message.sender_id},
+                      to=_user_room(admin.id))
+
+
+@socketio.on('connect')
+def socket_connect(auth=None):
+    # Only authenticated users may open a socket; each joins a private room.
+    if not current_user.is_authenticated:
+        return False
+    join_room(_user_room(current_user.id))
+
+
 @socketio.on('message')
 def handle_message(data):
-    msg = data.get('msg', '').strip()
-    sender_id = current_user.id if current_user.is_authenticated else None
-    receiver_id = _get_admin_user_id()  # actual admin
-
-    if msg and sender_id:
-        message = Message(sender_id=sender_id, receiver_id=receiver_id, content=msg)
-        db.session.add(message)
-        db.session.commit()
-        publish_mobile_event('new_message', serialize_chat_message(message))
-        notify_admin_telegram_new_message(message)
-
-        # Émet le message à tous les clients connectés
-        emit('message', {"username": current_user.username, "msg": msg}, broadcast=True)
+    if not current_user.is_authenticated:
+        disconnect()
+        return
+    if not isinstance(data, dict):
+        return
+    msg = str(data.get('msg', '')).strip()
+    if not msg or len(msg) > 5000:
+        return
+    if hit_rate_limit(f"socket_msg:user:{current_user.id}", 30, 300):
+        return
+    message = Message(sender_id=current_user.id, receiver_id=_get_admin_user_id())
+    message.set_encrypted_content(msg)
+    db.session.add(message)
+    db.session.commit()
+    publish_mobile_event('new_message', serialize_chat_message(message))
+    notify_admin_telegram_new_message(message)
+    _notify_admins_new_message(message)
+    # Acknowledge to the sender only (never broadcast private messages).
+    emit('message', {'id': message.id, 'msg': msg}, to=_user_room(current_user.id))
 
 
 @app.route('/admin/chat')
@@ -2417,38 +2594,20 @@ def admin_chat_user(user_id):
                     allowed_exts=CHAT_ALLOWED_EXTENSIONS,
                     max_bytes=MAX_UPLOAD_BYTES
                 )
-                if is_valid:
-                    filename = secure_filename(file.filename)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f"chat_{current_user.id}_{user_id}_{timestamp}_{filename}"
-                    file_path = os.path.join('uploads', filename)
-                    file.save(file_path)
-                    # Media pipeline
-                    processed = process_image_file(file_path)
-                    if processed != file_path:
-                        try:
-                            os.remove(file_path)
-                        except Exception:
-                            pass
-                        file_path = processed
+                file_path, file_type = _store_upload(file, 'chat') if is_valid else (None, None)
+                if file_path:
                     message.file_path = file_path
-                    message.file_type = get_file_type(file.filename)
+                    message.file_type = file_type
                 else:
-                    flash(f'File upload blocked: {validation_msg}', 'danger')
+                    flash(f'File upload blocked: {validation_msg or "invalid file"}', 'danger')
                     return redirect(url_for('admin_chat_user', user_id=user_id))
             
             db.session.add(message)
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
             
-            # Emit message via SocketIO
-            socketio.emit('message', {
-                'username': current_user.username,
-                'msg': content if content else f"File sent: {file.filename}",
-                'receiver_id': user_id,
-                'file_path': message.file_path,
-                'file_type': message.file_type
-            })
+            # Real-time ping to the recipient only (content stays server-side)
+            socketio.emit('new_message', {'message_id': message.id}, to=_user_room(user_id))
             
             flash('Message sent!', 'success')
             return redirect(url_for('admin_chat_user', user_id=user_id))
@@ -2541,10 +2700,12 @@ def api_admin_mobile_send_message(user_id):
     target_user = User.query.filter_by(id=user_id, is_admin=False).first_or_404()
 
     payload = request.get_json(silent=True) or {}
-    content = (payload.get('content') or '').strip()
+    content = str(payload.get('content') or '').strip()
 
     if not content:
         return jsonify({'error': 'Message content is required.'}), 400
+    if len(content) > 5000:
+        return jsonify({'error': 'Message too long.'}), 400
 
     message = Message(
         sender_id=admin_user.id,
@@ -2567,6 +2728,8 @@ def api_admin_mobile_stream():
     subscriber_queue = queue.Queue(maxsize=100)
 
     with mobile_event_lock:
+        if len(mobile_event_subscribers) >= 10:
+            return jsonify({'error': 'Too many open streams.'}), 429
         mobile_event_subscribers.append(subscriber_queue)
 
     def event_stream():
@@ -2599,17 +2762,42 @@ def api_admin_mobile_stream():
     return response
 
 
+def _can_access_upload(filename):
+    """Profile pictures: owner + admins. Chat attachments: sender, receiver
+    and admins. Anything else (orphans, unknown, anonymous) is denied."""
+    rel = f"uploads/{filename}"
+    if not current_user.is_authenticated:
+        return False
+    owner = User.query.filter(User.profile_picture.in_([rel, os.path.join('uploads', filename)])).first()
+    if owner:
+        return current_user.is_admin or current_user.id == owner.id
+    message = Message.query.filter(Message.file_path.in_([rel, os.path.join('uploads', filename)])).first()
+    if not message:
+        return False
+    return current_user.is_admin or current_user.id in (message.sender_id, message.receiver_id)
+
+
+def _send_upload(filename):
+    if filename != secure_filename(filename) or not _can_access_upload(filename):
+        abort(404)
+    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
+    is_image = _file_ext(filename) in IMAGE_EXTENSIONS
+    response = send_from_directory(upload_dir, filename, as_attachment=not is_image)
+    # Never let an uploaded file run script in our origin.
+    response.headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; media-src 'self'; sandbox"
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    """Route to serve uploaded files"""
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
-    return send_from_directory(upload_dir, filename)
+    """Route to serve uploaded files (access controlled)."""
+    return _send_upload(filename)
 
 @app.route('/static/uploads/<filename>')
 def static_uploaded_file(filename):
-    """Route to serve uploaded files from static/uploads"""
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
-    return send_from_directory(upload_dir, filename)
+    """Legacy path, same access control."""
+    return _send_upload(filename)
 
 
 # 🔹 File Upload Route
@@ -2623,14 +2811,16 @@ def manage_posts():
     if form.validate_on_submit():
         title = form.title.data
         content = form.content.data
-        scheduled_date = form.scheduled_date.data or datetime.utcnow()
-        is_published = form.is_published.data
+        scheduled_date = form.scheduled_date.data
+        is_published = bool(form.is_published.data)
         post = Post(
             title=title,
             content=content,
             author_id=current_user.id,
             scheduled_date=scheduled_date,
-            is_published=is_published
+            is_published=is_published,
+            # neither "publish now" nor a date => stays a private draft
+            is_draft=not is_published and not scheduled_date
         )
         db.session.add(post)
         db.session.commit()
@@ -2709,7 +2899,7 @@ def manage_banners():
         flash('Banner created successfully!', 'success')
         return redirect(url_for('manage_banners'))
 
-    return render_template('manage_banners.html', banners=banners, form=form)
+    return render_template('manage_banners.html', banners=banners, form=form, delete_form=EmptyForm())
 
 
 
@@ -2755,26 +2945,22 @@ def upload_file():
         flash(f'Invalid file type! {validation_msg}', 'danger')
         return redirect(url_for('chat'))
 
-    # Secure filename
-    filename = secure_filename(file.filename)
-    file_path = os.path.join('uploads', filename)
-
-    # Save file
-    file.save(file_path)
-
-    # Verify if it's a valid image by trying to open it with PIL
-    try:
-        with Image.open(file_path) as img:
-            img.verify()  # Quick integrity check
-    except Exception:
-        os.remove(file_path)  # Remove file if it's not a valid image
+    # Random name + full metadata strip, then attach it to the user's chat
+    # (the old code kept the user's filename: files could overwrite each other).
+    file_path, file_type = _store_upload(file, 'chat')
+    if not file_path:
         flash('Invalid image file!', 'danger')
         return redirect(url_for('chat'))
+    message = Message(sender_id=current_user.id, receiver_id=_get_admin_user_id(),
+                      file_path=file_path, file_type=file_type)
+    message.set_encrypted_content('')
+    db.session.add(message)
+    db.session.commit()
+    publish_mobile_event('new_message', serialize_chat_message(message))
+    notify_admin_telegram_new_message(message)
+    _notify_admins_new_message(message)
 
-    # Modify image metadata
-    modify_exif_data(file_path)
-
-    flash('Image uploaded and metadata modified successfully!', 'success')
+    flash('Image uploaded (metadata removed).', 'success')
     return redirect(url_for('chat'))
 
 @app.route('/manage_pages', methods=['GET', 'POST'])
@@ -2784,7 +2970,8 @@ def manage_pages():
     form = StaticPageForm()
 
     if form.validate_on_submit():
-        page = StaticPage(title=form.title.data, slug=form.slug.data, content=form.content.data)
+        slug = _unique_page_slug(form.slug.data or form.title.data)
+        page = StaticPage(title=form.title.data, slug=slug, content=form.content.data)
         db.session.add(page)
         db.session.commit()
         flash("Page created successfully!", "success")
@@ -2798,11 +2985,15 @@ def manage_pages():
 @app.route('/demote_user/<int:user_id>', methods=['POST'])
 @admin_required
 def demote_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
     if user.is_admin:
+        if User.query.filter_by(is_admin=True).count() <= 1:
+            flash('Cannot demote the last admin.', 'danger')
+            return redirect(url_for('manage_users'))
         user.is_admin = False
         db.session.commit()
+        app.logger.warning("SECURITY admin %s demoted user %s", current_user.id, user.id)
         flash(f'User {user.username} has been demoted.', 'success')
 
     return redirect(url_for('manage_users'))
@@ -2814,7 +3005,9 @@ def create_page():
     form = StaticPageForm()
 
     if form.validate_on_submit():
-        page = StaticPage(title=form.title.data, content=form.content.data)
+        # slug is NOT NULL + unique: the old code crashed here (500)
+        slug = _unique_page_slug(form.slug.data or form.title.data)
+        page = StaticPage(title=form.title.data, slug=slug, content=form.content.data)
         db.session.add(page)
         db.session.commit()
         flash('New page created!', 'success')
@@ -2822,12 +3015,82 @@ def create_page():
 
     return render_template('create_page.html', form=form)
 
+
+def _unique_page_slug(text, exclude_id=None):
+    base = re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')[:90] or 'page'
+    slug, n = base, 2
+    while True:
+        existing = StaticPage.query.filter_by(slug=slug).first()
+        if not existing or existing.id == exclude_id:
+            return slug
+        slug = f"{base}-{n}"
+        n += 1
+
+
+@app.route('/page/<slug>')
+def view_page(slug):
+    page = StaticPage.query.filter_by(slug=slug).first_or_404()
+    return render_template('view_page.html', page=page)
+
+
+@app.route('/edit_page/<page_name>', methods=['GET', 'POST'])
+@admin_required
+def edit_page(page_name):
+    page = StaticPage.query.filter_by(slug=page_name).first_or_404()
+    if request.method == 'POST':
+        title = (request.form.get('title') or '').strip()[:100]
+        content = request.form.get('content') or ''
+        if not title or not content.strip():
+            flash('Title and content are required.', 'danger')
+            return redirect(url_for('edit_page', page_name=page.slug))
+        page.title = title
+        page.content = content
+        page.date_modified = datetime.utcnow()
+        db.session.commit()
+        flash('Page updated!', 'success')
+        return redirect(url_for('manage_pages'))
+    return render_template('edit_page.html', page=page)
+
+
+@app.route('/delete_page/<int:page_id>', methods=['POST'])
+@admin_required
+def delete_page(page_id):
+    page = db.get_or_404(StaticPage, page_id)
+    db.session.delete(page)
+    db.session.commit()
+    flash('Page deleted.', 'success')
+    return redirect(url_for('manage_pages'))
+
+
+@app.route('/edit_banner/<int:banner_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_banner(banner_id):
+    banner = db.get_or_404(Banner, banner_id)
+    form = BannerForm(obj=banner)
+    if form.validate_on_submit():
+        form.populate_obj(banner)
+        db.session.commit()
+        flash('Banner updated!', 'success')
+        return redirect(url_for('manage_banners'))
+    return render_template('manage_banners.html', banners=Banner.query.all(), form=form,
+                           delete_form=EmptyForm(),
+                           form_action=url_for('edit_banner', banner_id=banner.id))
+
+
+@app.route('/delete_banner/<int:banner_id>', methods=['POST'])
+@admin_required
+def delete_banner(banner_id):
+    banner = db.get_or_404(Banner, banner_id)
+    db.session.delete(banner)
+    db.session.commit()
+    flash('Banner deleted.', 'success')
+    return redirect(url_for('manage_banners'))
+
 @app.route('/delete_post/<int:post_id>', methods=['POST'])
 @admin_required
 def delete_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    db.session.delete(post)
-    db.session.commit()
+    post = db.get_or_404(Post, post_id)
+    _delete_post_and_children(post)
     flash('Post deleted successfully!', 'success')
     return redirect(url_for('manage_posts'))
 
@@ -2838,6 +3101,8 @@ def edit_post(post_id):
     form = PostForm(obj=post)
 
     if form.validate_on_submit():
+        last_version = db.session.query(db.func.max(Revision.version)).filter_by(post_id=post.id).scalar() or 0
+        db.session.add(Revision(post_id=post.id, content=post.content, version=last_version + 1))
         post.title = form.title.data
         post.content = form.content.data
         db.session.commit()
@@ -2850,22 +3115,64 @@ def edit_post(post_id):
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @admin_required
 def delete_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
 
-    if user:
-        db.session.delete(user)
-        db.session.commit()
-        flash(f'User {user.username} deleted.', 'success')
+    if user.id == current_user.id:
+        flash('You cannot delete your own account from here.', 'danger')
+        return redirect(url_for('manage_users'))
+    if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
+        flash('Cannot delete the last admin.', 'danger')
+        return redirect(url_for('manage_users'))
+
+    username = user.username
+    _delete_user_and_data(user, new_post_owner_id=current_user.id)
+    app.logger.warning("SECURITY admin %s deleted user %s", current_user.id, user_id)
+    flash(f'User {username} deleted.', 'success')
 
     return redirect(url_for('manage_users'))
+
+
+def _remove_upload_file(stored_path):
+    if not stored_path:
+        return
+    uploads_root = os.path.realpath(_absolute_upload_path(UPLOAD_FOLDER))
+    real = os.path.realpath(_absolute_upload_path(stored_path))
+    if real.startswith(uploads_root + os.sep) and os.path.exists(real):
+        try:
+            os.remove(real)
+        except OSError:
+            pass
+
+
+def _delete_user_and_data(user, new_post_owner_id):
+    """Delete a user without leaving broken rows (the plain delete crashed
+    with an IntegrityError / left orphans). Private data (messages,
+    attachments, notifications, likes) is erased; posts are handed to an
+    admin; comments are anonymized to keep threads readable."""
+    for message in Message.query.filter((Message.sender_id == user.id) | (Message.receiver_id == user.id)).all():
+        _remove_upload_file(message.file_path)
+        db.session.delete(message)
+    _remove_upload_file(user.profile_picture)
+    Notification.query.filter_by(user_id=user.id).delete()
+    for like in Like.query.filter_by(user_id=user.id).all():
+        if like.post_id and like.post:
+            like.post.likes_count = max(0, (like.post.likes_count or 0) - 1)
+        if like.comment_id and like.comment:
+            like.comment.likes_count = max(0, (like.comment.likes_count or 0) - 1)
+        db.session.delete(like)
+    Comment.query.filter_by(author_id=user.id).update({'author_id': None})
+    Post.query.filter_by(author_id=user.id).update({'author_id': new_post_owner_id})
+    db.session.delete(user)
+    db.session.commit()
 
 
 @app.route('/promote_user/<int:user_id>', methods=['POST'])
 @admin_required
 def promote_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     user.is_admin = True
     db.session.commit()
+    app.logger.warning("SECURITY admin %s promoted user %s to admin", current_user.id, user.id)
     flash(f"{user.username} has been promoted to admin.", "success")
     return redirect(url_for('manage_users'))
 
@@ -2878,13 +3185,20 @@ def promote_user(user_id):
 @rate_limit('delete_comment', max_calls=15, window_seconds=300)
 @login_required
 def delete_comment(comment_id, post_id):
-    comment = Comment.query.get_or_404(comment_id)
+    comment = db.get_or_404(Comment, comment_id)
 
     # Admin can delete everything, otherwise user can only delete their own comments
     if not current_user.is_admin and comment.author_id != current_user.id:
         abort(403)  # Forbidden access
 
-    db.session.delete(comment)
+    Like.query.filter_by(comment_id=comment.id).delete(synchronize_session=False)
+    if comment.replies:
+        # keep the thread structure, erase the content
+        comment.deleted = True
+        comment.content = '[deleted]'
+    else:
+        Notification.query.filter_by(related_comment_id=comment.id).delete(synchronize_session=False)
+        db.session.delete(comment)
     db.session.commit()
     flash("Comment deleted successfully!", "success")
     return redirect(url_for("post_detail", post_id=post_id))
@@ -2893,21 +3207,23 @@ def delete_comment(comment_id, post_id):
 
 @app.route("/posts")
 def post_list():
-    posts = Post.query.order_by(Post.date_posted.desc()).all()
+    posts = _visible_posts_query().order_by(Post.date_posted.desc()).all()
     return render_template("post_list.html", posts=posts)
 
 @app.route("/reply_to_comment/<int:post_id>/<int:comment_id>", methods=["POST"])
 @rate_limit('reply_to_comment', max_calls=10, window_seconds=300)
 @login_required
 def reply_to_comment(post_id, comment_id):
-    post = Post.query.get_or_404(post_id)
-    parent_comment = Comment.query.get_or_404(comment_id)
+    post = _visible_posts_query().filter(Post.id == post_id).first_or_404()
+    parent_comment = db.get_or_404(Comment, comment_id)
+    if parent_comment.post_id != post.id or parent_comment.deleted:
+        abort(404)
 
     form = CommentForm()
 
     if form.validate_on_submit():
         reply = Comment(
-            content=form.content.data,
+            content=form.content.data.strip(),  # raw BBCode, sanitized at render
             author=current_user,
             post_id=post.id,
             parent_id=parent_comment.id
@@ -2930,12 +3246,10 @@ def reply_to_comment(post_id, comment_id):
             )
             db.session.add(notification)
             
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
+            _notify_user(parent_comment.author_id, {
                 'type': 'reply',
                 'title': 'New reply!',
-                'message': f'Someone replied to your comment',
-                'user_id': parent_comment.author_id
+                'message': 'Someone replied to your comment',
             })
         
         # Vérifier et attribuer les badges
@@ -2952,19 +3266,24 @@ def reply_to_comment(post_id, comment_id):
 @app.route("/edit_comment/<int:comment_id>/<int:post_id>", methods=["GET", "POST"])
 @login_required
 def edit_comment(comment_id, post_id):
-    comment = Comment.query.get_or_404(comment_id)
-    post = Post.query.get_or_404(post_id)
+    comment = db.get_or_404(Comment, comment_id)
+    post = db.get_or_404(Post, comment.post_id)
 
     # L'admin peut modifier tous les commentaires, sinon l'utilisateur ne peut modifier que les siens
     if not current_user.is_admin and comment.author_id != current_user.id:
         abort(403)  # Forbidden access
+    if comment.deleted:
+        abort(404)
 
     form = CommentForm()
     if form.validate_on_submit():
-        comment.content = form.content.data
+        if _action_rate_limited('edit_comment_submit', max_calls=20, window_seconds=300):
+            flash('Too many edits. Please wait.', 'danger')
+            return redirect(url_for('post_detail', post_id=post.id))
+        comment.content = form.content.data.strip()
         db.session.commit()
         flash("Comment updated!", "success")
-        return redirect(url_for("post_detail", post_id=post_id))
+        return redirect(url_for("post_detail", post_id=post.id))
 
     form.content.data = comment.content
     return render_template("edit_comment.html", title="Edit Comment", form=form, post=post, comment=comment)  # 🔥 Passe `post`
@@ -2975,7 +3294,7 @@ def edit_comment(comment_id, post_id):
 @rate_limit('like_post', max_calls=20, window_seconds=300)
 @login_required
 def like_post(post_id):
-    post = Post.query.get_or_404(post_id)
+    post = _visible_posts_query().filter(Post.id == post_id).first_or_404()
     
     # Check if user already liked this post
     existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
@@ -3005,12 +3324,10 @@ def like_post(post_id):
             )
             db.session.add(notification)
             
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
+            _notify_user(post.author_id, {
                 'type': 'like',
                 'title': 'New like!',
-                'message': f'{current_user.username} liked your article "{post.title}"',
-                'user_id': post.author_id
+                'message': f'Someone liked your article "{post.title}"',
             })
         
         flash('Article liked!', 'success')
@@ -3020,6 +3337,7 @@ def like_post(post_id):
 
 
 @app.route('/like_comment/<int:comment_id>', methods=['POST'])
+@rate_limit('like_comment', max_calls=30, window_seconds=300)
 @login_required
 def like_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
@@ -3047,18 +3365,16 @@ def like_comment(comment_id):
                 user_id=comment.author_id,
                 type='like',
                 title='Comment liked!',
-                message=f'{current_user.username} liked your comment',
+                message='Someone liked your comment',
                 related_comment_id=comment_id,
                 related_post_id=comment.post_id
             )
             db.session.add(notification)
             
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
+            _notify_user(comment.author_id, {
                 'type': 'like',
                 'title': 'Comment liked!',
-                'message': f'{current_user.username} liked your comment',
-                'user_id': comment.author_id
+                'message': 'Someone liked your comment',
             })
         
         flash('Comment liked!', 'success')
@@ -3208,12 +3524,10 @@ def check_and_award_badges(user):
                 )
                 db.session.add(notification)
                 
-                # Émettre une notification temps réel
-                socketio.emit('notification', {
+                _notify_user(user.id, {
                     'type': 'badge',
                     'title': 'New badge unlocked!',
                     'message': f'You unlocked the badge "{badge.name}": {badge.description}',
-                    'user_id': user.id
                 })
                 
                 flash(f'Congrats! You unlocked the badge "{badge.name}"!', 'success')
@@ -3235,6 +3549,9 @@ def edit_profile():
     form = ProfileEditForm(original_username=current_user.username)
     
     if form.validate_on_submit():
+        if _action_rate_limited('edit_profile_submit', max_calls=10, window_seconds=300):
+            flash('Too many updates. Please wait.', 'danger')
+            return redirect(url_for('edit_profile'))
         # Mettre à jour le nom d'utilisateur
         current_user.username = form.username.data
         
@@ -3247,20 +3564,15 @@ def edit_profile():
                 max_bytes=min(MAX_UPLOAD_BYTES, 3 * 1024 * 1024),
                 image_only=True
             )
+            file_path = None
             if is_valid:
-                filename = secure_filename(file.filename)
-                # Create unique name to avoid conflicts
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"profile_{current_user.id}_{timestamp}_{filename}"
-                file_path = os.path.join('uploads', filename)
-                file.save(file_path)
-                
-                # Remove old photo if it exists
-                if current_user.profile_picture and os.path.exists(current_user.profile_picture):
-                    os.remove(current_user.profile_picture)
-                
+                file_path, _ = _store_upload(file, 'profile')
+            if file_path:
+                # Remove old photo if it exists (only inside the uploads folder)
+                _remove_upload_file(current_user.profile_picture)
                 current_user.profile_picture = file_path
             else:
+                validation_msg = validation_msg or 'invalid image'
                 flash(f'Profile picture rejected: {validation_msg}', 'danger')
                 return redirect(url_for('edit_profile'))
         
@@ -3312,6 +3624,9 @@ def totp_setup():
     pending_secret = session['totp_pending_secret']
 
     if form.validate_on_submit():
+        if hit_rate_limit(f"totp_setup_fail:{current_user.id}", 10, 300, record=False):
+            flash('Too many attempts. Please wait a few minutes.', 'danger')
+            return redirect(url_for('totp_setup'))
         totp = pyotp.TOTP(pending_secret)
         if totp.verify(form.code.data.strip(), valid_window=1):
             current_user.totp_secret = pending_secret
@@ -3321,6 +3636,7 @@ def totp_setup():
             flash('Two-factor authentication has been enabled!', 'success')
             return redirect(url_for('user_profile', user_id=current_user.id))
         else:
+            hit_rate_limit(f"totp_setup_fail:{current_user.id}", 10, 300)
             flash('Invalid code. Please try again.', 'danger')
 
     qr_uri = _totp_qr_data_uri(pending_secret, current_user.username)
@@ -3343,12 +3659,17 @@ def totp_disable():
     form = TOTPDisableForm()
 
     if form.validate_on_submit():
-        if not bcrypt.check_password_hash(current_user.password, form.password.data):
+        fail_key = f"totp_disable_fail:{current_user.id}"
+        if hit_rate_limit(fail_key, 5, 900, record=False):
+            flash('Too many failed attempts. Please wait 15 minutes.', 'danger')
+            return render_template('totp_disable.html', form=form)
+        if not _check_user_password(current_user, form.password.data):
+            hit_rate_limit(fail_key, 5, 900)
             flash('Incorrect password.', 'danger')
             return render_template('totp_disable.html', form=form)
 
-        totp = pyotp.TOTP(current_user.totp_secret)
-        if not totp.verify(form.code.data.strip(), valid_window=1):
+        if not _verify_totp_once(current_user, form.code.data):
+            hit_rate_limit(fail_key, 5, 900)
             flash('Invalid authentication code.', 'danger')
             return render_template('totp_disable.html', form=form)
 

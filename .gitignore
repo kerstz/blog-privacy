@@ -70,3 +70,6 @@ htmlcov/
 *.bak
 *.cache
 
+
+# Backups created by update.sh
+backups/
