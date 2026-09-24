@@ -29,8 +29,8 @@
                             </a>
                         {% endif %}
                     {% endif %}
-                    {% if message.content %}
-                        <p>{{ (message.get_decrypted_content() if message.is_encrypted else message.content) | safe }}</p>
+                    {% if message.get_decrypted_content() %}
+                        <p>{{ message.get_decrypted_content() if message.is_encrypted else message.content }}</p>
                     {% endif %}
                 </div>
             </div>

@@ -67,7 +67,7 @@
                                 {% endif %}
                             {% endif %}
                             {% if message.get_decrypted_content() %}
-                                <div class="message-text">{{ message.get_decrypted_content() | safe }}</div>
+                                <div class="message-text">{{ message.get_decrypted_content() }}</div>
                             {% endif %}
                         </div>
                     </div>

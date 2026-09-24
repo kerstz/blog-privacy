@@ -22,7 +22,7 @@ app/
   forms.py          - 12 WTForms classes
   utils.py          - BBCode parser, image pipeline, role system, rate limiter
   encryption.py     - Fernet-based message encryption
-  chat.py           - SocketIO message handler
+  chat.py           - (empty; SocketIO handlers live in routes.py, auth required)
   static/css/       - style.css (dark theme) + icons.css
   static/ui-demos/  - Reference UI demos (39+ HTML files)
   templates/        - 42 Jinja2 templates
@@ -51,6 +51,8 @@ pip install -r requirements.txt
 flask db upgrade                # run migrations
 python create_admin.py          # first time
 python wsgi.py                  # or gunicorn wsgi:application
+./update.sh                     # safe update: backup, pull, deps, migrations, pip-audit
+pytest -q tests/                # security regression tests (requirements-dev.txt)
 ```
 
 ## Conventions
@@ -60,6 +62,10 @@ python wsgi.py                  # or gunicorn wsgi:application
 - BBCode is parsed server-side (NoScript friendly)
 - Telegram integration is optional (env vars)
 - Templates extend layout.html or admin_layout.html
+- Never use `|safe` on user/admin HTML: use `|comment_html` (BBCode) or `|rich_html` (nh3-sanitized)
+- Uploads go through `_store_upload()` (random name, metadata stripped) and are served by `_send_upload()` (access controlled)
+- Real-time events: `_notify_user()` / per-user rooms only, never broadcast
+- Keep requirements.txt pinned and CVE-free (`pip-audit -r requirements.txt`); see SECURITY.md
 
 ## Environment variables
 - `SECRET_KEY` - Flask secret key
@@ -68,3 +74,4 @@ python wsgi.py                  # or gunicorn wsgi:application
 - `TELEGRAM_BOT_TOKEN` / `TELEGRAM_ADMIN_CHAT_ID` / `TELEGRAM_ADMIN_USER_ID` - Telegram bot
 - `TELEGRAM_ADMIN_PIN` / `TELEGRAM_ADMIN_SESSION_TTL` / `TELEGRAM_AUDIT_CHAT_ID` - Telegram security
 - `SESSION_COOKIE_SECURE` / `MAX_CONTENT_LENGTH` / `MAX_UPLOAD_BYTES`
+- `TRUSTED_PROXY_COUNT` - set to 1 behind a reverse proxy (real client IP for rate limiting)
