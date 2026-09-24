@@ -21,9 +21,19 @@ SECOND_FACTOR_VALIDATORS = [
     DataRequired(), Length(min=6, max=11),
     Regexp(r'^(\d{6}|[A-Za-z0-9]{5}-?[A-Za-z0-9]{5})$', message='6-digit code or recovery code.'),
 ]
+def max_utf8_bytes(limit=PASSWORD_MAX):
+    """bcrypt works on the first 72 *bytes* (and bcrypt>=5 rejects longer
+    input): 72 characters with accents or emoji can be more than that."""
+    def _check(form, field):
+        if field.data and len(field.data.encode('utf-8')) > limit:
+            raise ValidationError(f'Password is too long (max {limit} bytes; accented letters and emoji count double or more).')
+    return _check
+
+
 NEW_PASSWORD_VALIDATORS = [
     DataRequired(),
     Length(min=12, max=PASSWORD_MAX, message='Password must be 12 to 72 characters long.'),
+    max_utf8_bytes(),
 ]
 
 

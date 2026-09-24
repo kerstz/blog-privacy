@@ -659,3 +659,14 @@ def test_strict_style_csp():
     csp = r.headers['Content-Security-Policy']
     assert "style-src 'self';" in csp and "'unsafe-inline'" not in csp.split('style-src-attr')[0]
     assert '<style' not in r.data.decode()
+
+
+def test_password_limit_is_in_bytes_for_bcrypt():
+    long_unicode = 'é' * 40   # 40 characters but 80 bytes
+    c = app.test_client()
+    r = c.post('/register', data={'username': 'unicode', 'password': long_unicode, 'confirm_password': long_unicode})
+    assert r.status_code == 200
+    with app.app_context():
+        assert not User.query.filter_by(username='unicode').first()
+    # and a login attempt with it never crashes
+    assert app.test_client().post('/login', data={'username': 'alice', 'password': long_unicode}).status_code == 200
