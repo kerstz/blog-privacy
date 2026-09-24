@@ -14,6 +14,9 @@ import requests
 from threading import Lock, Thread
 import hmac
 from app.services import (
+    encrypt_upload_in_place,
+    read_upload_bytes,
+    upload_display_name,
     _absolute_upload_path,
     _bridge_admin_user,
     _conversation_latest_message_id,
@@ -491,8 +494,8 @@ def telegram_send_photo(chat_id, file_path, caption=None, reply_markup=None):
         data['reply_markup'] = json.dumps(reply_markup)
 
     try:
-        with open(absolute_path, 'rb') as image_file:
-            response = requests.post(url, data=data, files={'photo': image_file}, timeout=20)
+        payload = read_upload_bytes(file_path)
+        response = requests.post(url, data=data, files={'photo': (upload_display_name(file_path), payload)}, timeout=20)
         result = response.json()
         if not result.get('ok'):
             app.logger.warning("Telegram sendPhoto failed: %s", result)
@@ -519,8 +522,8 @@ def telegram_send_document(chat_id, file_path, caption=None, reply_markup=None):
         data['reply_markup'] = json.dumps(reply_markup)
 
     try:
-        with open(absolute_path, 'rb') as file_obj:
-            response = requests.post(url, data=data, files={'document': file_obj}, timeout=20)
+        payload = read_upload_bytes(file_path)
+        response = requests.post(url, data=data, files={'document': (upload_display_name(file_path), payload)}, timeout=20)
         result = response.json()
         if not result.get('ok'):
             app.logger.warning("Telegram sendDocument failed: %s", result)
@@ -574,7 +577,8 @@ def telegram_download_file_to_uploads(file_id, preferred_ext='jpg'):
         response.raise_for_status()
         with open(absolute_path, 'wb') as output_file:
             output_file.write(response.content)
-        return relative_path
+        encrypted = encrypt_upload_in_place(absolute_path)
+        return os.path.join('uploads', os.path.basename(encrypted))
     except Exception:
         app.logger.exception("Telegram file download exception")
         return None
@@ -920,18 +924,18 @@ def process_telegram_update_message(message_data):
     if not incoming_text and not has_media:
         return False
 
-    command_token = ''
+    command_name = ''
     command_parts = []
     if incoming_text and incoming_text.startswith('/'):
-        command_token = incoming_text.split()[0].lower()
-        if '@' in command_token:
-            command_token = command_token.split('@', 1)[0]
+        command_name = incoming_text.split()[0].lower()
+        if '@' in command_name:
+            command_name = command_name.split('@', 1)[0]
         command_parts = incoming_text.strip().split(maxsplit=2)
 
     admin_state = _telegram_get_admin_state(incoming_chat_id)
     pin = (os.environ.get('TELEGRAM_ADMIN_PIN') or '').strip()
 
-    if command_token == '/start':
+    if command_name == '/start':
         if not _telegram_is_actor_authorized(incoming_actor_id):
             telegram_send_message("⛔ Access denied for this Telegram account.")
             return False
@@ -947,7 +951,7 @@ def process_telegram_update_message(message_data):
         return False
 
     if _telegram_pin_required() and not _telegram_is_session_valid(incoming_actor_id):
-        if command_token == '/cancel':
+        if command_name == '/cancel':
             _telegram_clear_admin_state(incoming_chat_id)
             _telegram_clear_session(incoming_actor_id)
             telegram_send_message("❌ Session auth cancelled.")
@@ -957,7 +961,7 @@ def process_telegram_update_message(message_data):
             and admin_state.get('mode') == 'await_pin'
             and str(admin_state.get('actor_user_id', '')) == incoming_actor_id
             and incoming_text
-            and not command_token.startswith('/')
+            and not command_name.startswith('/')
         ):
             if hit_rate_limit(f"tg_pin_fail:{incoming_actor_id}", 5, 900, record=False):
                 telegram_send_message("⛔ Too many wrong PINs. Locked for 15 minutes.")
@@ -1004,7 +1008,7 @@ def process_telegram_update_message(message_data):
         )
         return False
 
-    if incoming_text == "📊 Status" or command_token == '/status':
+    if incoming_text == "📊 Status" or command_name == '/status':
         total_users = User.query.count()
         non_admin_users = User.query.filter_by(is_admin=False).count()
         total_posts = Post.query.count()
@@ -1048,7 +1052,7 @@ def process_telegram_update_message(message_data):
         telegram_send_message("📨 Messages menu", reply_markup=telegram_messages_menu_markup())
         return False
 
-    if incoming_text == "📋 List posts" or command_token == '/posts':
+    if incoming_text == "📋 List posts" or command_name == '/posts':
         page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
         offset = max(0, ((page or 1) - 1) * 6)
         telegram_send_posts_page(offset=offset, page_size=6)
@@ -1058,7 +1062,7 @@ def process_telegram_update_message(message_data):
         telegram_send_users_page(offset=0, page_size=8)
         return False
 
-    if incoming_text == "📋 List comments" or command_token == '/comments':
+    if incoming_text == "📋 List comments" or command_name == '/comments':
         page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
         offset = max(0, ((page or 1) - 1) * 8)
         telegram_send_comments_page(offset=offset, page_size=8)
@@ -1155,10 +1159,10 @@ def process_telegram_update_message(message_data):
         return False
 
     if incoming_text in ("❌ Cancel reply", "❌ Cancel"):
-        command_token = '/cancel'
+        command_name = '/cancel'
 
     # ----- Stateful admin actions for post/user/comment management -----
-    if admin_state and not command_token.startswith('/'):
+    if admin_state and not command_name.startswith('/'):
         mode = admin_state.get('mode')
 
         if mode == "await_search_query":
@@ -1421,7 +1425,7 @@ def process_telegram_update_message(message_data):
             )
             return True
 
-    if command_token == '/list':
+    if command_name == '/list':
         all_users = _blog_non_admin_users()
         users_with_messages = _blog_users_with_messages(admin_user_id)
         users_pending_reply = _blog_users_pending_reply(admin_user_id)
@@ -1437,13 +1441,13 @@ def process_telegram_update_message(message_data):
         telegram_send_message("\n".join(lines), reply_markup=telegram_main_menu_markup())
         return False
 
-    if command_token == '/users':
+    if command_name == '/users':
         page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
         offset = max(0, ((page or 1) - 1) * 8)
         telegram_send_users_page(offset=offset, page_size=8)
         return False
 
-    if command_token == '/finduser':
+    if command_name == '/finduser':
         match = re.match(r'^/finduser(?:@[A-Za-z0-9_]+)?\s+(.+)$', incoming_text.strip(), re.IGNORECASE | re.DOTALL)
         query = match.group(1).strip() if match else ''
         users = User.query.filter(User.username.ilike(f"%{query}%")).order_by(User.username.asc()).limit(20).all() if query else []
@@ -1455,7 +1459,7 @@ def process_telegram_update_message(message_data):
         telegram_send_message("\n".join(lines), reply_markup=telegram_users_menu_markup())
         return False
 
-    if command_token == '/findpost':
+    if command_name == '/findpost':
         match = re.match(r'^/findpost(?:@[A-Za-z0-9_]+)?\s+(.+)$', incoming_text.strip(), re.IGNORECASE | re.DOTALL)
         query = match.group(1).strip() if match else ''
         posts = Post.query.filter(Post.title.ilike(f"%{query}%")).order_by(Post.id.desc()).limit(20).all() if query else []
@@ -1468,7 +1472,7 @@ def process_telegram_update_message(message_data):
         telegram_send_message("\n".join(lines), reply_markup=telegram_posts_menu_markup())
         return False
 
-    if command_token == '/sent':
+    if command_name == '/sent':
         users_with_messages = _blog_users_with_messages(admin_user_id)
         telegram_send_message(
             "\n".join(_format_blog_users_lines("📨 Users who sent messages", users_with_messages)),
@@ -1476,7 +1480,7 @@ def process_telegram_update_message(message_data):
         )
         return False
 
-    if command_token == '/pending':
+    if command_name == '/pending':
         users_pending_reply = _blog_users_pending_reply(admin_user_id)
         telegram_send_message(
             "\n".join(_format_blog_users_lines("⏳ Pending (not replied/seen yet)", users_pending_reply)),
@@ -1484,7 +1488,7 @@ def process_telegram_update_message(message_data):
         )
         return False
 
-    if command_token == '/replylast':
+    if command_name == '/replylast':
         match = re.match(r'^/replylast\s+(.+)$', incoming_text.strip(), re.DOTALL | re.IGNORECASE)
         if not match:
             telegram_send_message("Invalid format.\nUse: /replylast <message>", disable_notification=True)
@@ -1515,7 +1519,7 @@ def process_telegram_update_message(message_data):
         )
         return True
 
-    if command_token in ('/start', '/help'):
+    if command_name in ('/start', '/help'):
         telegram_send_message(
             "🤖 MyBlog Telegram admin is active.\n"
             "Use the emoji keyboard for user-friendly control:\n"
@@ -1530,7 +1534,7 @@ def process_telegram_update_message(message_data):
         )
         return False
 
-    if command_token == '/reply' and len(command_parts) == 1:
+    if command_name == '/reply' and len(command_parts) == 1:
         users_pending_reply = _blog_users_pending_reply(admin_user_id)
         lines = [
             "💬 Reply helper:",
@@ -1544,7 +1548,7 @@ def process_telegram_update_message(message_data):
         return False
 
     target_user_ref, reply_text = parse_telegram_reply_command(incoming_text)
-    if command_token == '/reply' and target_user_ref:
+    if command_name == '/reply' and target_user_ref:
         target_user = resolve_blog_user_reference(target_user_ref)
         if not target_user:
             telegram_send_message(
@@ -1579,7 +1583,7 @@ def process_telegram_update_message(message_data):
         return True
 
     # If no command and reply mode exists, send to selected user
-    if not command_token.startswith('/'):
+    if not command_name.startswith('/'):
         pending_target_user_id = telegram_reply_state.get(incoming_chat_id)
         if pending_target_user_id:
             admin_user = _bridge_admin_user()
@@ -1626,7 +1630,7 @@ def process_telegram_update_message(message_data):
             telegram_reply_state.pop(incoming_chat_id, None)
             return True
 
-    if command_token == '/cancel':
+    if command_name == '/cancel':
         telegram_reply_state.pop(incoming_chat_id, None)
         _telegram_clear_admin_state(incoming_chat_id)
         telegram_send_message("❌ Reply mode cancelled.", disable_notification=True, reply_markup=telegram_main_menu_markup())
@@ -1673,7 +1677,8 @@ def telegram_fetch_updates(timeout=0):
 
         url = f"https://api.telegram.org/bot{token}/getUpdates"
         try:
-            response = requests.get(url, params=params, timeout=timeout + 10)
+            # bandit B113: timeout is set
+            response = requests.get(url, params=params, timeout=timeout + 10)  # nosec B113
             data = response.json()
         except Exception:
             return 0

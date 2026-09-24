@@ -36,6 +36,17 @@ jobs:
       - run: pip install pip-audit
       - run: pip-audit -r requirements.txt --desc on
 
+  static-analysis:
+    name: Static security analysis (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install bandit
+      - run: bandit -r app create_admin.py wsgi.py -q
+
   no-javascript:
     name: No JavaScript / no third-party resources in templates
     runs-on: ubuntu-latest
@@ -44,8 +55,8 @@ jobs:
       - name: Check templates
         run: |
           set -e
-          if grep -rnE "<script|\son[a-z]+=|javascript:" app/templates/; then
-            echo "::error::JavaScript found in templates (the site must work without JS)"; exit 1
+          if grep -rnE "<script|<style|\son[a-z]+=|javascript:" app/templates/; then
+            echo "::error::JavaScript or inline <style> found in templates (strict CSP: no JS, CSS in static files)"; exit 1
           fi
           if grep -rnE "(src|href)=\"https?://" app/templates/ | grep -vE "rel=\"[^\"]*noreferrer"; then
             echo "::error::Third-party resource or link without rel=noreferrer found"; exit 1

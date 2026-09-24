@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ url_for('rss_feed') }}">
     {% block extra_head %}{% endblock %}
     {% block extra_css %}{% endblock %}
 </head>
@@ -16,6 +17,11 @@
         <nav class="navbar">
             <a class="navbar-brand" href="{{ url_for('index') }}">My<span class="redact">Blog</span></a>
             <ul class="navbar-menu">
+                <li class="nav-search">
+                    <form method="GET" action="{{ url_for('search') }}" class="search-form" role="search">
+                        <input type="search" name="q" placeholder="Search" aria-label="Search posts" maxlength="100">
+                    </form>
+                </li>
                 <li><a href="{{ url_for('about') }}">About</a></li>
                 <li><a href="{{ url_for('contact') }}">Contact</a></li>
 
@@ -38,9 +44,12 @@
                             <span class="notification-badge">{{ current_user.unread_notifications_count() }}</span>
                         {% endif %}
                     </a></li>
-                    <li><a href="{{ url_for('logout') }}" class="logout-btn">
-                        <span class="icon-sign-out"></span>
-                    </a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="logout-btn" title="Log out" aria-label="Log out"><span class="icon-sign-out"></span></button>
+                        </form>
+                    </li>
                 {% else %}
                     <li><a href="{{ url_for('register') }}">Register</a></li>
                     <li><a href="{{ url_for('login') }}" class="login-btn">Login</a></li>

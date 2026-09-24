@@ -66,6 +66,23 @@ class MessageEncryption:
             # On error return the stored value (legacy plaintext message)
             return encrypted_message
     
+    def is_ciphertext(self, value: str) -> bool:
+        """True only if *value* really is one of our encrypted messages."""
+        if not isinstance(value, str) or not self._is_base64(value):
+            return False
+        try:
+            self.cipher_suite.decrypt(base64.urlsafe_b64decode(value.encode()))
+            return True
+        except Exception:
+            return False
+
+    def encrypt_bytes(self, data: bytes) -> bytes:
+        """Encrypt file content (authenticated, Fernet)."""
+        return self.cipher_suite.encrypt(data)
+
+    def decrypt_bytes(self, token: bytes) -> bytes:
+        return self.cipher_suite.decrypt(token)
+
     def _is_base64(self, s: str) -> bool:
         """
         Return True if the string looks like urlsafe base64

@@ -1,0 +1,15 @@
+/* Extracted from templates/totp_disable.html (no inline <style>: strict CSP) */
+.totp-container {
+    max-width: 440px;
+    margin: 2.5rem auto;
+}
+.totp-card {
+    background: var(--ink-850);
+    border: 1px solid rgba(177, 80, 63, 0.4);
+    border-radius: var(--radius-lg);
+    padding: 2rem 2.2rem;
+}
+.totp-title { font-size: 1.4rem; margin-bottom: .4rem; }
+.totp-subtitle { font-size: .9rem; opacity: .7; margin-bottom: 1.5rem; }
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; margin-bottom: .35rem; font-size: .88rem; opacity: .85; }
