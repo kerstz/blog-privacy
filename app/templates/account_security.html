@@ -1,0 +1,92 @@
+{% extends 'layout.html' %}
+
+{% block title %}Account security - Blog{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/account.css') }}">
+{% endblock %}
+
+{% macro field(f, placeholder='') %}
+<div class="form-group">
+    {{ f.label }}
+    {{ f(class="form-control", placeholder=placeholder, autocomplete="off") }}
+    {% for error in f.errors %}<span class="error">{{ error }}</span>{% endfor %}
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="account-wrap">
+    <h1>Account security</h1>
+    <p class="account-lead">Password, two-factor authentication, sessions and your personal data.</p>
+
+    <section class="account-card">
+        <h2>Change password</h2>
+        <p>You will be logged out of every other device.</p>
+        <form method="POST" action="{{ url_for('change_password') }}">
+            {{ password_form.hidden_tag() }}
+            {{ field(password_form.current_password) }}
+            {{ field(password_form.new_password, '12 to 72 characters') }}
+            {{ field(password_form.confirm_password) }}
+            <button type="submit" class="account-btn">Change password</button>
+        </form>
+    </section>
+
+    <section class="account-card">
+        <h2>Two-factor authentication</h2>
+        {% if current_user.totp_enabled %}
+            <p>2FA is <strong>active</strong>. Recovery codes left: <span class="account-meta">{{ recovery_left }}</span></p>
+            <details>
+                <summary class="account-btn">Generate new recovery codes</summary>
+                <form method="POST" action="{{ url_for('regenerate_recovery_codes') }}">
+                    {{ recovery_form.hidden_tag() }}
+                    {{ field(recovery_form.password) }}
+                    {{ field(recovery_form.code, '123456') }}
+                    <button type="submit" class="account-btn">Generate (old codes stop working)</button>
+                </form>
+            </details>
+            <p><a href="{{ url_for('totp_disable') }}">Disable 2FA</a></p>
+        {% else %}
+            <p>2FA is <strong>not enabled</strong>. It protects your account even if your password leaks.</p>
+            <a class="account-btn" href="{{ url_for('totp_setup') }}">Enable 2FA</a>
+        {% endif %}
+    </section>
+
+    <section class="account-card">
+        <h2>Sessions</h2>
+        <p>Lost a device or used a shared computer? Log out everywhere except here.</p>
+        <form method="POST" action="{{ url_for('logout_everywhere') }}">
+            {{ sessions_form.hidden_tag() }}
+            <button type="submit" class="account-btn">Log out all other sessions</button>
+        </form>
+    </section>
+
+    <section class="account-card">
+        <h2>Download my data</h2>
+        <p>A JSON file with your account, comments, messages (decrypted), likes and notifications.</p>
+        <details>
+            <summary class="account-btn">Export my data</summary>
+            <form method="POST" action="{{ url_for('export_account_data') }}">
+                {{ export_form.hidden_tag() }}
+                {{ field(export_form.password) }}
+                {% if current_user.totp_enabled %}{{ field(export_form.code, '123456') }}{% endif %}
+                <button type="submit" class="account-btn">Download</button>
+            </form>
+        </details>
+    </section>
+
+    <section class="account-card danger">
+        <h2>Delete my account</h2>
+        <p>Your account, messages, attachments, likes and notifications are erased. Your comments stay, anonymized. This cannot be undone.</p>
+        <details>
+            <summary class="account-btn danger">Delete my account</summary>
+            <form method="POST" action="{{ url_for('delete_own_account') }}">
+                {{ delete_form.hidden_tag() }}
+                {{ field(delete_form.password) }}
+                {% if current_user.totp_enabled %}{{ field(delete_form.code, '123456') }}{% endif %}
+                {{ field(delete_form.confirm, 'DELETE') }}
+                <button type="submit" class="account-btn danger">Delete forever</button>
+            </form>
+        </details>
+    </section>
+</div>
+{% endblock %}

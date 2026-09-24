@@ -71,15 +71,22 @@ if _proxy_count > 0:
 
 
 # Import routes and models after the app is initialized
-from app import routes, models  # noqa: E402,F401  (registers routes)
+from app import routes, models, cli  # noqa: E402,F401  (registers routes + CLI commands)
 
 # User loader for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
+    # "<id>:<session_version>": a session created before a password change or
+    # a "log out everywhere" no longer matches and is rejected.
     try:
-        return db.session.get(models.User, int(user_id))
+        raw_id, _, raw_version = str(user_id).partition(':')
+        user = db.session.get(models.User, int(raw_id))
+        version = int(raw_version or 0)
     except (TypeError, ValueError):
         return None
+    if user is None or (user.session_version or 0) != version:
+        return None
+    return user
 
 # Make some models available in every Jinja2 template
 @app.context_processor
@@ -91,13 +98,32 @@ def inject_models():
 @app.template_filter('urlize')
 def urlize_filter(s):
     # SECURITY: escape first, then linkify internal post paths only
-    return Markup(re.sub(r'(?<!\w)(/post/\d+)', r'<a href="\1">\1</a>', str(escape(s or ''))))
+    # bandit B704: input escaped first
+    return Markup(re.sub(r'(?<!\w)(/post/\d+)', r'<a href="\1">\1</a>', str(escape(s or ''))))  # nosec B704
 
 
 @app.template_filter('comment_html')
 def comment_html_filter(s):
     from app.utils import render_comment_html
-    return Markup(render_comment_html(s))
+    # bandit B704: escaped + nh3-sanitized
+    return Markup(render_comment_html(s))  # nosec B704
+
+
+@app.template_filter('excerpt')
+def excerpt_filter(text, length=180):
+    """Plain-text preview of a post (BBCode/HTML rendered, then stripped)."""
+    from app.utils import render_rich_html
+    # bandit B704: sanitized, then reduced to plain text
+    plain = Markup(render_rich_html(text)).striptags()  # nosec B704
+    if len(plain) <= length:
+        return plain
+    return plain[:length].rsplit(' ', 1)[0] + '…'
+
+
+@app.template_filter('slug')
+def slug_filter(text):
+    from app.services import slugify
+    return slugify(text)
 
 
 @app.template_filter('qr_data_uri')
@@ -112,7 +138,8 @@ def qr_data_uri_filter(text):
 @app.template_filter('rich_html')
 def rich_html_filter(s):
     from app.utils import render_rich_html
-    return Markup(render_rich_html(s))
+    # bandit B704: nh3-sanitized
+    return Markup(render_rich_html(s))  # nosec B704
 
 
 from app.models import Donor

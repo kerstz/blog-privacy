@@ -5,6 +5,7 @@
     <h1>Create Account</h1>
     <form method="POST" action="">
         {{ form.hidden_tag() }}
+        <div class="hp-field" aria-hidden="true">{{ form.website.label }} {{ form.website() }}</div>
         <div class="input-group">
             {{ form.username(class="input-field", placeholder="Username") }}
         </div>
