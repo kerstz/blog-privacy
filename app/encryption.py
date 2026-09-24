@@ -27,6 +27,12 @@ class MessageEncryption:
                 "dépendent."
             )
 
+        if password.lower() in ('change_me', 'changeme') or salt_str.lower() in ('change_me', 'changeme') \
+                or len(password) < 16 or len(salt_str) < 16:
+            raise RuntimeError(
+                "ENCRYPTION_KEY / ENCRYPTION_SALT trop faibles (valeur d'exemple ou < 16 caractères)."
+            )
+
         salt = salt_str.encode()
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
@@ -41,12 +47,9 @@ class MessageEncryption:
         """
         Chiffre un message
         """
-        try:
-            encrypted_message = self.cipher_suite.encrypt(message.encode())
-            return base64.urlsafe_b64encode(encrypted_message).decode()
-        except Exception as e:
-            print(f"Erreur de chiffrement: {e}")
-            return message  # Retourne le message non chiffré en cas d'erreur
+        # SECURITY: never fall back to storing plaintext if encryption fails.
+        encrypted_message = self.cipher_suite.encrypt((message or '').encode())
+        return base64.urlsafe_b64encode(encrypted_message).decode()
     
     def decrypt_message(self, encrypted_message: str) -> str:
         """
@@ -60,7 +63,7 @@ class MessageEncryption:
             encrypted_data = base64.urlsafe_b64decode(encrypted_message.encode())
             decrypted_message = self.cipher_suite.decrypt(encrypted_data)
             return decrypted_message.decode()
-        except Exception as e:
+        except Exception:
             # En cas d'erreur, retourner le message tel quel (probablement déjà déchiffré)
             return encrypted_message
     
@@ -72,7 +75,8 @@ class MessageEncryption:
             if isinstance(s, str):
                 # Vérifier si la chaîne contient des caractères base64
                 import re
-                return bool(re.match(r'^[A-Za-z0-9+/]*={0,2}$', s)) and len(s) % 4 == 0
+                # urlsafe alphabet (-_) : the old +/ check skipped real ciphertexts
+                return bool(re.match(r'^[A-Za-z0-9_\-]*={0,2}$', s)) and len(s) % 4 == 0
             return False
         except Exception:
             return False

@@ -117,7 +117,7 @@
                     <div class="comments-list">
                         {% for comment in user_comments %}
                             <div class="comment-item">
-                                <p>{{ comment.content[:100] }}{% if comment.content|length > 100 %}...{% endif %}</p>
+                                <p>{{ comment.content|striptags|truncate(100) }}</p>
                                 <div class="comment-meta">
                                     <span><span class="icon-calendar"></span> {{ comment.date_posted.strftime('%m/%d/%Y') }}</span>
                                     <span><span class="icon-heart"></span> {{ comment.likes_count }} likes</span>

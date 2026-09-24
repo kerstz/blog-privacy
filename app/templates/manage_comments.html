@@ -63,7 +63,7 @@
                                     </a>
                                 </div>
                                 <div class="comment-text">
-                                    {{ comment.content[:200] }}{% if comment.content|length > 200 %}...{% endif %}
+                                    {{ comment.content|striptags|truncate(200) }}
                                 </div>
                             </div>
                             

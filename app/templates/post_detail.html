@@ -23,7 +23,7 @@
         {% endif %}
     </div>
     
-    <div class="post-text">{{ post.content | safe }}</div>
+    <div class="post-text">{{ post.content | rich_html }}</div>
 </div>
 
 <hr>
@@ -44,7 +44,7 @@
             {% if comment.deleted %}
                 <em>[deleted]</em>
             {% else %}
-                {{ comment.content | safe }}
+                {{ comment.content | comment_html }}
             {% endif %}
         </div>
 
@@ -57,7 +57,7 @@
                             <span class="icon-heart"></span> {{ comment.likes_count }}
                         </button>
                     </form>
-                    <a href="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}" class="btn-reply"><span class="icon-reply"></span> Reply</a>
+                    <a href="#reply-{{ comment.id }}" class="btn-reply"><span class="icon-reply"></span> Reply</a>
                 {% else %}
                     <span class="comment-likes">
                         <span class="icon-heart"></span> {{ comment.likes_count }}
@@ -82,7 +82,7 @@
                 {% endif %}
             </div>
 
-            <div class="reply-form">
+            <div class="reply-form" id="reply-{{ comment.id }}">
                 <form method="POST" action="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}">
                     {{ form.hidden_tag() }}
                     <textarea name="content" required class="form-control" rows="2" placeholder="Write your reply..."></textarea>
