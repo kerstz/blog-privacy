@@ -22,10 +22,28 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-AUTO=0
-[ "${1:-}" = "--auto" ] && AUTO=1
+# Bash reads a script while running it, and step 2 (git pull) rewrites this
+# very file: always run from a private copy so the update can never execute
+# a half-old, half-new script.
+if [ "${BLOG_UPDATE_COPY:-}" != "1" ]; then
+    root_dir="$(cd "$(dirname "$0")" && pwd)"
+    tmp_copy="$(mktemp "${TMPDIR:-/tmp}/blog-update.XXXXXX")"
+    cp "$0" "$tmp_copy"
+    BLOG_UPDATE_COPY=1 BLOG_UPDATE_ROOT="$root_dir" BLOG_UPDATE_SELF="$tmp_copy" exec bash "$tmp_copy" "$@"
+fi
+trap 'rm -f "${BLOG_UPDATE_SELF:-}"' EXIT
 
-cd "$(dirname "$0")"
+AUTO=0
+RESUME_FROM=""   # set when a new update.sh takes over right after the pull
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --auto) AUTO=1 ;;
+        --resume-after-pull) RESUME_FROM="${2:-}"; shift ;;
+    esac
+    shift
+done
+
+cd "$BLOG_UPDATE_ROOT"
 ROOT="$(pwd)"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_DIR="$ROOT/backups"
@@ -78,8 +96,14 @@ PREV_COMMIT=""
 IS_GIT=0
 if [ -d .git ]; then
     IS_GIT=1
-    PREV_COMMIT="$(git rev-parse HEAD)"
+    PREV_COMMIT="${RESUME_FROM:-$(git rev-parse HEAD)}"
 fi
+
+encrypt_legacy() {
+    # Idempotent: encrypts chat messages / uploads still stored in plaintext.
+    FLASK_APP=app TELEGRAM_BOT_TOKEN="" "$PY" -m flask encrypt-legacy \
+        || log "!! flask encrypt-legacy failed (data untouched); run it again by hand."
+}
 
 # 0. In --auto mode, do nothing (no backup, no restart) when there is no new code.
 if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
@@ -88,8 +112,11 @@ if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
         exit 1
     fi
     git fetch --quiet
-    if [ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')" ]; then
-        log "Already up to date. Checking installed dependencies for new CVEs only."
+    if [ -z "$RESUME_FROM" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')" ]; then
+        log "Already up to date."
+        # The running version is the installed, known-good one: safe to run.
+        encrypt_legacy
+        log "Checking installed dependencies for new CVEs."
         "$PY" -m pip install --quiet --upgrade pip-audit >/dev/null 2>&1 || true
         if ! "$PY" -m pip_audit -r requirements.txt >/tmp/blog-pip-audit.$$ 2>&1; then
             cat /tmp/blog-pip-audit.$$
@@ -100,6 +127,17 @@ if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
     fi
 fi
 
+rollback() {
+    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
+    if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
+        git reset --quiet --hard "$PREV_COMMIT"
+    fi
+    "$PY" -m pip install --quiet -r requirements.txt || true
+    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
+    exit 1
+}
+
+if [ -z "$RESUME_FROM" ]; then
 # 1. Backup (read-only copy of your data)
 log "Backup of database and uploads -> $BACKUP_DIR/update_backup_$STAMP.tar.gz"
 mkdir -p "$BACKUP_DIR"
@@ -117,16 +155,6 @@ else
     log "(nothing to back up)"
 fi
 
-rollback() {
-    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
-    if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
-        git reset --quiet --hard "$PREV_COMMIT"
-    fi
-    "$PY" -m pip install --quiet -r requirements.txt || true
-    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
-    exit 1
-}
-
 # 2. Code update (only if this is a git checkout; never overwrites local edits)
 if [ "$IS_GIT" = 1 ]; then
     log "Pulling latest code (fast-forward only)"
@@ -136,6 +164,18 @@ if [ "$IS_GIT" = 1 ]; then
         exit 1
     fi
     git pull --ff-only --quiet || rollback "git pull failed"
+    # If the updater itself changed, let the NEW version run the next steps
+    # (it knows about the new release: migrations, data conversions...).
+    if ! git diff --quiet "$PREV_COMMIT" HEAD -- update.sh; then
+        log "update.sh changed: continuing with the new version"
+        resume_args=(--resume-after-pull "$PREV_COMMIT")
+        [ "$AUTO" = 1 ] && resume_args+=(--auto)
+        rm -f "${BLOG_UPDATE_SELF:-}"   # exec skips the EXIT trap
+        exec env -u BLOG_UPDATE_COPY -u BLOG_UPDATE_SELF bash "$ROOT/update.sh" "${resume_args[@]}"
+    fi
+fi
+else
+    log "Resuming after the code update (previous version: ${RESUME_FROM:0:12})"
 fi
 
 # 3. Dependencies (patched versions pinned in requirements.txt)
@@ -158,7 +198,13 @@ if "$PY" -c "import pytest" >/dev/null 2>&1 && [ -d tests ]; then
     TELEGRAM_BOT_TOKEN="" "$PY" -m pytest -q -p no:cacheprovider tests/ || rollback "tests failed"
 fi
 
-# 6. Vulnerability scan of the installed dependencies
+# 6. Encrypt legacy plaintext messages / uploads (idempotent). Done only once
+#    the new version is known to work: from here on there is no rollback,
+#    because the previous version could not read encrypted uploads.
+log "Encrypting any legacy plaintext messages / uploads"
+encrypt_legacy
+
+# 7. Vulnerability scan of the installed dependencies
 log "Scanning dependencies for known CVEs (pip-audit)"
 "$PY" -m pip install --quiet --upgrade pip-audit || true
 if "$PY" -m pip_audit -r requirements.txt; then
@@ -170,7 +216,7 @@ fi
 
 NEW_COMMIT="$( [ "$IS_GIT" = 1 ] && git rev-parse --short HEAD || echo n/a )"
 
-# 7. Restart
+# 8. Restart
 if [ -n "${RESTART_CMD:-}" ]; then
     log "Restarting the app: $RESTART_CMD"
     if bash -c "$RESTART_CMD"; then
@@ -183,4 +229,4 @@ else
     log "Update done. Restart the app now (e.g. 'sudo systemctl restart blog')."
     [ "$AUTO" = 1 ] && notify "blog-privacy: updated to $NEW_COMMIT. Restart the app to apply it (UPDATE_RESTART_CMD is not set)."
 fi
-log "Backup kept in: $BACKUP_DIR/update_backup_$STAMP.tar.gz"
+log "Backups of your data before the update are in: $BACKUP_DIR"

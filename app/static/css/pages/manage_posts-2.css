@@ -1,0 +1,82 @@
+/* Extracted from templates/manage_posts.html (no inline <style>: strict CSP) */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.section-header h3 {
+    color: #8b93ff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(139, 147, 255, 0.1);
+    color: #8b93ff;
+    text-decoration: none;
+    border-radius: 6px;
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+}
+
+.help-link:hover {
+    background: rgba(139, 147, 255, 0.2);
+    color: #8b93ff;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Inline editor help */
+.editor-help-inline {
+    background: rgba(139, 147, 255, 0.1);
+    border: 1px solid rgba(139, 147, 255, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.editor-help-inline p {
+    margin: 0 0 10px 0;
+    color: #8b93ff;
+    font-size: 0.9rem;
+}
+
+.editor-help-inline p:last-child {
+    margin-bottom: 0;
+    color: #c3c4cb;
+    font-size: 0.8rem;
+}
+
+.tags-examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.tags-examples code {
+    background: rgba(0, 0, 0, 0.3);
+    color: #8b93ff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(139, 147, 255, 0.2);
+}

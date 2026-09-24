@@ -1,0 +1,30 @@
+/* Account security + recovery codes pages */
+.account-wrap { max-width: 720px; margin: 2.5rem auto; padding: 0 1rem; }
+.account-wrap h1 { font-family: var(--font-display); font-size: 2rem; margin-bottom: .3rem; }
+.account-lead { color: var(--paper-dim); margin-bottom: 2rem; }
+.account-card {
+    background: var(--ink-850); border: 1px solid var(--line);
+    border-radius: var(--radius-lg); padding: 1.5rem 1.7rem; margin-bottom: 1.4rem;
+}
+.account-card h2 { font-family: var(--font-display); font-size: 1.3rem; margin: 0 0 .4rem; }
+.account-card p { color: var(--paper-mid); font-size: .92rem; }
+.account-card.danger { border-color: rgba(177, 80, 63, .5); }
+.account-card .form-group { margin-bottom: .9rem; }
+.account-card label { display: block; font-size: .85rem; margin-bottom: .3rem; color: var(--paper-mid); }
+.account-card input[type="text"], .account-card input[type="password"] { width: 100%; }
+.account-card .error { color: var(--wax-bright); font-size: .82rem; display: block; margin-top: .25rem; }
+.account-btn {
+    display: inline-block; padding: .6rem 1.2rem; border-radius: var(--radius);
+    border: 1px solid var(--brass); background: transparent; color: var(--brass-bright);
+    font: inherit; cursor: pointer; text-decoration: none;
+}
+.account-btn:hover { background: var(--brass-glow); }
+.account-btn.danger { border-color: var(--wax); color: var(--wax-bright); }
+.account-meta { font-family: var(--font-mono); font-size: .8rem; color: var(--paper-dim); letter-spacing: .04em; }
+.recovery-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem 1.5rem;
+    font-family: var(--font-mono); font-size: 1.15rem; letter-spacing: .08em;
+    background: var(--ink-900); border: 1px dashed var(--brass); border-radius: var(--radius-lg);
+    padding: 1.2rem 1.5rem; margin: 1.2rem 0; user-select: all; -webkit-user-select: all;
+}
+.recovery-warning { color: var(--brass-bright); font-weight: 600; }

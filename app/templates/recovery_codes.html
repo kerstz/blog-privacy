@@ -1,0 +1,23 @@
+{% extends 'layout.html' %}
+
+{% block title %}Recovery codes - Blog{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/account.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="account-wrap">
+    <h1>Your 2FA recovery codes</h1>
+    <p class="account-lead">If you lose your authenticator app, each of these codes lets you log in <strong>once</strong> instead of a 6-digit code.</p>
+
+    <div class="account-card">
+        <p class="recovery-warning">They are shown only now. Save them in your password manager or print them, then close this page.</p>
+        <div class="recovery-grid">
+            {% for code in codes %}<span>{{ code }}</span>{% endfor %}
+        </div>
+        <p class="account-meta">Any previous recovery codes no longer work. You can generate a new set from the account security page.</p>
+        <a class="account-btn" href="{{ url_for('account_security') }}">I saved them, continue</a>
+    </div>
+</div>
+{% endblock %}

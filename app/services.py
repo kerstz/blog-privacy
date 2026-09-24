@@ -2,17 +2,18 @@
 (auth helpers, uploads, chat, deletion cascades, notifications)."""
 from flask import url_for, flash, redirect, request, session, has_request_context
 from flask_login import current_user
-from app import db, bcrypt, socketio
-from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge
+from app import app, db, bcrypt, socketio
+from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge, Tag
 from app.utils import process_image_file, hit_rate_limit, mark_totp_step_used
 from functools import wraps
 from datetime import datetime
 import re
+import hashlib
 import json
 import os
 import queue
 import time
-from threading import Lock
+from threading import Lock, Thread
 from PIL import Image
 import pyotp
 import hmac
@@ -143,8 +144,33 @@ def _delete_post_and_children(post):
     Like.query.filter_by(post_id=post.id).delete(synchronize_session=False)
     Notification.query.filter_by(related_post_id=post.id).delete(synchronize_session=False)
     Revision.query.filter_by(post_id=post.id).delete(synchronize_session=False)
+    post.tags = []
     db.session.delete(post)
     db.session.commit()
+
+
+def slugify(text, max_len=50):
+    return re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')[:max_len]
+
+
+def apply_post_taxonomy(post, category_text, tags_text):
+    """Set a post's category (free text) and tags (comma separated)."""
+    category = re.sub(r'\s+', ' ', (category_text or '').strip())[:60]
+    post.category = category if slugify(category) else None
+    tags = []
+    for raw in (tags_text or '').split(','):
+        name = re.sub(r'\s+', ' ', raw.strip())[:40]
+        slug = slugify(name)
+        if not slug or any(t.slug == slug for t in tags):
+            continue
+        tag = Tag.query.filter_by(slug=slug).first()
+        if not tag:
+            tag = Tag(name=name, slug=slug)
+            db.session.add(tag)
+        tags.append(tag)
+        if len(tags) >= 10:
+            break
+    post.tags = tags
 
 
 # 🔹 Home Page
@@ -211,6 +237,133 @@ def _verify_totp_once(user, code, allow_reuse=False):
                 return True
             return mark_totp_step_used(user.id, step)
     return False
+
+
+# 🔹 2FA recovery codes
+RECOVERY_CODE_COUNT = 10
+
+
+def _hash_recovery_code(code):
+    return hashlib.sha256(code.strip().upper().replace('-', '').encode()).hexdigest()
+
+
+def generate_recovery_codes(user):
+    """Create a fresh set of one-time recovery codes. Only their SHA-256 is
+    stored (the codes are random, 50 bits each, so a fast hash is enough).
+    Returns the plaintext codes: they are shown to the user exactly once."""
+    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # no 0/O/1/I confusion
+    codes = []
+    for _ in range(RECOVERY_CODE_COUNT):
+        raw = ''.join(secrets.choice(alphabet) for _ in range(10))
+        codes.append(f"{raw[:5]}-{raw[5:]}")
+    user.recovery_codes = json.dumps([_hash_recovery_code(c) for c in codes])
+    return codes
+
+
+def recovery_codes_left(user):
+    try:
+        return len(json.loads(user.recovery_codes or '[]'))
+    except ValueError:
+        return 0
+
+
+def use_recovery_code(user, code):
+    """Consume a recovery code (each works once). Commits on success."""
+    if not user or not code or not re.fullmatch(r'[A-Za-z0-9]{5}-?[A-Za-z0-9]{5}', code.strip()):
+        return False
+    try:
+        hashes = json.loads(user.recovery_codes or '[]')
+    except ValueError:
+        return False
+    wanted = _hash_recovery_code(code)
+    match = next((h for h in hashes if hmac.compare_digest(h, wanted)), None)
+    if not match:
+        return False
+    hashes.remove(match)
+    user.recovery_codes = json.dumps(hashes)
+    db.session.commit()
+    security_alert(f"2FA recovery code used by @{user.username} ({len(hashes)} left)")
+    return True
+
+
+def verify_second_factor(user, code):
+    """TOTP code (one-time) or recovery code."""
+    code = (code or '').strip()
+    if re.fullmatch(r'\d{6}', code):
+        return _verify_totp_once(user, code)
+    return use_recovery_code(user, code)
+
+
+# 🔹 Sessions
+def invalidate_other_sessions(user):
+    """Log the user out everywhere (sessions + remember-me cookies) by bumping
+    session_version; the caller logs the current browser back in."""
+    user.session_version = (user.session_version or 0) + 1
+    db.session.commit()
+
+
+# 🔹 Security alerts (Telegram, optional)
+def security_alert(text):
+    """Send a security event to the admin over Telegram (if configured),
+    without blocking the web request. Never raises."""
+    app.logger.warning("SECURITY %s", text)
+    try:
+        from app import telegram_bot
+        if not telegram_bot.telegram_is_enabled():
+            return
+        Thread(target=telegram_bot.telegram_send_message,
+               args=(f"🔐 Security: {text}",), daemon=True).start()
+    except Exception:
+        app.logger.exception("security alert failed")
+
+
+# 🔹 Personal data export
+def export_user_data(user):
+    """Everything the blog stores about a user, readable (messages decrypted)."""
+    def iso(dt):
+        return dt.isoformat() + 'Z' if dt else None
+    messages = Message.query.filter(
+        (Message.sender_id == user.id) | (Message.receiver_id == user.id)
+    ).order_by(Message.timestamp.asc()).all()
+    return {
+        'exported_at': datetime.utcnow().isoformat() + 'Z',
+        'account': {
+            'id': user.id,
+            'username': user.username,
+            'created_at': iso(user.created_at),
+            'is_admin': bool(user.is_admin),
+            'level': user.level,
+            'experience_points': user.experience_points,
+            'badges': user.get_badges(),
+            'two_factor_enabled': bool(user.totp_enabled),
+            'has_profile_picture': bool(user.profile_picture),
+        },
+        'comments': [
+            {'id': c.id, 'post_id': c.post_id, 'parent_id': c.parent_id,
+             'content': c.content, 'date': iso(c.date_posted), 'deleted': bool(c.deleted)}
+            for c in Comment.query.filter_by(author_id=user.id).order_by(Comment.id).all()
+        ],
+        'posts': [
+            {'id': p.id, 'title': p.title, 'content': p.content, 'date': iso(p.date_posted),
+             'published': bool(p.is_published)}
+            for p in Post.query.filter_by(author_id=user.id).order_by(Post.id).all()
+        ],
+        'messages': [
+            {'id': m.id, 'direction': 'sent' if m.sender_id == user.id else 'received',
+             'content': m.get_decrypted_content() if m.is_encrypted else m.content,
+             'has_attachment': bool(m.file_path), 'date': iso(m.timestamp)}
+            for m in messages
+        ],
+        'likes': [
+            {'post_id': like.post_id, 'comment_id': like.comment_id, 'date': iso(like.created_at)}
+            for like in Like.query.filter_by(user_id=user.id).all()
+        ],
+        'notifications': [
+            {'type': n.type, 'title': n.title, 'message': n.message, 'read': bool(n.is_read),
+             'date': iso(n.created_at)}
+            for n in Notification.query.filter_by(user_id=user.id).order_by(Notification.id).all()
+        ],
+    }
 
 
 # File Upload Configuration
@@ -291,10 +444,53 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
 
     return True, ""
 
+# Uploaded files are encrypted at rest with the same key as chat messages.
+ENCRYPTED_SUFFIX = '.enc'
+
+
+def encrypt_upload_in_place(absolute_path):
+    """Encrypt a plaintext file on disk; returns the new path (<name>.enc).
+    Written to a temporary file first, the plaintext is removed only once the
+    ciphertext is safely on disk and decrypts back to the same bytes."""
+    from app.encryption import message_encryption
+    with open(absolute_path, 'rb') as f:
+        plain = f.read()
+    token = message_encryption.encrypt_bytes(plain)
+    if message_encryption.decrypt_bytes(token) != plain:
+        raise RuntimeError('encryption self-check failed')
+    target = absolute_path + ENCRYPTED_SUFFIX
+    tmp = target + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(token)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, target)
+    os.remove(absolute_path)
+    return target
+
+
+def read_upload_bytes(stored_path):
+    """Plaintext content of an upload (decrypted when stored encrypted)."""
+    absolute = _absolute_upload_path(stored_path)
+    with open(absolute, 'rb') as f:
+        data = f.read()
+    if absolute.endswith(ENCRYPTED_SUFFIX):
+        from app.encryption import message_encryption
+        data = message_encryption.decrypt_bytes(data)
+    return data
+
+
+def upload_display_name(stored_path):
+    """File name without the .enc suffix (used for MIME type / download name)."""
+    name = os.path.basename(stored_path or '')
+    return name[:-len(ENCRYPTED_SUFFIX)] if name.endswith(ENCRYPTED_SUFFIX) else name
+
+
 def _store_upload(file_obj, prefix):
     """Save an already-validated upload under a random, unguessable name.
 
-    Images are re-encoded (all metadata stripped, WebP). Returns
+    Images are re-encoded (all metadata stripped, WebP), then every file is
+    encrypted at rest (Fernet, ENCRYPTION_KEY). Returns
     (relative_path, file_type) or (None, None) if processing failed.
     The original filename is never used on disk (no overwrite of other
     users' files, no information leak, no guessable URL).
@@ -306,6 +502,7 @@ def _store_upload(file_obj, prefix):
     absolute_path = _absolute_upload_path(f"{UPLOAD_FOLDER}/{filename}")
     os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
     file_obj.save(absolute_path)
+    file_type = get_file_type(file_obj.filename)
     if ext in IMAGE_EXTENSIONS:
         processed = process_image_file(absolute_path)
         if not processed:
@@ -314,8 +511,9 @@ def _store_upload(file_obj, prefix):
             except OSError:
                 pass
             return None, None
-        return f"{UPLOAD_FOLDER}/{os.path.basename(processed)}", 'image'
-    return f"{UPLOAD_FOLDER}/{filename}", get_file_type(file_obj.filename)
+        absolute_path, file_type = processed, 'image'
+    encrypted = encrypt_upload_in_place(absolute_path)
+    return f"{UPLOAD_FOLDER}/{os.path.basename(encrypted)}", file_type
 
 
 def _user_conversation_query(user_id):

@@ -6,16 +6,7 @@
     <title>Admin Panel</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
-    <style>
-        /* Self-contained admin base (no CDN framework) */
-        body { margin: 0; background: #14110d; color: #ece3d2; font-family: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif; }
-        .navbar { display: flex; gap: 1.5rem; align-items: center; padding: .9rem 1.5rem; background: #1b1712; border-bottom: 1px solid #2c261e; }
-        .navbar a { color: #ece3d2; text-decoration: none; font-weight: 600; }
-        .navbar a:hover { color: #c79a4b; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
-        .mt-5 { margin-top: 2rem; }
-        a { color: #c79a4b; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin_layout.css') }}">
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark">

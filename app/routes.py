@@ -1,14 +1,17 @@
 """Web routes (public pages, auth, chat, admin panel) and SocketIO handlers."""
-from flask import render_template, url_for, flash, redirect, request, abort, send_from_directory, session
+from flask import send_file, render_template, url_for, flash, redirect, request, abort, send_from_directory, session
 from flask_login import login_user, current_user, logout_user, login_required
 from app import app, db, bcrypt, socketio
-from app.forms import LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm, StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm, TOTPVerifyForm
-from app.models import User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like, Notification, ContactMessage
+from app.forms import LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm, StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm, TOTPVerifyForm, ChangePasswordForm, ReauthForm, DeleteAccountForm
+from app.models import User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like, Notification, ContactMessage, Tag
 from app.utils import rate_limit, hit_rate_limit
 from datetime import datetime, timedelta
 from flask_socketio import emit
 from werkzeug.utils import secure_filename
 import re
+import mimetypes
+from cryptography.fernet import InvalidToken
+import json
 import os
 import base64
 import time
@@ -17,6 +20,17 @@ import io
 from flask_socketio import join_room, disconnect
 from app import mobile_api  # noqa: F401  (registers the /api/admin/mobile routes)
 from app.services import (
+    apply_post_taxonomy,
+    slugify,
+    ENCRYPTED_SUFFIX,
+    read_upload_bytes,
+    upload_display_name,
+    export_user_data,
+    generate_recovery_codes,
+    invalidate_other_sessions,
+    recovery_codes_left,
+    security_alert,
+    verify_second_factor,
     CHAT_ALLOWED_EXTENSIONS,
     IMAGE_EXTENSIONS,
     MAX_UPLOAD_BYTES,
@@ -36,7 +50,6 @@ from app.services import (
     _user_conversation_query,
     _user_room,
     _validate_uploaded_file,
-    _verify_totp_once,
     _visible_posts_query,
     admin_required,
     check_and_award_badges,
@@ -91,7 +104,10 @@ def apply_security_headers(response):
         # No JavaScript at all, no third-party resources (Tor friendly).
         "default-src 'self'; "
         "img-src 'self' data:; "
-        "style-src 'self' 'unsafe-inline'; "
+        # Stylesheets only from our own files; no <style> element can be injected.
+        # style="" attributes stay allowed (sanitized BBCode colors/sizes).
+        "style-src 'self'; "
+        "style-src-attr 'unsafe-inline'; "
         "script-src 'none'; "
         "connect-src 'self'; "
         "font-src 'self'; "
@@ -143,6 +159,7 @@ def contact():
         )
         flash('Your message has been sent successfully!', 'success')
         return redirect(url_for('contact'))
+    _flash_antispam_errors(form)
     return render_template('contact.html', form=form)
 
 
@@ -204,6 +221,7 @@ def post_detail(post_id):
         else:
             flash('You must be logged in to comment.', 'danger')
         return redirect(url_for('post_detail', post_id=post.id))
+    _flash_antispam_errors(form)
 
     return render_template('post_detail.html', post=post, form=form)
 
@@ -225,8 +243,18 @@ def register():
         db.session.commit()
         flash('Your account has been created! You can now log in.', 'success')
         return redirect(url_for('login'))
+    _flash_antispam_errors(form)
 
     return render_template('register.html', title='Register', form=form)
+
+
+def _flash_antispam_errors(form):
+    """Anti-spam fields are invisible: surface their errors as flash messages."""
+    if request.method == 'POST':
+        for name in ('form_ts', 'website'):
+            field = getattr(form, name, None)
+            for error in (field.errors if field is not None else []):
+                flash(error, 'danger')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -253,10 +281,14 @@ def login():
                 session['pre_2fa_started'] = time.time()
                 return redirect(url_for('login_totp'))
             login_user(user, remember=remember)
+            if user.is_admin:
+                security_alert(f"admin login: @{user.username} (without 2FA!)")
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
         else:
             hit_rate_limit(f"login_fail_user:{username.lower()}", 10, 900)
+            if user and user.is_admin and hit_rate_limit(f"alert_admin_fail:{user.id}", 1, 900, record=True) is False:
+                security_alert(f"failed login on admin account @{user.username}")
             flash('Login failed. Check your username and password.', 'danger')
 
     return render_template('login.html', title='Login', form=form)
@@ -286,22 +318,30 @@ def login_totp():
             session.pop('pre_2fa_user_id', None)
             flash('Too many invalid codes. Please log in again later.', 'danger')
             return redirect(url_for('login'))
-        if _verify_totp_once(user, form.code.data):
+        if verify_second_factor(user, form.code.data):
             remember = session.get('pre_2fa_remember', False)
             _start_fresh_session()
             login_user(user, remember=remember)
+            if user.is_admin:
+                security_alert(f"admin login: @{user.username}")
+            left = recovery_codes_left(user)
+            if user.recovery_codes is not None and left <= 2:
+                flash(f"Only {left} recovery code(s) left: generate new ones in your profile.", "warning")
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
         else:
             hit_rate_limit(f"totp_fail:{user.id}", 5, 300)
+            if user.is_admin and hit_rate_limit(f"alert_totp_fail:{user.id}", 1, 900, record=True) is False:
+                security_alert(f"wrong 2FA code for admin @{user.username} (password was correct!)")
             flash('Invalid authentication code. Please try again.', 'danger')
 
     return render_template('login_totp.html', form=form)
 
 
 # 🔹 Logout a User
-@app.route('/logout')
+@app.route('/logout', methods=['POST'])
 def logout():
+    # POST + CSRF token: a third-party page cannot log users out
     logout_user()
     session.clear()
     flash('You have been logged out.', 'success')
@@ -569,8 +609,19 @@ def _send_upload(filename):
     if filename != secure_filename(filename) or not _can_access_upload(filename):
         abort(404)
     upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
-    is_image = _file_ext(filename) in IMAGE_EXTENSIONS
-    response = send_from_directory(upload_dir, filename, as_attachment=not is_image)
+    display_name = upload_display_name(filename)
+    is_image = _file_ext(display_name) in IMAGE_EXTENSIONS
+    if filename.endswith(ENCRYPTED_SUFFIX):
+        try:
+            data = read_upload_bytes(f"uploads/{filename}")
+        except (OSError, ValueError, InvalidToken):
+            abort(404)
+        mimetype = mimetypes.guess_type(display_name)[0] or 'application/octet-stream'
+        response = send_file(io.BytesIO(data), mimetype=mimetype, as_attachment=not is_image,
+                             download_name=display_name)
+    else:
+        # legacy plaintext file (run `flask encrypt-legacy` to encrypt it)
+        response = send_from_directory(upload_dir, filename, as_attachment=not is_image)
     # Never let an uploaded file run script in our origin.
     response.headers['Content-Security-Policy'] = "default-src 'none'; img-src 'self'; media-src 'self'; sandbox"
     response.headers['Cache-Control'] = 'private, no-store'
@@ -610,6 +661,7 @@ def manage_posts():
             # neither "publish now" nor a date => stays a private draft
             is_draft=not is_published and not scheduled_date
         )
+        apply_post_taxonomy(post, form.category.data, form.tags.data)
         db.session.add(post)
         db.session.commit()
         
@@ -771,7 +823,7 @@ def demote_user(user_id):
             return redirect(url_for('manage_users'))
         user.is_admin = False
         db.session.commit()
-        app.logger.warning("SECURITY admin %s demoted user %s", current_user.id, user.id)
+        security_alert(f"@{current_user.username} demoted admin @{user.username}")
         flash(f'User {user.username} has been demoted.', 'success')
 
     return redirect(url_for('manage_users'))
@@ -877,12 +929,18 @@ def delete_post(post_id):
 def edit_post(post_id):
     post = db.get_or_404(Post, post_id)
     form = PostForm(obj=post)
+    if request.method == 'GET':
+        form.tags.data = ', '.join(t.name for t in post.tags)
 
     if form.validate_on_submit():
         last_version = db.session.query(db.func.max(Revision.version)).filter_by(post_id=post.id).scalar() or 0
         db.session.add(Revision(post_id=post.id, content=post.content, version=last_version + 1))
         post.title = form.title.data
         post.content = form.content.data
+        apply_post_taxonomy(post, form.category.data, form.tags.data)
+        post.is_published = bool(form.is_published.data)
+        post.scheduled_date = form.scheduled_date.data
+        post.is_draft = not post.is_published and not post.scheduled_date
         db.session.commit()
         flash('Post updated successfully!', 'success')
         return redirect(url_for('manage_posts'))
@@ -904,7 +962,7 @@ def delete_user(user_id):
 
     username = user.username
     _delete_user_and_data(user, new_post_owner_id=current_user.id)
-    app.logger.warning("SECURITY admin %s deleted user %s", current_user.id, user_id)
+    security_alert(f"@{current_user.username} deleted user @{username}")
     flash(f'User {username} deleted.', 'success')
 
     return redirect(url_for('manage_users'))
@@ -916,7 +974,7 @@ def promote_user(user_id):
     user = db.get_or_404(User, user_id)
     user.is_admin = True
     db.session.commit()
-    app.logger.warning("SECURITY admin %s promoted user %s to admin", current_user.id, user.id)
+    security_alert(f"@{current_user.username} promoted @{user.username} to ADMIN")
     flash(f"{user.username} has been promoted to admin.", "success")
     return redirect(url_for('manage_users'))
 
@@ -1003,7 +1061,10 @@ def reply_to_comment(post_id, comment_id):
         flash("Your reply has been added!", "success")
         return redirect(url_for("post_detail", post_id=post.id))
 
-    flash("Error submitting your reply. Please make sure your reply is not empty.", "danger")
+    if form.form_ts.errors or form.website.errors:
+        _flash_antispam_errors(form)
+    else:
+        flash("Error submitting your reply. Please make sure your reply is not empty.", "danger")
     return redirect(url_for("post_detail", post_id=post.id))
 
 
@@ -1277,10 +1338,13 @@ def totp_setup():
         if totp.verify(form.code.data.strip(), valid_window=1):
             current_user.totp_secret = pending_secret
             current_user.totp_enabled = True
+            codes = generate_recovery_codes(current_user)
             db.session.commit()
             session.pop('totp_pending_secret', None)
+            security_alert(f"2FA enabled by @{current_user.username}")
             flash('Two-factor authentication has been enabled!', 'success')
-            return redirect(url_for('user_profile', user_id=current_user.id))
+            # Shown once, never stored in clear
+            return render_template('recovery_codes.html', codes=codes)
         else:
             hit_rate_limit(f"totp_setup_fail:{current_user.id}", 10, 300)
             flash('Invalid code. Please try again.', 'danger')
@@ -1314,15 +1378,202 @@ def totp_disable():
             flash('Incorrect password.', 'danger')
             return render_template('totp_disable.html', form=form)
 
-        if not _verify_totp_once(current_user, form.code.data):
+        if not verify_second_factor(current_user, form.code.data):
             hit_rate_limit(fail_key, 5, 900)
             flash('Invalid authentication code.', 'danger')
             return render_template('totp_disable.html', form=form)
 
         current_user.totp_enabled = False
         current_user.totp_secret = None
+        current_user.recovery_codes = None
         db.session.commit()
+        security_alert(f"2FA DISABLED by @{current_user.username}")
         flash('Two-factor authentication has been disabled.', 'success')
         return redirect(url_for('user_profile', user_id=current_user.id))
 
     return render_template('totp_disable.html', form=form)
+
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Account security: password, sessions, recovery codes, export, deletion
+# ─────────────────────────────────────────────────────────────────
+
+def _reauthenticate(form):
+    """Password (+ 2FA code when enabled) check before a sensitive action.
+    Returns True or flashes the reason. Rate limited per account."""
+    fail_key = f"reauth_fail:{current_user.id}"
+    if hit_rate_limit(fail_key, 5, 900, record=False):
+        flash('Too many failed attempts. Please wait 15 minutes.', 'danger')
+        return False
+    if not _check_user_password(current_user, form.password.data):
+        hit_rate_limit(fail_key, 5, 900)
+        flash('Incorrect password.', 'danger')
+        return False
+    if current_user.totp_enabled and not verify_second_factor(current_user, form.code.data):
+        hit_rate_limit(fail_key, 5, 900)
+        flash('A valid 2FA code (or recovery code) is required.', 'danger')
+        return False
+    return True
+
+
+def _account_security_page(**forms):
+    defaults = dict(password_form=ChangePasswordForm(), recovery_form=ReauthForm(prefix='rc'),
+                    export_form=ReauthForm(prefix='ex'), delete_form=DeleteAccountForm(prefix='del'),
+                    sessions_form=EmptyForm(prefix='ss'))
+    defaults.update(forms)
+    return render_template('account_security.html',
+                           recovery_left=recovery_codes_left(current_user), **defaults)
+
+
+@app.route('/account/security')
+@login_required
+def account_security():
+    return _account_security_page()
+
+
+@app.route('/account/password', methods=['POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm()
+    if not form.validate_on_submit():
+        return _account_security_page(password_form=form)
+    if hit_rate_limit(f"reauth_fail:{current_user.id}", 5, 900, record=False):
+        flash('Too many failed attempts. Please wait 15 minutes.', 'danger')
+        return redirect(url_for('account_security'))
+    if not _check_user_password(current_user, form.current_password.data):
+        hit_rate_limit(f"reauth_fail:{current_user.id}", 5, 900)
+        flash('Incorrect current password.', 'danger')
+        return _account_security_page(password_form=form)
+    current_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
+    user = current_user._get_current_object()
+    invalidate_other_sessions(user)  # commits; every other session is now logged out
+    _start_fresh_session()
+    login_user(user)
+    security_alert(f"password changed by @{user.username}")
+    flash('Password changed. You were logged out of every other device.', 'success')
+    return redirect(url_for('account_security'))
+
+
+@app.route('/account/logout-everywhere', methods=['POST'])
+@login_required
+def logout_everywhere():
+    form = EmptyForm(prefix='ss')
+    if not form.validate_on_submit():
+        abort(400)
+    user = current_user._get_current_object()
+    invalidate_other_sessions(user)
+    _start_fresh_session()
+    login_user(user)
+    flash('You were logged out of every other device and browser.', 'success')
+    return redirect(url_for('account_security'))
+
+
+@app.route('/account/recovery-codes', methods=['POST'])
+@login_required
+def regenerate_recovery_codes():
+    form = ReauthForm(prefix='rc')
+    if not current_user.totp_enabled:
+        flash('Enable 2FA first.', 'info')
+        return redirect(url_for('account_security'))
+    if not form.validate_on_submit() or not _reauthenticate(form):
+        return _account_security_page(recovery_form=form)
+    codes = generate_recovery_codes(current_user)
+    db.session.commit()
+    security_alert(f"new 2FA recovery codes generated by @{current_user.username}")
+    return render_template('recovery_codes.html', codes=codes)
+
+
+@app.route('/account/export', methods=['POST'])
+@login_required
+def export_account_data():
+    form = ReauthForm(prefix='ex')
+    if not form.validate_on_submit() or not _reauthenticate(form):
+        return _account_security_page(export_form=form)
+    if _action_rate_limited('account_export', max_calls=5, window_seconds=3600):
+        flash('Too many exports. Please wait.', 'danger')
+        return redirect(url_for('account_security'))
+    payload = json.dumps(export_user_data(current_user), indent=2, ensure_ascii=False)
+    response = app.response_class(payload, mimetype='application/json')
+    response.headers['Content-Disposition'] = f'attachment; filename="my-data-{current_user.id}.json"'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.route('/account/delete', methods=['POST'])
+@login_required
+def delete_own_account():
+    form = DeleteAccountForm(prefix='del')
+    if not form.validate_on_submit() or not _reauthenticate(form):
+        return _account_security_page(delete_form=form)
+    user = current_user._get_current_object()
+    other_admin = User.query.filter(User.is_admin.is_(True), User.id != user.id).order_by(User.id.asc()).first()
+    if user.is_admin and not other_admin:
+        flash('You are the last admin: promote another admin before deleting your account.', 'danger')
+        return redirect(url_for('account_security'))
+    if other_admin:
+        _delete_user_and_data(user, new_post_owner_id=other_admin.id)
+    else:
+        for post in Post.query.filter_by(author_id=user.id).all():
+            _delete_post_and_children(post)
+        _delete_user_and_data(user, new_post_owner_id=None)
+    security_alert(f"account @{user.username} deleted by its owner")
+    logout_user()
+    session.clear()
+    flash('Your account and your personal data were deleted.', 'success')
+    return redirect(url_for('index'))
+
+
+
+# ─────────────────────────────────────────────────────────────────
+#  Discovery: categories, tags, search, RSS
+# ─────────────────────────────────────────────────────────────────
+
+def _post_listing(posts, heading, empty_message='No posts found.', query=None):
+    return render_template('post_list.html', posts=posts, heading=heading,
+                           empty_message=empty_message, query=query)
+
+
+@app.route('/tag/<slug>')
+def posts_by_tag(slug):
+    tag = Tag.query.filter_by(slug=slug).first_or_404()
+    posts = _visible_posts_query().filter(Post.tags.any(Tag.id == tag.id)) \
+        .order_by(Post.date_posted.desc()).all()
+    return _post_listing(posts, f"Tag: {tag.name}")
+
+
+@app.route('/category/<slug>')
+def posts_by_category(slug):
+    names = [c for (c,) in db.session.query(Post.category).filter(Post.category.isnot(None)).distinct()]
+    name = next((c for c in names if slugify(c) == slug), None)
+    if not name:
+        abort(404)
+    posts = _visible_posts_query().filter(Post.category == name).order_by(Post.date_posted.desc()).all()
+    return _post_listing(posts, f"Category: {name}")
+
+
+@app.route('/search')
+def search():
+    query = (request.args.get('q') or '').strip()[:100]
+    if not query:
+        return _post_listing([], 'Search', 'Type something to search.', query='')
+    if len(query) < 2:
+        return _post_listing([], 'Search', 'Use at least 2 characters.', query=query)
+    if _action_rate_limited('search', max_calls=30, window_seconds=60):
+        return _post_listing([], 'Search', 'Too many searches, please wait a minute.', query=query), 429
+    escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+    pattern = f"%{escaped}%"
+    posts = _visible_posts_query().filter(
+        Post.title.ilike(pattern, escape='\\') | Post.content.ilike(pattern, escape='\\')
+        | Post.category.ilike(pattern, escape='\\')
+    ).order_by(Post.date_posted.desc()).limit(50).all()
+    return _post_listing(posts, f'Search: "{query}"', 'No post matches your search.', query=query)
+
+
+@app.route('/feed.xml')
+def rss_feed():
+    posts = Post.query.filter(Post.is_published.is_(True)).order_by(Post.date_posted.desc()).limit(20).all()
+    xml = render_template('feed.xml', posts=posts, base_url=request.url_root.rstrip('/'))
+    response = app.response_class(xml, mimetype='application/rss+xml')
+    response.headers['Cache-Control'] = 'public, max-age=900'
+    return response
