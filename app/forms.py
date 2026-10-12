@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField, BooleanField, DateTimeField, SelectField, HiddenField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, URL, Optional, Email, Regexp
 from app.models import User
@@ -7,7 +7,7 @@ from flask import current_app
 from itsdangerous import URLSafeTimedSerializer, BadData
 import time
 
-# Usernames are shown in many places (admin panel, Telegram, chat): restrict
+# Usernames are shown in many places (admin panel, chat): restrict
 # them to a safe charset so they can never carry markup or script payloads.
 USERNAME_VALIDATORS = [
     DataRequired(), Length(min=2, max=20),
@@ -29,6 +29,14 @@ def max_utf8_bytes(limit=PASSWORD_MAX):
             raise ValidationError(f'Password is too long (max {limit} bytes; accented letters and emoji count double or more).')
     return _check
 
+
+# Refusal of the most obvious passwords. Deliberately short: it blocks reflex
+# choices without pretending to be a real strength check.
+_COMMON_PASSWORDS = {
+    'password', 'password123', 'motdepasse', 'azertyuiop', 'qwertyuiop',
+    '123456789012', 'administrator', 'letmein12345', 'iloveyou1234',
+    'welcome12345', 'changeme1234', 'passwordpassword',
+}
 
 NEW_PASSWORD_VALIDATORS = [
     DataRequired(),
@@ -82,6 +90,13 @@ class RegistrationForm(AntiSpamMixin, FlaskForm):
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
 
+    def validate_password(self, password):
+        value = password.data or ''
+        if value.lower() in _COMMON_PASSWORDS:
+            raise ValidationError('This password is too common. Choose another one.')
+        if self.username.data and self.username.data.lower() in value.lower():
+            raise ValidationError('The password must not contain your username.')
+
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
         if user:
@@ -106,6 +121,10 @@ class ReplyForm(FlaskForm):
 
 class EmptyForm(FlaskForm):
     submit = SubmitField('Submit')
+
+class SiteTextImportForm(FlaskForm):
+    file = FileField('JSON file', validators=[FileRequired(), FileAllowed(['json'])])
+    submit = SubmitField('Import')
 
 class BannerForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(min=2, max=100)])
@@ -175,6 +194,13 @@ class ChangePasswordForm(FlaskForm):
     new_password = PasswordField('New password', validators=NEW_PASSWORD_VALIDATORS)
     confirm_password = PasswordField('Confirm new password', validators=[DataRequired(), EqualTo('new_password', message='Passwords do not match.')])
     submit = SubmitField('Change password')
+
+    def validate_new_password(self, new_password):
+        value = new_password.data or ''
+        if value.lower() in _COMMON_PASSWORDS:
+            raise ValidationError('This password is too common. Choose another one.')
+        if value == (self.current_password.data or ''):
+            raise ValidationError('The new password must be different from the current one.')
 
 
 class ReauthForm(FlaskForm):

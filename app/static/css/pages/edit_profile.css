@@ -1,11 +1,10 @@
-/* Extracted from templates/edit_profile.html (no inline <style>: strict CSP) */
 .edit-profile-container {
     max-width: 600px;
     margin: 40px auto;
     padding: 30px;
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border-radius: 20px;
-    border: 2px solid #8b93ff;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
+    border: 1px solid var(--line);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -15,7 +14,7 @@
 }
 
 .edit-profile-header h2 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
@@ -24,14 +23,14 @@
 }
 
 .edit-profile-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     margin: 0;
 }
 
 .edit-profile-form {
     background: rgba(255, 255, 255, 0.05);
     padding: 25px;
-    border-radius: 15px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -41,7 +40,7 @@
 
 .form-group label {
     display: block;
-    color: #e0e0e0;
+    color: var(--ash);
     font-weight: 600;
     margin-bottom: 8px;
     font-size: 1rem;
@@ -52,17 +51,17 @@
     padding: 12px 15px;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    color: #e0e0e0;
+    border-radius: 6px;
+    color: var(--ash);
     font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
     background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2);
 }
 
 .file-upload-container {
@@ -83,9 +82,9 @@
     justify-content: center;
     gap: 10px;
     padding: 15px 20px;
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     color: white;
-    border-radius: 10px;
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.3s ease;
     font-weight: 600;
@@ -93,9 +92,9 @@
 }
 
 .file-upload-label:hover {
-    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
 }
 
 .file-info {
@@ -121,7 +120,7 @@
     height: 84px;
     object-fit: cover;
     border-radius: 50%;
-    border: 2px solid rgba(139, 147, 255, 0.6);
+    border: 2px solid rgba(125, 147, 200, 0.6);
 }
 
 .error-messages {
@@ -129,7 +128,7 @@
 }
 
 .error {
-    color: #ff6b6b;
+    color: var(--ember-bright);
     font-size: 0.9rem;
     display: block;
     margin-bottom: 4px;
@@ -144,7 +143,7 @@
 
 .btn-save, .btn-cancel {
     padding: 12px 25px;
-    border-radius: 10px;
+    border-radius: 6px;
     font-weight: 600;
     text-decoration: none;
     display: flex;
@@ -157,27 +156,27 @@
 }
 
 .btn-save {
-    background: linear-gradient(135deg, #51cf66, #40c057);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     color: white;
 }
 
 .btn-save:hover {
-    background: linear-gradient(135deg, #40c057, #37b24d);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
     text-decoration: none;
     color: white;
 }
 
 .btn-cancel {
     background: rgba(255, 255, 255, 0.1);
-    color: #c3c4cb;
+    color: var(--ash-mid);
     border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .btn-cancel:hover {
     background: rgba(255, 255, 255, 0.2);
-    color: #e0e0e0;
+    color: var(--ash);
     transform: translateY(-2px);
     text-decoration: none;
 }

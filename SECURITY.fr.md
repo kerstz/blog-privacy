@@ -35,7 +35,7 @@ automatique le faire) pour chiffrer les anciennes données.
   Idempotent ; `update.sh` le lance automatiquement.
 
 ### Alertes
-- Alertes de sécurité Telegram (si le bot est configuré) : connexions admin
+- Alertes de sécurité (écrites dans le journal de l'application ; l'ancien relais Telegram a été retiré) : connexions admin
   (et connexions sans 2FA), échecs de mot de passe / 2FA sur un compte admin,
   2FA activée / désactivée, code de secours utilisé ou régénéré, mot de passe
   changé, promotions / rétrogradations / suppressions, suppression de compte.
@@ -63,8 +63,8 @@ automatique le faire) pour chiffrer les anciennes données.
 Suite de la mise à jour de sécurité ci-dessous. **Mettez à jour avec `./update.sh`.**
 
 ### Vie privée
-- **Plus aucune requête vers des tiers** : Google Fonts remplacé par des polices
-  hébergées localement (l'IP de chaque visiteur partait chez Google à chaque page) ;
+- **Plus aucune requête vers des tiers** : Google Fonts supprimé (pile de polices
+  système, rien n'est chargé chez un tiers) (l'IP de chaque visiteur partait chez Google à chaque page) ;
   liens CDN Bootstrap / Font Awesome supprimés ; l'iframe de don Trocador devient
   un simple lien ; CKEditor (chargé depuis `cdn.ckeditor.com`) supprimé.
 - **Les images externes ne sont jamais chargées** (commentaires et articles) :
@@ -95,7 +95,7 @@ Suite de la mise à jour de sécurité ci-dessous. **Mettez à jour avec `./upda
   automatiques **optionnelles**, à la fréquence de votre choix (désactivées par défaut).
 - `update.sh` : verrou, rien à faire s'il n'y a rien de nouveau, vérification de
   démarrage + tests, **retour arrière automatique** en cas d'échec, redémarrage
-  optionnel (`UPDATE_RESTART_CMD`) et notification Telegram.
+  optionnel (`UPDATE_RESTART_CMD`) ; les messages d'état vont dans le journal.
 - `./backup.sh` : sauvegardes chiffrées (gpg AES-256) des bases, uploads et `.env`,
   planification, rétention, copie distante optionnelle, restauration sans risque.
 - GitHub Actions : tests + `pip-audit` à chaque push, pull request et chaque lundi ;
@@ -104,7 +104,7 @@ Suite de la mise à jour de sécurité ci-dessous. **Mettez à jour avec `./upda
 - `deploy/` : service systemd sandboxé, Caddy et nginx sans logs d'accès, service onion Tor.
 
 ### Code
-- `routes.py` (3 600 lignes) découpé en `routes.py`, `services.py`, `telegram_bot.py` et `mobile_api.py`.
+- `routes.py` (3 600 lignes) découpé en `routes.py`, `services.py`, `mobile_api.py` et `cli.py`.
 - Templates inutilisés supprimés.
 - Tout est en anglais (code, commentaires, interface) ; documentation française dans les fichiers `*.fr.md`.
 - Badges par défaut renommés en anglais (renommage en place via `/init_badges`, personne ne perd ni ne regagne un badge).
@@ -156,7 +156,7 @@ exactement cette commande pour l'utilisateur du cron :
 blog ALL=(root) NOPASSWD: /usr/bin/systemctl restart blog
 ```
 
-Journal : `logs/update.log` ; avec le bot Telegram configuré, l'admin est prévenu
+Journal : `logs/update.log` (chaque mise à jour, échec ou retour arrière y est consigné)
 après chaque mise à jour, échec ou retour arrière.
 
 Vérifier les CVE à tout moment sans rien modifier :
@@ -183,14 +183,14 @@ copie distante optionnelle (rsync).
 - `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` aléatoires et forts. **Sauvegardez** `ENCRYPTION_KEY`/`ENCRYPTION_SALT` (`./backup.sh` inclut `.env`).
 - Derrière Caddy/nginx : `TRUSTED_PROXY_COUNT=1`. Faites aussi passer Tor par le proxy (voir `deploy/torrc.example`).
 - Utilisez le service systemd fourni (`deploy/blog.service`) : utilisateur dédié, sandbox, un worker gunicorn avec des threads.
-- Activez la 2FA sur tous les comptes admin ; `TELEGRAM_ADMIN_USER_ID` et `TELEGRAM_ADMIN_PIN` si vous utilisez le bot.
+- Activez la 2FA sur tous les comptes admin.
 - Activez les sauvegardes chiffrées planifiées et, idéalement, les mises à jour automatiques.
 - Jamais de mode debug Flask.
 
 ## Limites connues
 
-- `style-src 'unsafe-inline'` reste nécessaire (blocs `<style>` et attributs `style` dans les templates). Les scripts sont entièrement bloqués.
-- Le poller Telegram tourne dans le processus : un seul worker gunicorn (montez en charge avec des threads).
+- `style-src-attr 'unsafe-inline'` reste nécessaire pour les attributs `style=""` (couleurs et tailles BBCode assainies) ; les éléments `<style>` sont bloqués (`style-src 'self'`). Les scripts sont entièrement bloqués.
+- Les flux SSE et les salons Socket.IO vivent dans le processus : un seul worker gunicorn (montez en charge avec des threads).
 - `[img]` uniquement pour les images hébergées sur le blog ; pas encore d'interface de bibliothèque d'images.
 - Le fichier de base de données n'est pas chiffré lui-même (les messages et les
   fichiers le sont) : utilisez le chiffrement du disque du serveur.

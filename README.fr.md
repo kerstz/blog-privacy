@@ -1,4 +1,4 @@
-# TechBlog
+# depressedyoungmanblog
 
 [🇬🇧 English](README.md) · 🇫🇷 Français
 
@@ -21,7 +21,7 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 ## Fonctionnalités
 
 - **Aucun JavaScript** : toutes les pages fonctionnent JS désactivé (la CSP impose même `script-src 'none'`)
-- **Aucune requête vers des tiers** : polices hébergées localement, pas de CDN, pas de widget intégré, images externes affichées en lien
+- **Aucune requête vers des tiers** : pas de police web, pas de CDN, pas de widget intégré, images externes affichées en lien
 - **Prêt pour Tor** : en-tête `Onion-Location`, configuration du service onion dans `deploy/`
 - **Articles** en BBCode (ou HTML simple), brouillons, publication programmée, révisions, **catégories et tags**
 - **Recherche** et **flux RSS** (`/feed.xml`)
@@ -29,9 +29,8 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Chat privé chiffré** entre chaque utilisateur et l'admin (messages **et pièces jointes** chiffrés au repos)
 - **Double authentification TOTP** avec **codes de secours** à usage unique
 - **Page sécurité du compte** : changer de mot de passe, se déconnecter partout, télécharger ses données, supprimer son compte
-- **Alertes de sécurité Telegram** (connexions admin, tentatives échouées, changements de 2FA...)
 - **Anti-spam sans JS** (champ piège + délai minimum, sans captcha)
-- **Bot Telegram d'administration** (optionnel) et **API mobile admin**
+- **API mobile admin** (Basic Auth + `X-TOTP-Code`, flux SSE)
 - **Pages statiques, bannières, contact, dons en crypto** (QR codes générés côté serveur)
 - **Mises à jour sûres** : `./update.sh` (sauvegarde, mise à jour, vérification, retour arrière automatique), mises à jour automatiques optionnelles à la fréquence de votre choix, sauvegardes chiffrées
 
@@ -90,8 +89,8 @@ automatiquement en arrière** en cas d'échec. Il ne touche jamais au `.env`, ne
 aucune donnée, et se contente de convertir les anciens messages / fichiers en
 clair vers leur forme chiffrée (`flask encrypt-legacy`). Les mises à jour automatiques sont **désactivées
 par défaut** ; si `UPDATE_RESTART_CMD` est défini dans `.env`, l'application est
-redémarrée après chaque mise à jour réussie, et le bot Telegram (s'il est
-configuré) vous prévient.
+redémarrée après chaque mise à jour réussie ; chaque étape est consignée dans
+`logs/update.log`.
 
 ## Sauvegardes
 

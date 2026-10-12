@@ -1,31 +1,32 @@
+ 
 {% extends 'layout.html' %}
 {% from '_taxonomy.html' import taxonomy %}
 
-{% block title %}{{ heading or 'All entries' }} - Blog{% endblock %}
+{% block title %}{{ heading or t('posts.all') }} — depressedyoungmanblog{% endblock %}
 
 {% block content %}
 <div class="post-list-container">
-    <h1>{{ heading or 'All entries' }}</h1>
+    <h1>{{ heading or t('posts.all') }}</h1>
 
     {% if query is not none %}
     <form method="GET" action="{{ url_for('search') }}" class="search-form search-form-page" role="search">
-        <input type="search" name="q" value="{{ query }}" placeholder="Search posts" aria-label="Search posts" maxlength="100">
-        <button type="submit">Search</button>
+        <input type="search" name="q" value="{{ query }}" placeholder="{{ t('nav.search') }}" aria-label="{{ t('nav.search') }}" maxlength="100">
+        <button type="submit">{{ t('posts.search.submit') }}</button>
     </form>
     {% endif %}
 
     {% if posts %}
         {% for post in posts %}
         <article class="post-card">
-            <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
+            <p class="post-meta">{{ fmt_date(post.date_posted) }}</p>
             <h2><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h2>
             {{ taxonomy(post) }}
             <p class="post-excerpt">{{ post.content|excerpt(180) }}</p>
-            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
+            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">{{ t('posts.read') }}</a>
         </article>
         {% endfor %}
     {% else %}
-        <p class="no-posts">{{ empty_message or 'No posts available yet.' }}</p>
+        <p class="no-posts">{{ empty_message or t('posts.empty') }}</p>
     {% endif %}
 </div>
 {% endblock %}

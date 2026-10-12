@@ -1,26 +1,30 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}Manage Comments - Admin{% endblock %}
+{% block title %}Gérer les Commentaires - Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/manage_comments.css') }}">
+{% endblock %}
 
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-comments"></span> Manage Comments</h2>
-        <p>Moderate and manage all blog comments</p>
+        <h2><span class="icon-comments"></span> Gérer les Commentaires</h2>
+        <p>Modérez et gérez tous les commentaires du blog</p>
     </div>
 
     <div class="comments-section">
         <div class="section-card">
             <div class="section-header">
-                <h3><span class="icon-list"></span> Comments ({{ comments|length }})</h3>
+                <h3><span class="icon-list"></span> Commentaires ({{ comments|length }})</h3>
                 <div class="filter-options">
                     <form method="GET" action="{{ url_for('manage_comments') }}" class="filter-form">
-                        <select class="filter-select" id="statusFilter" name="filter">
-                            <option value="all" {% if current_filter == 'all' %}selected{% endif %}>All comments</option>
-                            <option value="recent" {% if current_filter == 'recent' %}selected{% endif %}>Recent (last 7 days)</option>
-                            <option value="popular" {% if current_filter == 'popular' %}selected{% endif %}>Popular (5+ likes)</option>
+                        <select class="filter-select" id="statusFilter" name="filter" aria-label="Filtre">
+                            <option value="all" {% if current_filter == 'all' %}selected{% endif %}>Tous les commentaires</option>
+                            <option value="recent" {% if current_filter == 'recent' %}selected{% endif %}>Récents (7 derniers jours)</option>
+                            <option value="popular" {% if current_filter == 'popular' %}selected{% endif %}>Populaires (5+ likes)</option>
                         </select>
-                        <button type="submit" class="filter-apply">Filter</button>
+                        <button type="submit" class="filter-apply">Filtrer</button>
                     </form>
                 </div>
             </div>
@@ -40,10 +44,10 @@
                                     </div>
                                     <div class="author-info">
                                         <span class="author-name">
-                                            {{ comment.author.username if comment.author else '[deleted user]' }}
+                                            {{ comment.author.username if comment.author else '[Utilisateur supprimé]' }}
                                         </span>
                                         <span class="comment-date">
-                                            <span class="icon-clock"></span> {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}
+                                            <span class="icon-clock"></span> {{ comment.date_posted.strftime('%d/%m/%Y à %H:%M') }}
                                         </span>
                                     </div>
                                 </div>
@@ -60,7 +64,7 @@
                             <div class="comment-content">
                                 <div class="post-context">
                                     <span class="icon-newspaper"></span>
-                                    <strong>Post:</strong> 
+                                    <strong>Article:</strong> 
                                     <a href="{{ url_for('post_detail', post_id=comment.post_id) }}" class="post-link">
                                         {{ comment.post.title }}
                                     </a>
@@ -72,17 +76,17 @@
                             
                             <div class="comment-actions">
                                 <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="btn-edit">
-                                    <span class="icon-edit"></span> Edit
+                                    <span class="icon-edit"></span> Modifier
                                 </a>
                                 <a href="{{ url_for('post_detail', post_id=comment.post_id) }}#comment-{{ comment.id }}" class="btn-view">
-                                    <span class="icon-eye"></span> View
+                                    <span class="icon-eye"></span> Voir
                                 </a>
                                 <details class="confirm-action">
-                                    <summary class="btn-delete"><span class="icon-trash"></span> Delete</summary>
+                                    <summary class="btn-delete"><span class="icon-trash"></span> Supprimer</summary>
                                     <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=comment.post_id) }}" class="delete-form">
-                                    {{ form.hidden_tag() }}
-                                    <button type="submit" class="btn-delete confirm-yes">Confirm</button>
-                                </form>
+                                        {{ form.hidden_tag() }}
+                                        <button type="submit" class="btn-delete confirm-yes">Confirmer</button>
+                                    </form>
                                 </details>
                             </div>
                         </div>
@@ -91,12 +95,12 @@
             {% else %}
                 <div class="no-comments">
                     <span class="icon-comments"></span>
-                    <p>No comments to moderate yet</p>
+                    <p>Aucun commentaire à gérer pour le moment</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/manage_comments.css') }}">
+
 {% endblock %}

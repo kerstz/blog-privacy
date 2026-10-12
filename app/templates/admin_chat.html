@@ -2,6 +2,10 @@
 
 {% block title %}Admin Chat - Blog{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/admin_chat.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-chat-container">
     <div class="chat-header">
@@ -49,18 +53,18 @@
                             {% if message.file_path %}
                                 {% if message.file_type == 'image' %}
                                     <div class="message-file">
-                                        <img src="{{ url_for('static', filename=message.file_path) }}" alt="Image" class="message-image">
+                                        <img src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" alt="Image" class="message-image">
                                     </div>
                                 {% elif message.file_type == 'video' %}
                                     <div class="message-file">
                                         <video controls class="message-video">
-                                            <source src="{{ url_for('static', filename=message.file_path) }}" type="video/mp4">
+                                            <source src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" type="video/mp4">
                                             Your browser does not support video playback.
                                         </video>
                                     </div>
                                 {% else %}
                                     <div class="message-file">
-                                        <a href="{{ url_for('static', filename=message.file_path) }}" download class="file-download">
+                                        <a href="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" download class="file-download">
                                             <span class="icon-download"></span> Download file
                                         </a>
                                     </div>
@@ -83,5 +87,4 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin_chat.css') }}">
 {% endblock %}

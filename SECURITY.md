@@ -2,6 +2,13 @@
 
 🇬🇧 English · [🇫🇷 Français](SECURITY.fr.md)
 
+> **Merged branch note.** The Telegram bridge described in the sections below
+> was removed in the merged version (it forwarded decrypted chat content to a
+> third party). Security alerts are written to the application log only, the
+> update notification is logged, and the rate limiter stores keyed hashes
+> (HMAC) instead of IP addresses. The remaining items of this changelog still
+> apply.
+
 ## Account security release — September 2026 (3)
 
 **Update with `./update.sh`.** After this first update, run `flask encrypt-legacy`
@@ -31,8 +38,8 @@ once (or let the next automatic update do it) to encrypt old data.
   plaintext by older versions. Idempotent; `update.sh` runs it automatically.
 
 ### Alerts
-- Telegram security alerts (when the bot is configured): admin logins (and
-  logins without 2FA), failed password / 2FA attempts on admin accounts,
+- Security alerts (written to the application log; the former Telegram relay
+  was removed): admin logins (and logins without 2FA), failed password / 2FA attempts on admin accounts,
   2FA enabled / disabled, recovery code used or regenerated, password changed,
   promotions / demotions / deletions, account self-deletion.
 
@@ -63,7 +70,7 @@ once (or let the next automatic update do it) to encrypt old data.
 Follow-up to the security update below. **Update with `./update.sh`.**
 
 ### Privacy
-- **No more third-party requests**: Google Fonts replaced by self-hosted fonts
+- **No more third-party requests**: Google Fonts removed (system font stack, nothing is loaded from a third party)
   (every visitor's IP was sent to Google on every page); Bootstrap / Font
   Awesome CDN links removed; the Trocador donation iframe is now a plain link;
   CKEditor (loaded from `cdn.ckeditor.com`) removed.
@@ -96,7 +103,7 @@ Follow-up to the security update below. **Update with `./update.sh`.**
   automatic updates at the frequency you choose (off by default).
 - `update.sh`: lock (no concurrent runs), "nothing new" fast path, health check
   + test suite, **automatic rollback** of code and dependencies on failure,
-  optional restart (`UPDATE_RESTART_CMD`) and Telegram notification.
+  optional restart (`UPDATE_RESTART_CMD`); status messages go to the log.
 - `./backup.sh`: encrypted backups (gpg AES-256) of databases, uploads and
   `.env`, scheduling, retention, optional off-site copy, safe restore.
 - GitHub Actions: tests + `pip-audit` on every push, pull request and every
@@ -107,7 +114,7 @@ Follow-up to the security update below. **Update with `./update.sh`.**
 
 ### Code
 - `routes.py` (3,600 lines) split into `routes.py`, `services.py`,
-  `telegram_bot.py` and `mobile_api.py`.
+  `mobile_api.py` and `cli.py`.
 - Unused templates removed (they referenced routes that did not exist).
 - Everything is in English (code, comments, UI); French documentation in `*.fr.md`.
 - Default badges renamed to English (existing badges are renamed in place when
@@ -232,8 +239,8 @@ command for the user that owns the cron job:
 blog ALL=(root) NOPASSWD: /usr/bin/systemctl restart blog
 ```
 
-Logs go to `logs/update.log`; with the Telegram bot configured, the admin is
-notified after each update, failure or rollback.
+Logs go to `logs/update.log` (each update, failure or rollback is recorded
+there).
 
 Check for new CVEs at any time without changing anything:
 
@@ -264,15 +271,15 @@ rsync target for an off-site copy.
 - `SESSION_COOKIE_SECURE=true` and serve **only over HTTPS** (enables HSTS + `__Host-` cookie).
 - Strong random `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` (never the example values). **Back up** `ENCRYPTION_KEY`/`ENCRYPTION_SALT` (`./backup.sh` includes `.env`).
 - Behind Caddy/nginx set `TRUSTED_PROXY_COUNT=1`, otherwise rate limiting sees only the proxy IP. Route Tor through the proxy too (see `deploy/torrc.example`).
-- Run with the provided systemd unit (`deploy/blog.service`): dedicated user, sandboxing, one gunicorn worker with threads (the Telegram poller and the SSE stream live in the process).
-- Enable 2FA on every admin account; set `TELEGRAM_ADMIN_USER_ID` and `TELEGRAM_ADMIN_PIN` if you use the bot.
+- Run with the provided systemd unit (`deploy/blog.service`): dedicated user, sandboxing, one gunicorn worker with threads (the SSE streams and Socket.IO rooms live in the process).
+- Enable 2FA on every admin account.
 - Enable scheduled encrypted backups and, ideally, automatic updates.
 - Never run with Flask debug mode.
 
 ## Known limitations
 
-- `style-src 'unsafe-inline'` is still needed (inline `<style>` blocks and `style` attributes in templates). Scripts are fully blocked (`script-src 'none'`).
-- The in-process Telegram poller means one gunicorn worker (use threads to scale).
+- `style-src-attr 'unsafe-inline'` is still needed for `style=""` attributes (sanitized BBCode colors and sizes); `<style>` elements are blocked (`style-src 'self'`). Scripts are fully blocked (`script-src 'none'`).
+- SSE streams and Socket.IO rooms live in the process, so use one gunicorn worker (scale with threads).
 - `[img]` for images hosted on the blog only; there is no image library UI yet.
 - The database file itself is not encrypted (chat messages and uploaded files
   inside it / next to it are). Use full-disk encryption on the server.

@@ -1,20 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin_layout.css') }}">
+    <title>{% block title %}Desk{% endblock %} — depressedyoungmanblog</title>
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    {# style.css d'abord : il definit les jetons de couleur et de police que
+       admin.css et le contenu des pages consomment. #}
+    <link rel="stylesheet" href="{{ static_v('css/style.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/icons.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/admin.css') }}">
+    {% block extra_head %}{% endblock %}
+    {% block extra_css %}{% endblock %}
 </head>
-<body>
-    <nav class="navbar navbar-dark bg-dark">
-        <a class="navbar-brand" href="{{ url_for('admin_dashboard') }}">Admin Panel</a>
-        <a href="{{ url_for('index') }}">View site</a>
+<body class="admin-body">
+
+<div class="desk">
+
+    {# Rail de gauche. Les destinations sont groupees par ce qu'on y fait —
+       ecrire, entretenir, regler — pas par ordre alphabetique. #}
+    <nav class="rail" aria-label="Sections">
+        <a class="rail-brand" href="{{ url_for('index') }}">
+            depressedyoungman<span class="brand-suffix">blog</span>
+            <span class="rail-tag">desk</span>
+        </a>
+
+        <div class="rail-group">
+            <p class="rail-label">Write</p>
+            <a href="{{ url_for('admin_dashboard') }}" class="rail-link{% if request.endpoint == 'admin_dashboard' %} is-here{% endif %}">
+                <span class="icon-home"></span> Overview
+            </a>
+            <a href="{{ url_for('manage_posts') }}" class="rail-link{% if request.endpoint in ('manage_posts', 'edit_post') %} is-here{% endif %}">
+                <span class="icon-newspaper"></span> Posts
+            </a>
+            <a href="{{ url_for('manage_pages') }}" class="rail-link{% if request.endpoint in ('manage_pages', 'create_page') %} is-here{% endif %}">
+                <span class="icon-file-alt"></span> Pages
+            </a>
+        </div>
+
+        <div class="rail-group">
+            <p class="rail-label">Tend</p>
+            <a href="{{ url_for('admin_chat') }}" class="rail-link{% if request.endpoint in ('admin_chat', 'admin_chat_user') %} is-here{% endif %}">
+                <span class="icon-comment-dots"></span> Messages
+            </a>
+            <a href="{{ url_for('manage_comments') }}" class="rail-link{% if request.endpoint == 'manage_comments' %} is-here{% endif %}">
+                <span class="icon-comments"></span> Comments
+            </a>
+            <a href="{{ url_for('manage_users') }}" class="rail-link{% if request.endpoint == 'manage_users' %} is-here{% endif %}">
+                <span class="icon-users"></span> Readers
+            </a>
+            <a href="{{ url_for('admin_moderation') }}" class="rail-link{% if request.endpoint == 'admin_moderation' %} is-here{% endif %}">
+                <span class="icon-shield-check"></span> Moderation
+            </a>
+        </div>
+
+        <div class="rail-group">
+            <p class="rail-label">Set</p>
+            <a href="{{ url_for('manage_site_texts') }}" class="rail-link{% if request.endpoint == 'manage_site_texts' %} is-here{% endif %}">
+                <span class="icon-edit"></span> Site texts
+            </a>
+            <a href="{{ url_for('manage_banners') }}" class="rail-link{% if request.endpoint == 'manage_banners' %} is-here{% endif %}">
+                <span class="icon-image"></span> Banners
+            </a>
+            <a href="{{ url_for('site_statistics') }}" class="rail-link{% if request.endpoint == 'site_statistics' %} is-here{% endif %}">
+                <span class="icon-chart-bar"></span> Statistics
+            </a>
+        </div>
+
+        <div class="rail-foot">
+            <a href="{{ url_for('index') }}" class="rail-link rail-quiet">
+                <span class="icon-arrow-left"></span> Back to the blog
+            </a>
+            <a href="{{ url_for('account_security') }}" class="rail-link rail-quiet">
+                <span class="icon-shield-alt"></span> Account security
+            </a>
+            <form method="POST" action="{{ url_for('logout') }}" class="rail-logout">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="rail-link rail-quiet rail-button">
+                    <span class="icon-sign-out"></span> Sign out
+                </button>
+            </form>
+        </div>
     </nav>
-    <div class="container mt-5">
+
+    <main class="surface">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flashes">
+                {% for category, message in messages %}
+                    <p class="flash flash-{{ category }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
         {% block content %}{% endblock %}
-    </div>
+    </main>
+</div>
+
 </body>
 </html>

@@ -1,4 +1,3 @@
-/* Extracted from templates/admin_chat_user.html (no inline <style>: strict CSP) */
 .admin-chat-container {
     max-width: 1200px;
     margin: 20px auto;
@@ -6,35 +5,23 @@
 }
 
 .chat-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 30px;
 }
 
 .chat-header h2 {
-    color: #8b93ff;
+    font-family: var(--font-display);
+    color: var(--ash);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
 }
 
 .chat-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     margin: 0;
-}
-
-.telegram-bridge-note {
-    margin-top: 10px !important;
-    font-size: 0.9rem;
-    color: #d8e4ff !important;
-}
-
-.telegram-bridge-note code {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
-    padding: 2px 6px;
 }
 
 .chat-layout {
@@ -45,15 +32,15 @@
 }
 
 .users-sidebar {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border-radius: 15px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
     padding: 20px;
-    border: 2px solid #8b93ff;
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
 }
 
 .users-sidebar h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -69,7 +56,7 @@
 
 .user-item {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    border-radius: 6px;
     transition: all 0.3s ease;
 }
 
@@ -79,8 +66,8 @@
 }
 
 .user-item.active {
-    background: rgba(139, 147, 255, 0.2);
-    border: 1px solid #8b93ff;
+    background: rgba(125, 147, 200, 0.2);
+    border: 1px solid var(--line);
 }
 
 .user-link {
@@ -96,7 +83,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -110,21 +97,21 @@
 }
 
 .user-name {
-    color: #e0e0e0;
+    color: var(--ash);
     font-weight: 600;
     font-size: 1rem;
 }
 
 .user-level {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.8rem;
 }
 
 .messages-area {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border-radius: 15px;
-    border: 2px solid #8b93ff;
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
     display: flex;
     flex-direction: column;
 }
@@ -135,7 +122,7 @@
 }
 
 .messages-header h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin: 0;
     display: flex;
     align-items: center;
@@ -143,32 +130,30 @@
     font-size: 1.2rem;
 }
 
-/* column-reverse + one inner wrapper: opens scrolled to the newest message, no JS */
-.messages-inner { display: flex; flex-direction: column; gap: 15px; }
 .messages-container {
     flex: 1;
     padding: 20px;
     overflow-y: auto;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 15px;
     max-height: 400px;
 }
 
 .message-item {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    border-radius: 6px;
     padding: 15px;
-    border-left: 4px solid #8b93ff;
+    border-left: 4px solid var(--moon-bright);
 }
 
 .admin-message {
-    border-left-color: #51cf66;
-    background: rgba(81, 207, 102, 0.1);
+    border-left-color: var(--moon);
+    background: rgba(125, 147, 200, 0.1);
 }
 
 .user-message {
-    border-left-color: #8b93ff;
+    border-left-color: var(--moon-bright);
 }
 
 .message-header {
@@ -179,7 +164,7 @@
 }
 
 .sender-name {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-weight: 600;
     font-size: 0.9rem;
     display: flex;
@@ -188,7 +173,7 @@
 }
 
 .admin-message .sender-name {
-    color: #51cf66;
+    color: var(--moon);
 }
 
 .message-time {
@@ -197,13 +182,28 @@
 }
 
 .message-content {
-    color: #e0e0e0;
+    color: var(--ash);
     line-height: 1.5;
 }
 
 .message-text {
     margin-top: 8px;
 }
+
+.flag-form { margin: 8px 0 0; }
+.btn-flag {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 5px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ash-dim);
+    cursor: pointer;
+}
+.btn-flag:hover { border-color: var(--ember); color: var(--ember-bright); }
 
 .message-file {
     margin: 8px 0;
@@ -212,33 +212,33 @@
 .message-image {
     max-width: 300px;
     max-height: 200px;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .message-video {
     max-width: 400px;
     max-height: 300px;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .file-download {
-    color: #8b93ff;
+    color: var(--moon-bright);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: rgba(139, 147, 255, 0.1);
+    background: rgba(125, 147, 200, 0.1);
     border-radius: 6px;
-    border: 1px solid rgba(139, 147, 255, 0.3);
+    border: 1px solid rgba(125, 147, 200, 0.3);
     transition: all 0.3s ease;
 }
 
 .file-download:hover {
-    background: rgba(139, 147, 255, 0.2);
-    color: #8b93ff;
+    background: rgba(125, 147, 200, 0.2);
+    color: var(--moon-bright);
     text-decoration: none;
 }
 
@@ -250,11 +250,11 @@
 }
 
 .file-upload-btn {
-    background: rgba(139, 147, 255, 0.2);
-    color: #8b93ff;
+    background: rgba(125, 147, 200, 0.2);
+    color: var(--moon-bright);
     padding: 8px 12px;
     border-radius: 6px;
-    border: 1px solid rgba(139, 147, 255, 0.3);
+    border: 1px solid rgba(125, 147, 200, 0.3);
     cursor: pointer;
     transition: all 0.3s ease;
     display: inline-flex;
@@ -264,24 +264,24 @@
 }
 
 .file-upload-btn:hover {
-    background: rgba(139, 147, 255, 0.3);
+    background: rgba(125, 147, 200, 0.3);
 }
 
 .file-name {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.9rem;
     font-style: italic;
 }
 
 .no-messages {
     text-align: center;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     padding: 40px;
 }
 
 .no-messages i {
     font-size: 3rem;
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 15px;
 }
 
@@ -304,8 +304,8 @@
     width: 100%;
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    color: #e0e0e0;
+    border-radius: 6px;
+    color: var(--ash);
     padding: 12px 15px;
     font-size: 1rem;
     resize: vertical;
@@ -315,17 +315,17 @@
 
 .form-control:focus {
     outline: none;
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
     background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2);
 }
 
 .send-btn {
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     color: white;
     border: none;
     padding: 12px 20px;
-    border-radius: 10px;
+    border-radius: 6px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -336,9 +336,9 @@
 }
 
 .send-btn:hover {
-    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
 }
 
 /* Responsive */
@@ -366,4 +366,8 @@
         justify-content: center;
     }
 }
-.file-input-visible { font-size: .8rem; color: #a0a0a0; max-width: 16rem; }
+
+/* No JavaScript: column-reverse + one inner wrapper opens the list on the newest message */
+.messages-inner { display: flex; flex-direction: column; gap: 15px; }
+.messages-container { flex-direction: column-reverse; }
+.file-input-visible { font-size: .8rem; color: var(--ash-dim); max-width: 16rem; }

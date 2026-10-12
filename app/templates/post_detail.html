@@ -5,8 +5,8 @@
 <div class="post-content">
     <h2 class="post-title">{{ post.title }}</h2>
     <div class="post-meta">
-        <span class="post-date">{{ post.date_posted.strftime('%B %d, %Y at %H:%M') }}</span>
-        <span class="post-views">{{ post.views_count }} views</span>
+        <span class="post-date">{{ fmt_date(post.date_posted, 'long') }}</span>
+        <span class="post-views">{{ post.views_count }} {{ t('posts.views') }}</span>
     </div>
     
     <div class="post-actions">
@@ -31,7 +31,7 @@
 <hr>
 
 <div class="comments-section">
-    <h3>Comments</h3>
+    <h3>{{ t('posts.comments') }}</h3>
 
     {% macro render_comment(comment, level=0) %}
     <div class="comment {% if level > 0 %}comment-reply{% endif %}" style="margin-left: {{ level * 20 }}px;">
@@ -46,7 +46,7 @@
             {% if comment.deleted %}
                 <em>[deleted]</em>
             {% else %}
-                {{ comment.content | comment_html }}
+                {{ comment | comment_html }}
             {% endif %}
         </div>
 
@@ -59,7 +59,7 @@
                             <span class="icon-heart"></span> {{ comment.likes_count }}
                         </button>
                     </form>
-                    <a href="#reply-{{ comment.id }}" class="btn-reply"><span class="icon-reply"></span> Reply</a>
+                    <a href="#reply-{{ comment.id }}" class="btn-reply"><span class="icon-reply"></span> {{ t('posts.reply') }}</a>
                 {% else %}
                     <span class="comment-likes">
                         <span class="icon-heart"></span> {{ comment.likes_count }}
@@ -70,25 +70,25 @@
                 {% if current_user.is_authenticated and current_user.is_admin %}
                     <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
                         {{ form.hidden_tag() }}
-                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> Delete</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> {{ t('posts.delete') }}</button>
                     </form>
-                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> Edit</a>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> {{ t('posts.edit') }}</a>
 
                 <!-- User can edit and delete ONLY THEIR comments -->
                 {% elif current_user.is_authenticated and current_user.id == comment.author_id %}
                     <form method="POST" action="{{ url_for('delete_comment', comment_id=comment.id, post_id=post.id) }}" style="display: inline;">
                         {{ form.hidden_tag() }}
-                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> Delete</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><span class="icon-trash"></span> {{ t('posts.delete') }}</button>
                     </form>
-                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> Edit</a>
+                    <a href="{{ url_for('edit_comment', comment_id=comment.id, post_id=post.id) }}" class="btn btn-info btn-sm"><span class="icon-edit"></span> {{ t('posts.edit') }}</a>
                 {% endif %}
             </div>
 
             <div class="reply-form" id="reply-{{ comment.id }}">
                 <form method="POST" action="{{ url_for('reply_to_comment', post_id=post.id, comment_id=comment.id) }}">
                     {{ form.hidden_tag() }}
-                    <textarea name="content" required class="form-control" rows="2" placeholder="Write your reply..."></textarea>
-                    <button type="submit" class="btn-submit">Reply</button>
+                    <textarea name="content" required class="form-control" rows="2" placeholder="{{ t('posts.comment.reply_placeholder') }}"></textarea>
+                    <button type="submit" class="btn-submit">{{ t('posts.reply') }}</button>
                 </form>
             </div>
         {% endif %}
@@ -112,11 +112,11 @@
         {{ form.content.label }}
         {{ form.content(rows=3, class="form-control") }}
     </div>
-    <button type="submit" class="btn-submit">Add Comment</button>
+    <button type="submit" class="btn-submit">{{ t('posts.comment.add') }}</button>
 </form>
 {% else %}
-    <p class="alert-text text-muted"><span class="icon-lock"></span> You must be logged in to leave a comment.</p>
-    <a href="{{ url_for('login') }}" class="btn-login">Log in</a>
+    <p class="alert-text text-muted"><span class="icon-lock"></span> {{ t('posts.comment.login') }}</p>
+    <a href="{{ url_for('login') }}" class="btn-login">{{ t('nav.login') }}</a>
 {% endif %}
 
 {% endblock %}

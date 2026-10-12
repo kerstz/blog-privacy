@@ -60,6 +60,10 @@ class Comment(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True)
     deleted = db.Column(db.Boolean, default=False)
     likes_count = db.Column(db.Integer, default=0)
+    # NULL = ligne ancienne : `content` est du HTML stocke tel quel (assaini a
+    # l'affichage). 'bbcode' = texte brut + BBCode, converti en HTML (echappe)
+    # au rendu. Voir app/utils.py et le filtre `comment_html`.
+    content_format = db.Column(db.String(10), nullable=True)
 
     # Relationships
     post = db.relationship('Post', back_populates='comments')
@@ -127,12 +131,27 @@ class User(db.Model, UserMixin):
     badges = db.Column(db.Text, default='')  # JSON string of badges
     profile_picture = db.Column(db.String(255), nullable=True)  # Path to profile picture
     totp_enabled = db.Column(db.Boolean, default=False, nullable=False)
-    totp_secret = db.Column(db.String(64), nullable=True)
+    # Secret TOTP chiffre au repos (Fernet, voir encryption.py). Une ancienne
+    # valeur en clair reste lisible et est rechiffree a la prochaine ecriture.
+    totp_secret = db.Column(db.String(255), nullable=True)
+    # Dernier pas TOTP accepte : un code deja utilise ne peut pas etre rejoue.
+    totp_last_counter = db.Column(db.Integer, nullable=True)
     # SHA-256 hashes of the unused 2FA recovery codes (JSON list)
     recovery_codes = db.Column(db.Text, nullable=True)
     # Bumped on password change / "log out everywhere": invalidates every
     # existing session and remember-me cookie of this user.
     session_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+
+    # Pose a la creation d'un compte dont le mot de passe a ete genere par un
+    # script : tant qu'il vaut True, toute navigation est renvoyee vers le
+    # changement de mot de passe.
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Bannissement. `is_banned` coupe l'acces des la session suivante ET la
+    # session en cours (voir le before_request dans routes.py).
+    is_banned = db.Column(db.Boolean, default=False, nullable=False)
+    banned_at = db.Column(db.DateTime, nullable=True)
+    ban_reason = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
@@ -147,6 +166,10 @@ class User(db.Model, UserMixin):
     def get_id(self):
         # Flask-Login stores this in the session / remember cookie
         return f"{self.id}:{self.session_version or 0}"
+
+    def rotate_session_token(self):
+        """Invalide toutes les sessions et cookies "remember" deja emis."""
+        self.session_version = (self.session_version or 0) + 1
 
     def get_badges(self):
         """Returns the user's badge list"""
@@ -281,6 +304,93 @@ class Badge(db.Model):
 
     def __repr__(self):
         return f"Badge('{self.name}')"
+
+
+class BlockedImageHash(db.Model):
+    """Empreinte d'une image dont le televersement doit etre refuse.
+
+    Alimentee par l'administrateur. Le site n'en produit aucune de lui-meme :
+    les listes de reference (NCMEC, PhotoDNA, IWF) ne sont pas publiques et
+    supposent un accord avec l'organisme qui les maintient.
+    """
+    __tablename__ = 'blocked_image_hash'
+
+    id = db.Column(db.Integer, primary_key=True)
+    # SHA-256 du fichier d'origine : correspondance exacte.
+    sha256 = db.Column(db.String(64), nullable=True, index=True)
+    # dHash 64 bits en hexadecimal : survit au ré-encodage.
+    dhash = db.Column(db.String(16), nullable=True, index=True)
+    label = db.Column(db.String(120), nullable=True)   # d'ou vient l'entree
+    added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"BlockedImageHash('{self.label or self.sha256 or self.dhash}')"
+
+
+class BlockedUploadEvent(db.Model):
+    """Trace d'un televersement refuse.
+
+    Ne contient jamais l'image : seulement son empreinte, l'auteur et la date.
+    Le fichier lui-meme part en quarantaine hors de la racine web.
+    """
+    __tablename__ = 'blocked_upload_event'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    matched_hash_id = db.Column(db.Integer, db.ForeignKey('blocked_image_hash.id'), nullable=True)
+    distance = db.Column(db.Integer, nullable=True)   # distance de Hamming
+    sha256 = db.Column(db.String(64), nullable=True)
+    quarantine_name = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    user = db.relationship('User')
+    matched_hash = db.relationship('BlockedImageHash')
+
+    def __repr__(self):
+        return f"BlockedUploadEvent('{self.user_id}', '{self.created_at}')"
+
+
+class SiteText(db.Model):
+    """Un texte fixe du site, dans les deux langues.
+
+    Ne contient que ce que l'administrateur a reellement modifie : les valeurs
+    par defaut vivent dans app/site_text.py. Une colonne vide signifie
+    « garder le defaut », pas « texte vide ».
+    """
+    __tablename__ = 'site_text'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    text_en = db.Column(db.Text, nullable=True)
+    text_fr = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow,
+                           onupdate=datetime.utcnow)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
+    def __repr__(self):
+        return f"SiteText('{self.key}')"
+
+
+class SiteTextRevision(db.Model):
+    """Historique des modifications des textes du site (pas d'IP, pas d'UA).
+
+    `text_en` / `text_fr` : etat APRES le changement ; deux None = defaut.
+    """
+    __tablename__ = 'site_text_revision'
+
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(120), nullable=False, index=True)
+    text_en = db.Column(db.Text, nullable=True)
+    text_fr = db.Column(db.Text, nullable=True)
+    action = db.Column(db.String(16), nullable=False)  # save | reset | revert | import
+    changed_by_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'),
+                              nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+
+    changed_by = db.relationship('User')
+
+    def __repr__(self):
+        return f"SiteTextRevision('{self.key}', '{self.action}')"
 
 
 class ContactMessage(db.Model):

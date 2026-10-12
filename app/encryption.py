@@ -33,11 +33,15 @@ class MessageEncryption:
             )
 
         salt = salt_str.encode()
+        # PBKDF2 iterations. Stays at 100000 by default so that messages already
+        # in the database remain readable; a fresh install should set
+        # ENCRYPTION_ITERATIONS=600000 (OWASP recommendation).
+        iterations = int((os.environ.get('ENCRYPTION_ITERATIONS') or '100000').strip())
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=iterations,
         )
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
         self.cipher_suite = Fernet(key)
@@ -46,7 +50,9 @@ class MessageEncryption:
         """
         Encrypt a message
         """
-        # SECURITY: never fall back to storing plaintext if encryption fails.
+        # SECURITY: never fall back to storing plaintext if encryption fails:
+        # an error raises, it never writes readable text in a column the user
+        # believes is encrypted.
         encrypted_message = self.cipher_suite.encrypt((message or '').encode())
         return base64.urlsafe_b64encode(encrypted_message).decode()
     

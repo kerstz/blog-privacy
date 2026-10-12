@@ -1,10 +1,14 @@
 {% extends 'layout.html' %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/chat.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="chat-page">
     <div class="chat-header">
-        <h2>Chat with the admin</h2>
-        <p>Send a private message to the blog administrator</p>
+        <h2>{{ t('chat.heading') }}</h2>
+        <p>{{ t('chat.sub') }}</p>
     </div>
 
     <div class="chat-container">
@@ -19,7 +23,7 @@
                 <div class="message-content">
                     {% if message.file_path %}
                         {% if message.file_type == 'image' %}
-                            <img src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" alt="Image" class="message-image">
+                            <img src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" alt="{{ t('profile.picture_alt') }}" class="message-image">
                         {% elif message.file_type == 'video' %}
                             <video controls class="message-video">
                                 <source src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" type="video/mp4">
@@ -31,6 +35,8 @@
                         {% endif %}
                     {% endif %}
                     {% if message.get_decrypted_content() %}
+                        {# Pas de `| safe` : un message est du texte, et le rendre en HTML brut
+                       transformait le chat en XSS stockee vers l'administrateur. #}
                         <p>{{ message.get_decrypted_content() if message.is_encrypted else message.content }}</p>
                     {% endif %}
                 </div>
@@ -43,15 +49,15 @@
             <form method="POST" enctype="multipart/form-data" class="chat-form">
                 {{ form.hidden_tag() }}
                 <div class="input-group">
-                    <textarea name="message" placeholder="Type your message..." rows="2" class="message-input"></textarea>
+                    <textarea name="message" placeholder="{{ t('chat.placeholder') }}" rows="2" class="message-input"></textarea>
                     <div class="file-upload-group">
-                        <input type="file" name="file" id="file-input" class="file-input-visible">
-                        <label for="file-input" class="file-upload-btn" title="Attach a file">
-                            <span class="icon-paperclip"></span>
+                        <label for="file-input" class="file-upload-btn">
+                            <span class="icon-paperclip"></span> {{ t('chat.attach') }}
                         </label>
+                        <input type="file" name="file" id="file-input" class="file-input-visible">
                     </div>
                     <button type="submit" class="send-btn">
-                        <span class="icon-paper-plane"></span>
+                        <span class="icon-paper-plane"></span> {{ t('chat.send') }}
                     </button>
                 </div>
             </form>
@@ -59,5 +65,5 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/chat.css') }}">
+
 {% endblock %}

@@ -1,11 +1,10 @@
-/* Extracted from templates/totp_disable.html (no inline <style>: strict CSP) */
 .totp-container {
     max-width: 440px;
     margin: 2.5rem auto;
 }
 .totp-card {
-    background: var(--ink-850);
-    border: 1px solid rgba(177, 80, 63, 0.4);
+    background: var(--night-050);
+    border: 1px solid rgba(171, 115, 124, 0.4);
     border-radius: var(--radius-lg);
     padding: 2rem 2.2rem;
 }

@@ -1,4 +1,3 @@
-/* Extracted from templates/manage_users.html (no inline <style>: strict CSP) */
 .admin-content {
     max-width: 1200px;
     margin: 0 auto;
@@ -6,36 +5,37 @@
 }
 
 .content-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 40px;
 }
 
 .content-header h2 {
-    color: #8b93ff;
-    font-size: 2.5rem;
+    font-family: var(--font-display);
+    color: var(--ash);
+    font-size: clamp(1.8rem, 3.6vw, 2.4rem);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 15px;
 }
 
 .content-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 1.1rem;
 }
 
 .section-card {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border: 2px solid #8b93ff;
-    border-radius: 20px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border: 1px solid var(--line);
+    border-radius: 6px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(125, 147, 200, 0.2);
 }
 
 .section-card h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 1.5rem;
     margin-bottom: 25px;
     display: flex;
@@ -52,7 +52,7 @@
 .user-card {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 20px;
     transition: all 0.3s ease;
 }
@@ -60,7 +60,7 @@
 .user-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
 }
 
 .user-header {
@@ -74,7 +74,7 @@
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,7 +90,7 @@
 }
 
 .user-info h4 {
-    color: #e0e0e0;
+    color: var(--ash);
     font-size: 1.2rem;
     margin-bottom: 5px;
 }
@@ -102,7 +102,7 @@
 }
 
 .user-meta span {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.9rem;
     display: flex;
     align-items: center;
@@ -117,7 +117,7 @@
 }
 
 .stat-item {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 0.9rem;
     display: flex;
     align-items: center;
@@ -136,17 +136,17 @@
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #ffd43b, #ffb700);
+    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #1a1a2e;
+    color: var(--night-100);
     font-size: 0.9rem;
     cursor: help;
 }
 
 .badge-more {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.8rem;
     font-style: italic;
 }
@@ -166,18 +166,18 @@
     align-items: center;
     gap: 6px;
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
 }
 
 .role-badge.admin {
-    background: linear-gradient(135deg, #ffd43b, #ffb700);
-    color: #1a1a2e;
+    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
+    color: var(--night-100);
 }
 
 .role-badge.user {
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     color: white;
 }
 
@@ -192,11 +192,11 @@
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, #ffd43b, #ffb700);
-    color: #1a1a2e;
+    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
+    color: var(--night-100);
     border: none;
     padding: 8px 15px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -207,16 +207,16 @@
 }
 
 .btn-warning:hover {
-    background: linear-gradient(135deg, #ffb700, #ff9500);
+    background: linear-gradient(135deg, var(--ash-mid), var(--ember-bright));
     transform: translateY(-1px);
 }
 
 .btn-success {
-    background: linear-gradient(135deg, #51cf66, #40c057);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     color: white;
     border: none;
     padding: 8px 15px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -227,16 +227,16 @@
 }
 
 .btn-success:hover {
-    background: linear-gradient(135deg, #40c057, #37b24d);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-1px);
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     color: white;
     border: none;
     padding: 8px 15px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -247,19 +247,19 @@
 }
 
 .btn-danger:hover {
-    background: linear-gradient(135deg, #e55353, #d63384);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     transform: translateY(-1px);
 }
 
 .no-users {
     text-align: center;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     padding: 40px;
 }
 
 .no-users i {
     font-size: 3rem;
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 15px;
 }
 
@@ -270,6 +270,7 @@
     }
     
     .content-header h2 {
+    font-family: var(--font-display);
         font-size: 2rem;
     }
     
@@ -295,9 +296,12 @@
         flex-direction: column;
     }
 }
-/* No-JS confirmation: the real submit button only appears after opening */
+
+/* Confirmation without JavaScript: a <details> that opens a one-button form */
 .confirm-action { display: inline-block; }
-.confirm-action > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; }
+.confirm-action > summary { list-style: none; cursor: pointer; }
 .confirm-action > summary::-webkit-details-marker { display: none; }
-.confirm-action[open] > summary { opacity: .6; }
-.confirm-action form { display: inline; margin-left: .4rem; }
+.confirm-action[open] > summary { opacity: .75; }
+.confirm-action form { margin: .5rem 0 0; display: block; }
+.confirm-yes { cursor: pointer; }
+.form-hint { margin: .3rem 0 0; font-size: .85rem; color: var(--ash-dim); }

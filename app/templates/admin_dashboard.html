@@ -1,167 +1,90 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends 'admin_layout.html' %}
+{% block title %}Overview{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - MyBlog</title>
-    <!-- No third-party CSS/fonts (privacy): self-hosted fonts + icons only -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/fonts.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin_dashboard.css') }}">
-</head>
+{% block content %}
 
-<body>
-    <input type="checkbox" id="sidebar-toggle" aria-label="Toggle menu">
-    <label for="sidebar-toggle" class="sidebar-toggle-label">Menu</label>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2><span class="icon-shield-alt"></span> Admin Panel</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="nav-item">
-                <a href="{{ url_for('admin_dashboard') }}" class="nav-link active">
-                    <span class="icon-tachometer-alt"></span>
-                    Dashboard
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('manage_posts') }}" class="nav-link">
-                    <span class="icon-newspaper"></span>
-                    Manage Posts
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('manage_users') }}" class="nav-link">
-                    <span class="icon-users"></span>
-                    Manage Users
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('manage_comments') }}" class="nav-link">
-                    <span class="icon-comments"></span>
-                    Manage Comments
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('site_statistics') }}" class="nav-link">
-                    <span class="icon-chart-bar"></span>
-                    Statistics
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('manage_banners') }}" class="nav-link">
-                    <span class="icon-image"></span>
-                    Manage Banners
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('manage_pages') }}" class="nav-link">
-                    <span class="icon-file-alt"></span>
-                    Static Pages
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="{{ url_for('admin_chat') }}" class="nav-link">
-                    <span class="icon-comment-dots"></span>
-                    Admin Chat
-                </a>
-            </div>
-            <div class="nav-item">
-                <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="nav-link nav-link-button">
-                        <span class="icon-sign-out-alt"></span>
-                        Logout
-                    </button>
-                </form>
-            </div>
-        </nav>
-    </div>
+<p class="desk-eyebrow">{{ fmt_date(now, 'long') }} · UTC</p>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Top Navbar -->
-        <div class="top-navbar">
-            <h3><span class="icon-home"></span> Welcome, Administrator!</h3>
-        </div>
+{# La these de cette page est une phrase, pas une grille de chiffres. La seule
+   question qui compte a cette heure : est-ce que quelque chose attend ? #}
+{% if waiting %}
+    {% set total = waiting | sum(attribute='count') %}
+    <h1>{{ total }} thing{{ 's' if total != 1 }} waiting.</h1>
+    <p class="desk-lede">Nothing else needs you right now.</p>
+{% else %}
+    <h1>Nothing is waiting.</h1>
+    <p class="desk-lede">
+        No unanswered messages, no open drafts, nothing scheduled. Good time to write —
+        or to go to bed.
+    </p>
+{% endif %}
 
-        <!-- Statistics Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-card-header">
-                    <h5 class="stat-card-title">Posts</h5>
-                    <div class="stat-card-icon posts">
-                        <span class="icon-newspaper"></span>
-                    </div>
-                </div>
-                <p class="stat-card-value">{{ total_posts }}</p>
-                <p class="stat-card-description">Published articles</p>
-            </div>
+{% if waiting %}
+<h2 class="desk-section">Waiting</h2>
+<div class="ledger">
+    {% for item in waiting %}
+    <a class="ledger-row{% if item.urgent %} is-urgent{% endif %}" href="{{ item.url }}">
+        <span class="ledger-count">{{ item.count }}</span>
+        <span class="ledger-what">{{ item.plural if item.count != 1 else item.label }}</span>
+        <span class="ledger-go">Open</span>
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
 
-            <div class="stat-card">
-                <div class="stat-card-header">
-                    <h5 class="stat-card-title">Users</h5>
-                    <div class="stat-card-icon users">
-                        <span class="icon-users"></span>
-                    </div>
-                </div>
-                <p class="stat-card-value">{{ total_users }}</p>
-                <p class="stat-card-description">Registered users</p>
-            </div>
+<h2 class="desk-section">Start something</h2>
+<div class="ledger">
+    <a class="ledger-row" href="{{ url_for('manage_posts') }}">
+        <span class="ledger-count"><span class="icon-edit"></span></span>
+        <span class="ledger-what">Write a post</span>
+        <span class="ledger-go">Open</span>
+    </a>
+    <a class="ledger-row" href="{{ url_for('manage_site_texts') }}">
+        <span class="ledger-count"><span class="icon-file-alt"></span></span>
+        <span class="ledger-what">Change the wording on the public pages</span>
+        <span class="ledger-go">Open</span>
+    </a>
+    <a class="ledger-row" href="{{ url_for('admin_moderation') }}">
+        <span class="ledger-count"><span class="icon-shield-check"></span></span>
+        <span class="ledger-what">Review blocked images and banned readers</span>
+        <span class="ledger-go">Open</span>
+    </a>
+</div>
 
-            <div class="stat-card">
-                <div class="stat-card-header">
-                    <h5 class="stat-card-title">Comments</h5>
-                    <div class="stat-card-icon comments">
-                        <span class="icon-comments"></span>
-                    </div>
-                </div>
-                <p class="stat-card-value">{{ total_comments }}</p>
-                <p class="stat-card-description">Total comments</p>
-            </div>
+{# Les totaux ne demandent aucune action : une ligne discrete suffit. Ils
+   occupaient auparavant quatre grandes cartes en haut de page. #}
+<h2 class="desk-section">The site, in numbers</h2>
+<p class="tally-line">
+    <span><b>{{ total_posts }}</b> published</span>
+    <span><b>{{ total_comments }}</b> comments</span>
+    <span><b>{{ total_users }}</b> readers</span>
+    <span><b>{{ total_banners }}</b> active banners</span>
+</p>
 
-            <div class="stat-card">
-                <div class="stat-card-header">
-                    <h5 class="stat-card-title">Banners</h5>
-                    <div class="stat-card-icon banners">
-                        <span class="icon-image"></span>
-                    </div>
-                </div>
-                <p class="stat-card-value">{{ total_banners }}</p>
-                <p class="stat-card-description">Active banners</p>
-            </div>
-        </div>
+{% if latest_post or latest_comment %}
+<h2 class="desk-section">Last activity</h2>
+<div class="ledger">
+    {% if latest_post %}
+    <a class="ledger-row" href="{{ url_for('post_detail', post_id=latest_post.id) }}">
+        <span class="ledger-count"><span class="icon-newspaper"></span></span>
+        <span class="ledger-what">
+            {{ latest_post.title }}
+            <br><span class="ledger-when">{{ fmt_date(latest_post.date_posted) }}</span>
+        </span>
+        <span class="ledger-go">Read</span>
+    </a>
+    {% endif %}
+    {% if latest_comment %}
+    <a class="ledger-row" href="{{ url_for('manage_comments') }}">
+        <span class="ledger-count"><span class="icon-comment"></span></span>
+        <span class="ledger-what">
+            Last comment by {{ latest_comment.author.username if latest_comment.author else 'a deleted account' }}
+            <br><span class="ledger-when">{{ fmt_date(latest_comment.date_posted) }}</span>
+        </span>
+        <span class="ledger-go">Open</span>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
 
-        <!-- Action Cards -->
-        <div class="action-grid">
-
-            <div class="action-card">
-                <h5><span class="icon-file-alt"></span> Static Pages</h5>
-                <p>Create and manage static pages for your blog (About, Contact, etc.).</p>
-                <a href="{{ url_for('manage_pages') }}" class="btn-modern">
-                    <span class="icon-edit"></span>
-                    Manage Pages
-                </a>
-            </div>
-
-
-            <div class="action-card">
-                <h5><span class="icon-comment-dots"></span> Admin Chat</h5>
-                <p>Communicate with users through the integrated chat system.</p>
-                <a href="{{ url_for('admin_chat') }}" class="btn-modern">
-                    <span class="icon-comments"></span>
-                    Open Chat
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <!-- Third-party jQuery/Bootstrap CDN scripts removed (security update):
-         unused, blocked by the CSP, Bootstrap 4.5.2 has CVE-2024-6531, and
-         they leaked admin IPs to third-party CDNs. -->
-</body>
-
-</html>
+{% endblock %}

@@ -1,29 +1,29 @@
 {% extends 'layout.html' %}
 
-{% block title %}Disable Two-Factor Authentication — MyBlog{% endblock %}
+{% block title %}Disable Two-Factor Authentication — depressedyoungmanblog{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/totp_disable.css') }}">
+<link rel="stylesheet" href="{{ static_v('css/pages/totp_disable.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="totp-container">
     <div class="totp-card">
-        <h2 class="totp-title">Disable two-factor authentication</h2>
-        <p class="totp-subtitle">Enter your current password and a valid code from your authenticator app to turn off 2FA.</p>
+        <h2 class="totp-title">{{ t('totp.disable') }}</h2>
+        <p class="totp-subtitle">{{ t('totp.disable_sub') }}</p>
 
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="form-group">
                 {{ form.password.label }}
-                {{ form.password(class="form-control", placeholder="Current password") }}
+                {{ form.password(class="form-control", placeholder=t('totp.current_password')) }}
                 {% for error in form.password.errors %}
                     <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
                 {% endfor %}
             </div>
             <div class="form-group">
                 {{ form.code.label }}
-                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", inputmode="numeric") }}
+                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", maxlength=11) }}
                 {% for error in form.code.errors %}
                     <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
                 {% endfor %}
@@ -32,7 +32,7 @@
         </form>
 
         <p style="margin-top:1.2rem;font-size:.82rem;opacity:.6;text-align:center;">
-            <a href="{{ url_for('edit_profile') }}">Cancel</a>
+            <a href="{{ url_for('edit_profile') }}">{{ t('misc.cancel') }}</a>
         </p>
     </div>
 </div>
