@@ -16,6 +16,11 @@ os.environ['ENCRYPTION_KEY'] = 'test-encryption-key-not-for-production'
 os.environ['ENCRYPTION_SALT'] = 'test-encryption-salt-not-for-production'
 os.environ['DATABASE_URL'] = 'sqlite://'
 os.environ['SESSION_COOKIE_SECURE'] = '0'
+# The rate limiter / failure counters are persistent (SQLite): keep them out of
+# instance/ so a test run never touches the real state file. Under conftest the
+# variable is already set and these are no-ops.
+os.environ.setdefault('SECURITY_STATE_DB',
+                      os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), 's.db'))
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,6 +30,7 @@ from app import site_text as st  # noqa: E402
 
 app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
+app.config['ANTISPAM_ENABLED'] = False
 
 TEMPLATES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                          'app', 'templates')
@@ -43,7 +49,7 @@ def fresh_db():
     db.session.commit()
     ids = (admin.id, user.id)
     ctx.pop()
-    # le rate-limit des actions est en memoire du processus : on le vide
+    # compteurs de limitation (persistants) : on les remet a zero
     from app import routes
     routes.action_rate_limit_buckets.clear()
     return ids

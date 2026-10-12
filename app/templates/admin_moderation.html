@@ -1,6 +1,10 @@
 {% extends 'admin_layout.html' %}
 {% block title %}Moderation{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/admin_moderation.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="mod">
 
@@ -116,52 +120,4 @@
     </p>
 </div>
 
-<style>
-.mod { padding-bottom: 80px; }
-.mod-head { margin-bottom: 34px; }
-.mod-head h1 { font-family: var(--font-display); font-size: 2rem; margin: 0 0 14px; }
-.mod-intro { color: var(--ash-mid); max-width: 68ch; margin: 0 0 8px; }
-.mod-note { color: var(--ash-dim); font-size: 0.92rem; }
-
-.mod-group { margin-bottom: 44px; }
-.mod-group h2 {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ash-dim);
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--line);
-    margin: 0 0 16px;
-}
-
-.mod-empty { color: var(--ash-dim); font-style: italic; }
-
-.scroller { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-.mod table { width: 100%; border-collapse: collapse; background: var(--night-100); font-size: 0.9rem; }
-.mod th, .mod td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); }
-.mod thead th {
-    font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--ash-dim);
-    background: var(--night-050);
-    white-space: nowrap;
-}
-.mod tbody tr:last-child td { border-bottom: none; }
-.mod .mono { font-family: var(--font-mono); font-size: 0.78rem; }
-.mod .trunc { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mod form { margin: 0; }
-
-.mod-legal {
-    color: var(--ash-dim);
-    font-size: 0.9rem;
-    border-left: 2px solid var(--ember);
-    padding-left: 16px;
-    max-width: 68ch;
-}
-
-</style>
 {% endblock %}

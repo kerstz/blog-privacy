@@ -2,6 +2,11 @@
 
 {% block title %}Manage Posts - Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/manage_posts-1.css') }}">
+<link rel="stylesheet" href="{{ static_v('css/pages/manage_posts-2.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
@@ -22,7 +27,7 @@
                 {{ form.hidden_tag() }}
                 <div class="form-group">
                     <label for="title">Titre de l'article</label>
-                    <input type="text" name="title" id="title" class="form-control" required placeholder="Entrez le titre de l'article">
+                    <input type="text" name="title" id="title" class="form-control" required maxlength="100" placeholder="Entrez le titre de l'article">
                 </div>
                 <div class="form-group">
                     <label for="content">Contenu</label>
@@ -35,7 +40,23 @@
                         </div>
                         <p><em>Voir l'aide complète pour plus de balises</em></p>
                     </div>
-                    <textarea name="content" id="content" class="form-control ckeditor-textarea" required placeholder="Rédigez le contenu de votre article..."></textarea>
+                    <textarea name="content" id="content" class="form-control" rows="14" required placeholder="Rédigez le contenu de votre article..."></textarea>
+                    <small class="form-hint">BBCode (<a href="{{ url_for('editor_help') }}">aide</a>) ou HTML simple. Tout est assaini à l'affichage ; les images externes sont affichées comme liens (vie privée).</small>
+                </div>
+                <div class="form-group">
+                    <label for="category">Catégorie</label>
+                    <input type="text" name="category" id="category" class="form-control" maxlength="60" placeholder="ex. Vie privée">
+                </div>
+                <div class="form-group">
+                    <label for="tags">Étiquettes (séparées par des virgules)</label>
+                    <input type="text" name="tags" id="tags" class="form-control" maxlength="300" placeholder="ex. tor, linux, auto-hébergement">
+                </div>
+                <div class="form-group">
+                    <label for="scheduled_date">Programmer pour (optionnel, UTC, AAAA-MM-JJ HH:MM:SS)</label>
+                    <input type="text" name="scheduled_date" id="scheduled_date" class="form-control" placeholder="2026-12-31 09:00:00" pattern="\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" name="is_published" value="y" checked> Publier maintenant (décocher pour garder un brouillon ou programmer)</label>
                 </div>
                 <button type="submit" class="btn-primary">
                     <span class="icon-save"></span> Publier l'Article
@@ -66,7 +87,7 @@
                             </div>
                             
                             <div class="post-content">
-                                <p>{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
+                                <p>{{ post.content|excerpt(150) }}</p>
                             </div>
                             
                             <div class="post-stats">
@@ -85,11 +106,13 @@
                                 <a href="{{ url_for('edit_post', post_id=post.id) }}" class="btn-edit">
                                     <span class="icon-edit"></span> Modifier
                                 </a>
-                                <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="delete-form">
-                                    <button type="submit" class="btn-delete" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cet article ?')">
-                                        <span class="icon-trash"></span> Supprimer
-                                    </button>
-                                </form>
+                                <details class="confirm-action">
+                                    <summary class="btn-delete"><span class="icon-trash"></span> Supprimer</summary>
+                                    <form method="POST" action="{{ url_for('delete_post', post_id=post.id) }}" class="delete-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        <button type="submit" class="btn-delete confirm-yes">Confirmer</button>
+                                    </form>
+                                </details>
                             </div>
                         </div>
                     {% endfor %}
@@ -104,391 +127,5 @@
     </div>
 </div>
 
-<style>
-.admin-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
 
-.content-header {
-    text-align: left;
-    margin-bottom: 40px;
-}
-
-.content-header h2 {
-    font-family: var(--font-display);
-    color: var(--ash);
-    font-size: clamp(1.8rem, 3.6vw, 2.4rem);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 15px;
-}
-
-.content-header p {
-    color: var(--ash-mid);
-    font-size: 1.1rem;
-}
-
-.section-card {
-    background: linear-gradient(135deg, var(--night-100), var(--line));
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 25px rgba(125, 147, 200, 0.2);
-}
-
-.section-card h3 {
-    color: var(--moon-bright);
-    font-size: 1.5rem;
-    margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.post-form {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.form-group label {
-    color: var(--ash);
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.form-control {
-    background: rgba(255, 255, 255, 0.1);
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    color: var(--ash);
-    padding: 12px 15px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    outline: none;
-    border-color: var(--moon-bright);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2);
-}
-
-.form-control::placeholder {
-    color: #888;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
-    color: white;
-    border: none;
-    padding: 12px 25px;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    align-self: flex-start;
-}
-
-.btn-primary:hover {
-    background: linear-gradient(135deg, var(--moon), var(--moon));
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
-}
-
-.posts-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px;
-}
-
-.post-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.post-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: var(--moon-bright);
-}
-
-.post-header h4 {
-    color: var(--ash);
-    font-size: 1.3rem;
-    margin-bottom: 10px;
-    line-height: 1.4;
-}
-
-.post-meta {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.post-meta span {
-    color: var(--ash-mid);
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.post-content p {
-    color: var(--ash-mid);
-    line-height: 1.6;
-    margin-bottom: 15px;
-}
-
-.post-stats {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-.stat {
-    color: var(--moon-bright);
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.post-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.btn-edit {
-    background: linear-gradient(135deg, var(--moon), var(--moon));
-    color: white;
-    padding: 8px 15px;
-    border-radius: 6px;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-edit:hover {
-    background: linear-gradient(135deg, var(--moon), var(--moon));
-    transform: translateY(-1px);
-    text-decoration: none;
-    color: white;
-}
-
-.delete-form {
-    display: inline;
-}
-
-.btn-delete {
-    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-delete:hover {
-    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
-    transform: translateY(-1px);
-}
-
-.no-posts {
-    text-align: center;
-    color: var(--ash-mid);
-    padding: 40px;
-}
-
-.no-posts i {
-    font-size: 3rem;
-    color: var(--moon-bright);
-    margin-bottom: 15px;
-}
-
-/* Styles pour CKEditor */
-.ck-editor__editable {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border: 2px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 6px !important;
-    color: var(--ash) !important;
-    min-height: 400px !important;
-}
-
-.ck-editor__editable:focus {
-    border-color: var(--moon-bright) !important;
-    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2) !important;
-}
-
-.ck-toolbar {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 2px solid rgba(255, 255, 255, 0.2) !important;
-    border-bottom: none !important;
-    border-radius: 6px 10px 0 0 !important;
-}
-
-.ck-toolbar .ck-button {
-    color: var(--ash) !important;
-}
-
-.ck-toolbar .ck-button:hover {
-    background: rgba(125, 147, 200, 0.2) !important;
-}
-
-.ck-toolbar .ck-button.ck-on {
-    background: rgba(125, 147, 200, 0.3) !important;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .admin-content {
-        padding: 15px;
-    }
-    
-    .content-header h2 {
-    font-family: var(--font-display);
-        font-size: 2rem;
-    }
-    
-    .section-card {
-        padding: 20px;
-    }
-    
-    .posts-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .post-meta {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .post-stats {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .post-actions {
-        flex-direction: column;
-    }
-}
-
-.ckeditor-textarea {
-    min-height: 400px !important;
-}
-</style>
-
-<style>
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.section-header h3 {
-    color: var(--moon-bright);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.help-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: rgba(125, 147, 200, 0.1);
-    color: var(--moon-bright);
-    text-decoration: none;
-    border-radius: 6px;
-    border: 1px solid rgba(125, 147, 200, 0.3);
-    transition: all 0.3s ease;
-    font-size: 0.85rem;
-}
-
-.help-link:hover {
-    background: rgba(125, 147, 200, 0.2);
-    color: var(--moon-bright);
-    text-decoration: none;
-    transform: translateY(-1px);
-}
-
-@media (max-width: 768px) {
-    .section-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-
-/* Aide inline pour l'éditeur */
-.editor-help-inline {
-    background: rgba(125, 147, 200, 0.1);
-    border: 1px solid rgba(125, 147, 200, 0.3);
-    border-radius: 6px;
-    padding: 15px;
-    margin-bottom: 15px;
-}
-
-.editor-help-inline p {
-    margin: 0 0 10px 0;
-    color: var(--moon-bright);
-    font-size: 0.9rem;
-}
-
-.editor-help-inline p:last-child {
-    margin-bottom: 0;
-    color: var(--ash-mid);
-    font-size: 0.8rem;
-}
-
-.tags-examples {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 10px;
-}
-
-.tags-examples code {
-    background: rgba(0, 0, 0, 0.3);
-    color: var(--moon-bright);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    border: 1px solid rgba(125, 147, 200, 0.2);
-}
-</style>
 {% endblock %}

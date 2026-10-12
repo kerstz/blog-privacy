@@ -3,29 +3,14 @@
 {% block title %}Disable Two-Factor Authentication — depressedyoungmanblog{% endblock %}
 
 {% block extra_css %}
-<style>
-.totp-container {
-    max-width: 440px;
-    margin: 2.5rem auto;
-}
-.totp-card {
-    background: var(--ink-850);
-    border: 1px solid rgba(171, 115, 124, 0.4);
-    border-radius: var(--radius-lg);
-    padding: 2rem 2.2rem;
-}
-.totp-title { font-size: 1.4rem; margin-bottom: .4rem; }
-.totp-subtitle { font-size: .9rem; opacity: .7; margin-bottom: 1.5rem; }
-.form-group { margin-bottom: 1rem; }
-.form-group label { display: block; margin-bottom: .35rem; font-size: .88rem; opacity: .85; }
-</style>
+<link rel="stylesheet" href="{{ static_v('css/pages/totp_disable.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="totp-container">
     <div class="totp-card">
         <h2 class="totp-title">{{ t('totp.disable') }}</h2>
-        <p class="totp-subtitle">Enter your current password and a valid code from your authenticator app to turn off 2FA.</p>
+        <p class="totp-subtitle">{{ t('totp.disable_sub') }}</p>
 
         <form method="POST">
             {{ form.hidden_tag() }}
@@ -38,7 +23,7 @@
             </div>
             <div class="form-group">
                 {{ form.code.label }}
-                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", inputmode="numeric") }}
+                {{ form.code(class="form-control", placeholder="123456", autocomplete="one-time-code", maxlength=11) }}
                 {% for error in form.code.errors %}
                     <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
                 {% endfor %}

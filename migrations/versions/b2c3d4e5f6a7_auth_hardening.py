@@ -1,4 +1,7 @@
-"""Auth hardening: TOTP replay counter, session token, wider TOTP secret
+"""Auth hardening: TOTP replay counter, wider TOTP secret
+
+L'invalidation des sessions repose sur `user.session_version`
+(migration b3c9e2f4a1d7) : il n'y a plus de colonne `session_token`.
 
 Les secrets TOTP existants (en clair) restent lisibles : ils sont rechiffres
 a leur prochaine verification reussie, pas par cette migration.
@@ -22,7 +25,6 @@ depends_on = None
 def upgrade():
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.add_column(sa.Column('totp_last_counter', sa.Integer(), nullable=True))
-        batch_op.add_column(sa.Column('session_token', sa.String(length=32), nullable=True))
         batch_op.alter_column('totp_secret',
                               existing_type=sa.String(length=64),
                               type_=sa.String(length=255),
@@ -40,5 +42,4 @@ def downgrade():
                               existing_type=sa.String(length=255),
                               type_=sa.String(length=64),
                               existing_nullable=True)
-        batch_op.drop_column('session_token')
         batch_op.drop_column('totp_last_counter')

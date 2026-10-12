@@ -2,6 +2,10 @@
 
 {% block title %}{{ t('profile.other') }} — depressedyoungmanblog{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/user_profile.css') }}">
+{% endblock %}
+
 {% block content %}
 
         <div class="profile-container">
@@ -28,6 +32,7 @@
                         <a href="{{ url_for('edit_profile') }}" class="edit-profile-btn">
                             <span class="icon-edit"></span> {{ t('edit.title') }}
                         </a>
+                        <p class="account-link"><a href="{{ url_for('account_security') }}" class="plain-link"><span class="icon-shield-alt"></span> {{ t('account.sec.link') }}</a></p>
                     {% endif %}
                 </div>
             </div>
@@ -117,7 +122,7 @@
                     <div class="comments-list">
                         {% for comment in user_comments %}
                             <div class="comment-item">
-                                <p>{{ comment.content[:100] }}{% if comment.content|length > 100 %}...{% endif %}</p>
+                                <p>{{ comment.content|excerpt(100) }}</p>
                                 <div class="comment-meta">
                                     <span><span class="icon-calendar"></span> {{ comment.date_posted.strftime('%m/%d/%Y') }}</span>
                                     <span><span class="icon-heart"></span> {{ comment.likes_count }} likes</span>
@@ -132,263 +137,4 @@
             {% endif %}
         </div>
 
-    <style>
-        .profile-container {
-            max-width: 900px;
-            margin: 20px auto;
-            padding: 20px;
-        }
-
-        .profile-header {
-            background: linear-gradient(135deg, var(--night-100), var(--line));
-            border-radius: 6px;
-            padding: 25px;
-            display: flex;
-            align-items: center;
-            gap: 25px;
-            margin-bottom: 25px;
-            border: 1px solid var(--line);
-            box-shadow: 0 4px 15px rgba(125, 147, 200, 0.2);
-        }
-
-        .profile-avatar {
-            font-size: 6rem;
-            color: var(--moon-bright);
-            position: relative;
-        }
-
-        .profile-picture {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1px solid var(--line);
-            box-shadow: 0 4px 15px rgba(125, 147, 200, 0.3);
-        }
-
-        .profile-info h2 {
-            color: var(--ash);
-            font-size: 2.5rem;
-            margin: 0 0 15px 0;
-        }
-
-        .profile-level {
-            margin-bottom: 15px;
-        }
-
-        .level-badge {
-            background: linear-gradient(135deg, var(--moon-bright), var(--moon));
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 1.1rem;
-            display: inline-block;
-            margin-bottom: 10px;
-        }
-
-        .experience-bar {
-            width: 200px;
-            height: 8px;
-            background: #444;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 5px;
-        }
-
-        .experience-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--moon-bright), var(--moon));
-            transition: width 0.3s ease;
-        }
-
-        .experience-text {
-            color: var(--ash-mid);
-            font-size: 0.9rem;
-        }
-
-        .member-since {
-            color: #888;
-            margin: 0 0 15px 0;
-        }
-
-        .edit-profile-btn {
-            background: linear-gradient(135deg, var(--moon), var(--moon));
-            color: white;
-            padding: 10px 20px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-
-        .edit-profile-btn:hover {
-            background: linear-gradient(135deg, var(--moon), var(--moon));
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
-            text-decoration: none;
-            color: white;
-        }
-
-        .badges-section, .stats-section, .recent-posts-section, .recent-comments-section {
-            background: var(--night-100);
-            border-radius: 6px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid var(--line);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        .badges-section h3, .stats-section h3, .recent-posts-section h3, .recent-comments-section h3 {
-            color: var(--moon-bright);
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .badges-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .badge-item {
-            background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
-            color: #000;
-            padding: 10px 15px;
-            border-radius: 6px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .no-badges {
-            color: var(--ash-mid);
-            font-style: italic;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-
-        .stat-item {
-            background: var(--line);
-            padding: 15px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transition: transform 0.3s ease;
-            border: 1px solid var(--night-150);
-        }
-
-        .stat-item:hover {
-            transform: translateY(-3px);
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: rgba(125, 147, 200, 0.2);
-            color: var(--moon-bright);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-        }
-
-        .stat-info {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .stat-number {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--ash);
-        }
-
-        .stat-label {
-            color: var(--ash-mid);
-            font-size: 0.9rem;
-        }
-
-        .posts-list, .comments-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .post-item, .comment-item {
-            background: var(--line);
-            padding: 15px;
-            border-radius: 6px;
-            border-left: 4px solid var(--moon-bright);
-            border: 1px solid var(--night-150);
-            transition: transform 0.3s ease;
-        }
-
-        .post-item:hover, .comment-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(125, 147, 200, 0.1);
-        }
-
-        .post-item h4 {
-            margin: 0 0 10px 0;
-        }
-
-        .post-item h4 a {
-            color: var(--moon-bright);
-            text-decoration: none;
-        }
-
-        .post-item h4 a:hover {
-            color: var(--moon);
-            text-decoration: underline;
-        }
-
-        .post-meta, .comment-meta {
-            display: flex;
-            gap: 20px;
-            color: var(--ash-mid);
-            font-size: 0.9rem;
-        }
-
-        .post-meta span, .comment-meta span {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .comment-item p {
-            color: var(--ash);
-            margin: 0 0 10px 0;
-            line-height: 1.5;
-        }
-
-        @media (max-width: 768px) {
-            .profile-header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .post-meta, .comment-meta {
-                flex-direction: column;
-                gap: 10px;
-            }
-        }
-    </style>
 {% endblock %}

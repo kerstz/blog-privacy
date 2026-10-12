@@ -5,6 +5,7 @@
     <h1>{{ t('auth.register.title') }}</h1>
     <form method="POST" action="">
         {{ form.hidden_tag() }}
+        <div class="hp-field" aria-hidden="true">{{ form.website.label }} {{ form.website() }}</div>
         <div class="input-group">
             {{ form.username(class="input-field", placeholder=t('auth.username')) }}
         </div>

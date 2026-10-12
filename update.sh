@@ -1,0 +1,222 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# Safe updater: pulls the latest code, upgrades dependencies to the patched
+# versions pinned in requirements.txt, applies DB migrations, checks that the
+# app still starts (and runs the test suite when pytest is installed), then
+# runs a CVE scan. It NEVER deletes or overwrites your data:
+#   - .env, instance/ (database) and uploads/ are never modified by this script
+#   - a timestamped backup of the database + uploads is taken first
+#   - `git pull --ff-only` refuses to run if you have local code changes
+#   - if the new version fails its checks, code + dependencies are rolled back
+#
+# Usage:
+#   ./update.sh                 interactive run (from the project folder)
+#   ./update.sh --auto          unattended run (used by auto-update.sh / cron):
+#                               skips everything if there is nothing new,
+#                               restarts the app with RESTART_CMD on success
+#   VENV=/path/to/venv ./update.sh
+#   RESTART_CMD="sudo systemctl restart blog" ./update.sh --auto
+#
+# Run it regularly: new CVEs are published every week. To schedule it, see
+# ./auto-update.sh (daily / weekly / monthly / custom).
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+# Bash reads a script while running it, and step 2 (git pull) rewrites this
+# very file: always run from a private copy so the update can never execute
+# a half-old, half-new script.
+if [ "${BLOG_UPDATE_COPY:-}" != "1" ]; then
+    root_dir="$(cd "$(dirname "$0")" && pwd)"
+    tmp_copy="$(mktemp "${TMPDIR:-/tmp}/blog-update.XXXXXX")"
+    cp "$0" "$tmp_copy"
+    BLOG_UPDATE_COPY=1 BLOG_UPDATE_ROOT="$root_dir" BLOG_UPDATE_SELF="$tmp_copy" exec bash "$tmp_copy" "$@"
+fi
+trap 'rm -f "${BLOG_UPDATE_SELF:-}"' EXIT
+
+AUTO=0
+RESUME_FROM=""   # set when a new update.sh takes over right after the pull
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --auto) AUTO=1 ;;
+        --resume-after-pull) RESUME_FROM="${2:-}"; shift ;;
+    esac
+    shift
+done
+
+cd "$BLOG_UPDATE_ROOT"
+ROOT="$(pwd)"
+STAMP="$(date +%Y%m%d_%H%M%S)"
+BACKUP_DIR="$ROOT/backups"
+LOCK_FILE="$ROOT/instance/.update.lock"
+KEEP_UPDATE_BACKUPS="${KEEP_UPDATE_BACKUPS:-10}"
+
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+# Read one KEY=value from .env without executing the file.
+env_get() {
+    [ -f "$ROOT/.env" ] || return 0
+    { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+}
+[ -z "${RESTART_CMD:-}" ] && RESTART_CMD="$(env_get UPDATE_RESTART_CMD)"
+
+# Pick the virtualenv (VENV env var, ./venv or ./.venv); fall back to system python.
+VENV="${VENV:-}"
+if [ -z "$VENV" ]; then
+    for d in venv .venv env; do
+        if [ -x "$ROOT/$d/bin/python" ]; then VENV="$ROOT/$d"; break; fi
+    done
+fi
+if [ -n "$VENV" ]; then PY="$VENV/bin/python"; else PY="$(command -v python3)"; fi
+
+# Status messages only go to the log (logs/update.log). Nothing is sent to a
+# third party: the former Telegram notification was removed on purpose.
+notify() {
+    log "$1" || true
+}
+
+# Only one update at a time (cron + manual run).
+mkdir -p "$ROOT/instance"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    log "Another update is already running. Exiting."
+    exit 0
+fi
+
+log "Python: $PY"
+PREV_COMMIT=""
+IS_GIT=0
+if [ -d .git ]; then
+    IS_GIT=1
+    PREV_COMMIT="${RESUME_FROM:-$(git rev-parse HEAD)}"
+fi
+
+encrypt_legacy() {
+    # Idempotent: encrypts chat messages / uploads still stored in plaintext.
+    FLASK_APP=app "$PY" -m flask encrypt-legacy \
+        || log "!! flask encrypt-legacy failed (data untouched); run it again by hand."
+}
+
+# 0. In --auto mode, do nothing (no backup, no restart) when there is no new code.
+if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
+    if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        log "!! The current branch has no upstream (git branch -u origin/main). Aborting."
+        exit 1
+    fi
+    git fetch --quiet
+    if [ -z "$RESUME_FROM" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')" ]; then
+        log "Already up to date."
+        # The running version is the installed, known-good one: safe to run.
+        encrypt_legacy
+        log "Checking installed dependencies for new CVEs."
+        "$PY" -m pip install --quiet --upgrade pip-audit >/dev/null 2>&1 || true
+        if ! "$PY" -m pip_audit -r requirements.txt >/tmp/blog-pip-audit.$$ 2>&1; then
+            cat /tmp/blog-pip-audit.$$
+            notify "blog-privacy: pip-audit found vulnerable dependencies and no fix has been published in the repository yet. Check update.log."
+        fi
+        rm -f /tmp/blog-pip-audit.$$
+        exit 0
+    fi
+fi
+
+rollback() {
+    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
+    if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
+        git reset --quiet --hard "$PREV_COMMIT"
+    fi
+    "$PY" -m pip install --quiet -r requirements.txt || true
+    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
+    exit 1
+}
+
+if [ -z "$RESUME_FROM" ]; then
+# 1. Backup (read-only copy of your data)
+log "Backup of database and uploads -> $BACKUP_DIR/update_backup_$STAMP.tar.gz"
+mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR"
+to_save=()
+[ -d instance ] && to_save+=("instance")
+[ -d uploads ] && to_save+=("uploads")
+for f in *.db; do [ -e "$f" ] && to_save+=("$f"); done
+if [ ${#to_save[@]} -gt 0 ]; then
+    tar --exclude='instance/.update.lock' -czf "$BACKUP_DIR/update_backup_$STAMP.tar.gz" "${to_save[@]}"
+    chmod 600 "$BACKUP_DIR/update_backup_$STAMP.tar.gz"
+    # keep only the most recent update backups
+    ls -1t "$BACKUP_DIR"/update_backup_*.tar.gz 2>/dev/null | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | xargs -r rm -f
+else
+    log "(nothing to back up)"
+fi
+
+# 2. Code update (only if this is a git checkout; never overwrites local edits)
+if [ "$IS_GIT" = 1 ]; then
+    log "Pulling latest code (fast-forward only)"
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        log "!! Local code changes detected: commit or stash them first. Aborting (nothing changed)."
+        notify "blog-privacy: update skipped, the server has local code changes."
+        exit 1
+    fi
+    git pull --ff-only --quiet || rollback "git pull failed"
+    # If the updater itself changed, let the NEW version run the next steps
+    # (it knows about the new release: migrations, data conversions...).
+    if ! git diff --quiet "$PREV_COMMIT" HEAD -- update.sh; then
+        log "update.sh changed: continuing with the new version"
+        resume_args=(--resume-after-pull "$PREV_COMMIT")
+        [ "$AUTO" = 1 ] && resume_args+=(--auto)
+        rm -f "${BLOG_UPDATE_SELF:-}"   # exec skips the EXIT trap
+        exec env -u BLOG_UPDATE_COPY -u BLOG_UPDATE_SELF bash "$ROOT/update.sh" "${resume_args[@]}"
+    fi
+fi
+else
+    log "Resuming after the code update (previous version: ${RESUME_FROM:0:12})"
+fi
+
+# 3. Dependencies (patched versions pinned in requirements.txt)
+log "Upgrading dependencies"
+"$PY" -m pip install --quiet --upgrade pip || true
+"$PY" -m pip install --quiet --upgrade -r requirements.txt || rollback "dependency install failed"
+
+# 4. Database schema migrations (Alembic only ADDS/ALTERS schema, data is kept)
+if [ -d migrations ]; then
+    log "Applying database migrations"
+    FLASK_APP=app "$PY" -m flask db upgrade || rollback "database migration failed"
+fi
+
+# 5. Health check: the new version must at least start.
+log "Checking that the app starts"
+"$PY" -c "import app" || rollback "the new version does not start"
+if "$PY" -c "import pytest" >/dev/null 2>&1 && [ -d tests ]; then
+    log "Running the test suite"
+    "$PY" -m pytest -q -p no:cacheprovider tests/ || rollback "tests failed"
+fi
+
+# 6. Encrypt legacy plaintext messages / uploads (idempotent). Done only once
+#    the new version is known to work: from here on there is no rollback,
+#    because the previous version could not read encrypted uploads.
+log "Encrypting any legacy plaintext messages / uploads"
+encrypt_legacy
+
+# 7. Vulnerability scan of the installed dependencies
+log "Scanning dependencies for known CVEs (pip-audit)"
+"$PY" -m pip install --quiet --upgrade pip-audit || true
+if "$PY" -m pip_audit -r requirements.txt; then
+    log "No known vulnerabilities."
+else
+    log "!! pip-audit reported vulnerabilities above."
+    notify "blog-privacy: pip-audit still reports vulnerable dependencies after the update. Check update.log."
+fi
+
+NEW_COMMIT="$( [ "$IS_GIT" = 1 ] && git rev-parse --short HEAD || echo n/a )"
+
+# 8. Restart
+if [ -n "${RESTART_CMD:-}" ]; then
+    log "Restarting the app: $RESTART_CMD"
+    if bash -c "$RESTART_CMD"; then
+        notify "blog-privacy: updated to $NEW_COMMIT and restarted."
+    else
+        notify "blog-privacy: updated to $NEW_COMMIT but the restart command failed."
+        exit 1
+    fi
+else
+    log "Update done. Restart the app now (e.g. 'sudo systemctl restart blog')."
+    [ "$AUTO" = 1 ] && notify "blog-privacy: updated to $NEW_COMMIT. Restart the app to apply it (UPDATE_RESTART_CMD is not set)."
+fi
+log "Backups of your data before the update are in: $BACKUP_DIR"

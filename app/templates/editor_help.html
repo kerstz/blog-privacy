@@ -2,6 +2,10 @@
 
 {% block title %}Aide de l'Éditeur - Blog{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/editor_help.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="editor-help-container">
@@ -41,12 +45,16 @@
                     <p>Crée un lien avec un texte personnalisé</p>
                 </div>
                 <div class="help-item">
-                    <code>[img]https://example.com/image.jpg[/img]</code>
-                    <p>Insère une image depuis une URL</p>
+                    <code>[img]/uploads/image.webp[/img]</code>
+                    <p>Insère une image hébergée sur ce blog</p>
                 </div>
                 <div class="help-item">
-                    <code>[img=width,height]https://example.com/image.jpg[/img]</code>
-                    <p>Insère une image avec des dimensions spécifiques</p>
+                    <code>[img=400,300]/uploads/image.webp[/img]</code>
+                    <p>Image avec largeur / hauteur maximales (en pixels)</p>
+                </div>
+                <div class="help-item">
+                    <code>[img]https://example.com/a.jpg[/img]</code>
+                    <p>Une image externe s'affiche comme un <em>lien</em>, jamais chargée : la charger révélerait l'adresse IP de chaque lecteur à ce site</p>
                 </div>
             </div>
         </div>
@@ -84,10 +92,6 @@
                     <code>[size=18]Texte plus grand[/size]</code>
                     <p>Change la taille du texte (en pixels)</p>
                 </div>
-                <div class="help-item">
-                    <code>[font=Arial]Texte avec police[/font]</code>
-                    <p>Change la police du texte</p>
-                </div>
             </div>
         </div>
 
@@ -114,31 +118,13 @@
         </div>
 
         <div class="help-section">
-            <h3>Média et Fichiers</h3>
-            <div class="help-grid">
-                <div class="help-item">
-                    <code>[video]https://example.com/video.mp4[/video]</code>
-                    <p>Insère une vidéo</p>
-                </div>
-                <div class="help-item">
-                    <code>[audio]https://example.com/audio.mp3[/audio]</code>
-                    <p>Insère un fichier audio</p>
-                </div>
-                <div class="help-item">
-                    <code>[file]https://example.com/document.pdf[/file]</code>
-                    <p>Crée un lien de téléchargement</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="help-section">
             <h3>Exemple Complet</h3>
             <div class="example-box">
                 <pre><code>[b]Titre en gras[/b]
 
 [i]Paragraphe en italique[/i]
 
-[img]https://example.com/image.jpg[/img]
+[img]/uploads/image.webp[/img]
 
 [list]
 [*]Premier point
@@ -153,117 +139,9 @@
 
         <div class="help-footer">
             <p><span class="icon-info"></span> <strong>Astuce :</strong> Vous pouvez combiner plusieurs balises pour créer des effets complexes.</p>
-            <p><span class="icon-warning"></span> <strong>Attention :</strong> Assurez-vous que les URLs d'images et de médias sont accessibles publiquement.</p>
+            <p><span class="icon-warning"></span> <strong>Vie privée :</strong> ce blog ne charge jamais de contenu tiers, les images externes apparaissent donc comme des liens.</p>
         </div>
     </div>
 </div>
 
-<style>
-.editor-help-container {
-    max-width: 1000px;
-    margin: 20px auto;
-    padding: 30px;
-    background: linear-gradient(135deg, var(--night-100), var(--line));
-    border-radius: 6px;
-    border: 1px solid var(--line);
-    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
-}
-
-.editor-help-container h2 {
-    color: var(--moon-bright);
-    text-align: center;
-    margin-bottom: 30px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-}
-
-.help-section {
-    margin-bottom: 40px;
-}
-
-.help-section h3 {
-    color: var(--moon-bright);
-    border-bottom: 2px solid var(--moon-bright);
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-}
-
-.help-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-}
-
-.help-item {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    padding: 20px;
-    border: 1px solid rgba(125, 147, 200, 0.3);
-}
-
-.help-item code {
-    background: rgba(0, 0, 0, 0.3);
-    color: var(--moon-bright);
-    padding: 8px 12px;
-    border-radius: 5px;
-    display: block;
-    margin-bottom: 10px;
-    font-family: 'Courier New', monospace;
-    border: 1px solid rgba(125, 147, 200, 0.2);
-}
-
-.help-item p {
-    color: var(--ash-mid);
-    margin: 0;
-    line-height: 1.5;
-}
-
-.example-box {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 6px;
-    padding: 20px;
-    border: 1px solid rgba(125, 147, 200, 0.3);
-}
-
-.example-box pre {
-    color: var(--moon-bright);
-    margin: 0;
-    white-space: pre-wrap;
-    font-family: 'Courier New', monospace;
-}
-
-.help-footer {
-    margin-top: 30px;
-    padding: 20px;
-    background: rgba(125, 147, 200, 0.1);
-    border-radius: 6px;
-    border: 1px solid rgba(125, 147, 200, 0.3);
-}
-
-.help-footer p {
-    color: var(--ash-mid);
-    margin: 10px 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.help-footer strong {
-    color: var(--moon-bright);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .help-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .editor-help-container {
-        margin: 10px;
-        padding: 20px;
-    }
-}
-</style>
 {% endblock %}

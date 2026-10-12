@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}depressedyoungmanblog{% endblock %}</title>
     <meta name="referrer" content="no-referrer">
+    <link rel="alternate" type="application/rss+xml" title="RSS" href="{{ url_for('rss_feed') }}">
     {# Aucune police distante. Charger Google Fonts revenait a transmettre a
        Google, pour chaque page vue, l'adresse IP du lecteur, son User-Agent et
        l'URL consultee (via le Referer) — exactement ce qu'un blog dedie a la
@@ -23,6 +24,11 @@
         <nav class="navbar">
             <a class="navbar-brand" href="{{ url_for('index') }}">depressedyoungman<span class="brand-suffix">blog</span></a>
             <ul class="navbar-menu">
+                <li class="nav-search">
+                    <form method="GET" action="{{ url_for('search') }}" class="search-form" role="search">
+                        <input type="search" name="q" placeholder="{{ t('nav.search') }}" aria-label="{{ t('nav.search') }}" maxlength="100">
+                    </form>
+                </li>
                 <li><a href="{{ url_for('about') }}">{{ t('nav.about') }}</a></li>
                 <li><a href="{{ url_for('contact') }}">{{ t('nav.contact') }}</a></li>
 
@@ -46,9 +52,14 @@
                             <span class="notification-badge">{{ current_user.unread_notifications_count() }}</span>
                         {% endif %}
                     </a></li>
-                    <li><a href="{{ url_for('logout') }}" class="logout-btn">
-                        <span class="icon-sign-out"></span> {{ t('nav.logout') }}
-                    </a></li>
+                    <li>
+                        <form method="POST" action="{{ url_for('logout') }}" class="logout-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="logout-btn">
+                                <span class="icon-sign-out"></span> {{ t('nav.logout') }}
+                            </button>
+                        </form>
+                    </li>
                 {% else %}
                     <li><a href="{{ url_for('register') }}">{{ t('nav.register') }}</a></li>
                     <li><a href="{{ url_for('login') }}" class="login-btn">{{ t('nav.login') }}</a></li>

@@ -1,0 +1,109 @@
+.notifications-container { padding: 8px 0 40px; }
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+}
+
+.notifications-header h2 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--ash);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-mark-all-read {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.18s ease;
+}
+.btn-mark-all-read:hover { color: var(--moon-bright); }
+
+.notifications-list { display: flex; flex-direction: column; }
+
+/* Une notification est une ligne, comme une entree du blog : filet en bas,
+   pas de carte, pas d'ombre. Le seul marqueur est le filet de gauche. */
+.notification-item {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 16px;
+    padding: 20px 0 20px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    border-left: 2px solid transparent;
+}
+.notification-item.unread { border-left-color: var(--moon); }
+
+.notification-icon { color: var(--ash-dim); font-size: 1rem; padding-top: 2px; }
+.notification-item.unread .notification-icon { color: var(--moon-bright); }
+
+.notification-content h4 {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ash-mid);
+    margin: 0 0 4px;
+}
+.notification-item.unread .notification-content h4 { color: var(--ash); }
+
+.notification-content p { color: var(--ash-mid); margin: 0 0 8px; line-height: 1.6; }
+
+.notification-time {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--ash-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.notification-actions { display: flex; gap: 6px; align-items: center; }
+
+.btn-mark-read, .btn-view {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    gap: 6px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ash-dim);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.18s ease, border-color 0.18s ease;
+}
+.btn-mark-read:hover, .btn-view:hover { color: var(--moon-bright); border-color: var(--moon); }
+
+.no-notifications { padding: 60px 0; color: var(--ash-mid); }
+.no-notifications [class*="icon-"] { font-size: 1.6rem; color: var(--ash-dim); display: block; margin-bottom: 18px; }
+.no-notifications h3 { font-family: var(--font-display); color: var(--ash); margin: 0 0 10px; }
+.no-notifications p { margin: 0; color: var(--ash-dim); }
+
+@media (max-width: 640px) {
+    .notification-item { grid-template-columns: 26px minmax(0, 1fr); }
+    .notification-actions { grid-column: 2; margin-top: 6px; }
+}
