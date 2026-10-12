@@ -1,0 +1,24 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ t('account.recovery.title') }} — depressedyoungmanblog{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/account.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="account-wrap">
+    <p class="eyebrow">{{ t('account.eyebrow') }}</p>
+    <h1>{{ t('account.recovery.title') }}</h1>
+    <p class="account-lead">{{ t('account.recovery.lead') }}</p>
+
+    <div class="account-card">
+        <p class="recovery-warning">{{ t('account.recovery.warning') }}</p>
+        <div class="recovery-grid">
+            {% for code in codes %}<span>{{ code }}</span>{% endfor %}
+        </div>
+        <p class="account-meta">{{ t('account.recovery.note') }}</p>
+        <a class="account-btn" href="{{ url_for('account_security') }}">{{ t('account.recovery.continue') }}</a>
+    </div>
+</div>
+{% endblock %}

@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="{{ static_v('css/icons.css') }}">
     <link rel="stylesheet" href="{{ static_v('css/admin.css') }}">
     {% block extra_head %}{% endblock %}
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="admin-body">
 
@@ -71,9 +72,15 @@
             <a href="{{ url_for('index') }}" class="rail-link rail-quiet">
                 <span class="icon-arrow-left"></span> Back to the blog
             </a>
-            <a href="{{ url_for('logout') }}" class="rail-link rail-quiet">
-                <span class="icon-sign-out"></span> Sign out
+            <a href="{{ url_for('account_security') }}" class="rail-link rail-quiet">
+                <span class="icon-shield-alt"></span> Account security
             </a>
+            <form method="POST" action="{{ url_for('logout') }}" class="rail-logout">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="rail-link rail-quiet rail-button">
+                    <span class="icon-sign-out"></span> Sign out
+                </button>
+            </form>
         </div>
     </nav>
 

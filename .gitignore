@@ -73,3 +73,9 @@ htmlcov/
 
 # Playwright screenshots
 .playwright-mcp/
+
+# Backups created by update.sh
+backups/
+
+# Local runtime files
+logs/

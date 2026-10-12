@@ -21,6 +21,11 @@ os.environ['ENCRYPTION_KEY'] = 'test-encryption-key-not-for-production'
 os.environ['ENCRYPTION_SALT'] = 'test-encryption-salt-not-for-production'
 os.environ['DATABASE_URL'] = 'sqlite://'
 os.environ['SESSION_COOKIE_SECURE'] = '0'
+# The rate limiter / failure counters are persistent (SQLite): keep them out of
+# instance/ so a test run never touches the real state file. Under conftest the
+# variable is already set and these are no-ops.
+os.environ.setdefault('SECURITY_STATE_DB',
+                      os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), 's.db'))
 os.environ.pop('MOBILE_API_ENABLED', None)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -37,6 +42,7 @@ from app.encryption import message_encryption  # noqa: E402
 
 app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
+app.config['ANTISPAM_ENABLED'] = False
 
 PASSWORD = 'correct horse battery staple'
 
@@ -397,7 +403,8 @@ def test_totp_setup_stores_encrypted_and_disable_needs_fresh_code():
     with client.session_transaction() as sess:
         secret = sess['totp_pending_secret']
     resp = client.post('/totp/setup', data={'code': pyotp.TOTP(secret).now()})
-    assert resp.status_code == 302
+    # the recovery codes are shown once, on the response itself (not a redirect)
+    assert resp.status_code == 200 and 'recovery' in resp.get_data(as_text=True).lower()
     with app.app_context():
         user = User.query.filter_by(username='reader').one()
         assert user.totp_enabled and user.totp_secret != secret
@@ -457,12 +464,23 @@ def test_mobile_api_lockout_429():
 
 def test_mobile_api_refuses_totp_banned_and_forced_change():
     reset()
-    make_user('twofa', admin=True, totp_enabled=True, totp_secret='X')
+    secret = pyotp.random_base32()
+    uid = make_user('twofa', admin=True, totp_enabled=True)
+    with app.app_context():
+        user = User.query.get(uid)
+        routes._store_totp_secret(user, secret)
+        db.session.commit()
     make_user('banned', admin=True, is_banned=True)
     make_user('forced', admin=True, must_change_password=True)
     client = app.test_client()
+    # Basic Auth alone cannot satisfy 2FA: the current code goes in X-TOTP-Code
+    # (merged behaviour: 401 without a code, 200 with a valid one).
     resp = client.get('/api/admin/mobile/ping', headers=basic('twofa', PASSWORD))
-    assert resp.status_code == 403 and 'two-factor' in resp.get_json()['error']
+    assert resp.status_code == 401 and 'two-factor' in resp.get_json()['error']
+    resp = client.get('/api/admin/mobile/ping',
+                      headers={**basic('twofa', PASSWORD),
+                               'X-TOTP-Code': pyotp.TOTP(secret).now()})
+    assert resp.status_code == 200
     for name in ('banned', 'forced'):
         resp = client.get('/api/admin/mobile/ping', headers=basic(name, PASSWORD))
         assert resp.status_code == 403, name
@@ -666,6 +684,7 @@ def _socketio_anonymous_refused_and_no_notification_broadcast():
     reset()
     admin = make_user('admin', admin=True)
     make_user('reader')
+    make_user('bystander')
     post_id = make_post(admin)
     anon_sock = socketio.test_client(app)
     assert not anon_sock.is_connected()
@@ -674,10 +693,17 @@ def _socketio_anonymous_refused_and_no_notification_broadcast():
     admin_sock = socketio.test_client(app, flask_test_client=admin_client)
     assert admin_sock.is_connected()
     admin_sock.get_received()
+    bystander = logged_in('bystander')
+    bystander_sock = socketio.test_client(app, flask_test_client=bystander)
+    assert bystander_sock.is_connected()
+    bystander_sock.get_received()
     reader = logged_in('reader')
     reader.post(f'/like_post/{post_id}')
     reader.post(f'/post/{post_id}', data={'content': 'hello'})
-    assert [m for m in admin_sock.get_received() if m['name'] == 'notification'] == []
+    # no broadcast: a third user never receives them ...
+    assert [m for m in bystander_sock.get_received() if m['name'] == 'notification'] == []
+    # ... only the author of the post (private room) does
+    assert len([m for m in admin_sock.get_received() if m['name'] == 'notification']) == 2
 
 
 def test_socketio_message_rate_limited():
@@ -785,7 +811,8 @@ def test_delete_user_refuses_self_and_admin():
 
 def test_donate_rejects_bad_amounts():
     reset()
-    client = app.test_client()
+    make_user('admin', admin=True)
+    client = logged_in('admin')   # only an admin may record an amount
     for bad in ('abc', 'inf', 'nan', '-1', '0', '1e9', ''):
         resp = client.post('/donate', data={'amount': bad})
         assert resp.status_code == 302, bad
@@ -798,7 +825,8 @@ def test_donate_rejects_bad_amounts():
 
 def test_donate_rate_limited():
     reset()
-    client = app.test_client()
+    make_user('admin', admin=True)
+    client = logged_in('admin')
     for _ in range(5):
         client.post('/donate', data={'amount': '1'})
     with app.app_context():

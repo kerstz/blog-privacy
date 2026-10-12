@@ -4,10 +4,10 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
-from flask_ckeditor import CKEditor
 from flask_socketio import SocketIO
 from datetime import timedelta
 from markupsafe import Markup, escape
+from werkzeug.middleware.proxy_fix import ProxyFix
 import re
 import os
 import logging
@@ -18,7 +18,6 @@ from dotenv import load_dotenv
 # Charge les variables d'environnement depuis un fichier .env local (jamais commité)
 load_dotenv()
 
-from flask_socketio import SocketIO
 # Initialisation de l'application
 app = Flask(__name__)
 
@@ -29,6 +28,11 @@ if not SECRET_KEY:
     raise RuntimeError(
         "SECRET_KEY manquante. Définissez-la dans un fichier .env ou une variable "
         "d'environnement (voir .env.example). Aucune valeur par défaut n'est fournie."
+    )
+if SECRET_KEY.lower() in ('change_me', 'changeme', 'secret', 'dev') or len(SECRET_KEY) < 32:
+    raise RuntimeError(
+        "SECRET_KEY trop faible (valeur d'exemple ou < 32 caracteres). Generez-en une avec : "
+        "python -c \"import secrets; print(secrets.token_urlsafe(48))\""
     )
 app.config['SECRET_KEY'] = SECRET_KEY
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///blog.db')
@@ -50,6 +54,8 @@ app.config['REMEMBER_COOKIE_SECURE'] = app.config['SESSION_COOKIE_SECURE']
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 app.config['REMEMBER_COOKIE_SAMESITE'] = 'Strict'
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
+# CSRF tokens expire with the session instead of living forever
+app.config['WTF_CSRF_TIME_LIMIT'] = 4 * 3600
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 12 * 1024 * 1024))
 # Empeche l'enregistrement des identifiants de session dans les journaux via
 # l'URL et limite la duree de vie des reponses en cache navigateur.
@@ -61,18 +67,17 @@ if os.environ.get('TEMPLATE_AUTO_RELOAD', '').lower() in ('1', 'true', 'yes'):
     app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.jinja_env.auto_reload = True
 
-# Configuration CKEditor
-app.config['CKEDITOR_SERVE_LOCAL'] = True
-app.config['CKEDITOR_HEIGHT'] = 400
-app.config['CKEDITOR_FILE_UPLOADER'] = 'upload'
-
-# Derriere un reverse proxy (nginx, Tor onion service...), `request.remote_addr`
+# Derriere un reverse proxy (nginx, Caddy, Tor onion service...), `request.remote_addr`
 # vaut sinon 127.0.0.1 pour tout le monde : le rate limiting s'appliquerait
-# globalement au lieu de par visiteur. A n'activer que si un proxy de confiance
-# est reellement present, sinon un client peut forger X-Forwarded-For.
-if os.environ.get('TRUST_PROXY', '').lower() in ('1', 'true', 'yes'):
-    from werkzeug.middleware.proxy_fix import ProxyFix
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+# globalement au lieu de par visiteur. TRUSTED_PROXY_COUNT = nombre de proxys de
+# confiance devant l'application (TRUST_PROXY=true vaut 1, ancienne syntaxe).
+# Ne jamais l'activer si l'application est exposee directement : un client
+# pourrait forger X-Forwarded-For.
+_proxy_count = int(os.environ.get('TRUSTED_PROXY_COUNT', '0') or 0)
+if _proxy_count <= 0 and os.environ.get('TRUST_PROXY', '').lower() in ('1', 'true', 'yes'):
+    _proxy_count = 1
+if _proxy_count > 0:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=_proxy_count, x_proto=_proxy_count, x_host=_proxy_count)
 
 
 # Journalisation : par defaut le serveur de developpement Werkzeug ecrit une
@@ -118,34 +123,35 @@ if os.environ.get('LOG_CLIENT_IP', '').lower() not in ('1', 'true', 'yes'):
 
 
 # Initialisation des extensions
-ckeditor = CKEditor(app)
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 csrf = CSRFProtect(app)
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
-socketio = SocketIO(app)
+# 'basic' (not 'strong'): Tor / mobile users change IP often and must not be
+# logged out on every circuit change.
+login_manager.session_protection = 'basic'
+# Same-origin only, bounded message size (python-socketio DoS class)
+socketio = SocketIO(app, cors_allowed_origins=None, max_http_buffer_size=1_000_000)
 
 
 # Importez routes, models et client après l'initialisation
-from app import routes, models, chat
+from app import routes, models, cli  # noqa: E402,F401  (registers routes + CLI commands)
 
 # Fonction de chargement de l'utilisateur pour Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
-    # `user_id` = "<id>:<jeton de session>" (voir User.get_id). Un ancien cookie
-    # ne contient que l'identifiant : son jeton vide reste valide tant que le
-    # compte n'a pas change de mot de passe / de 2FA.
-    import hmac
-    uid, _, token = str(user_id).partition(':')
+    # "<id>:<session_version>" : une session creee avant un changement de mot de
+    # passe ou un "deconnexion partout" ne correspond plus et est rejetee. Un
+    # ancien cookie ("5", sans version) vaut version 0.
     try:
-        user = models.User.query.get(int(uid))
+        raw_id, _, raw_version = str(user_id).partition(':')
+        user = db.session.get(models.User, int(raw_id))
+        version = int(raw_version or 0)
     except (TypeError, ValueError):
         return None
-    if user is None:
-        return None
-    if not hmac.compare_digest(token.encode(), (user.session_token or '').encode()):
+    if user is None or (user.session_version or 0) != version:
         return None
     return user
 
@@ -204,22 +210,56 @@ def static_v(filename):
 @app.template_filter('urlize')
 def urlize_filter(s):
     # Echapper AVANT de generer le HTML : `s` peut contenir du contenu utilisateur.
-    return Markup(re.sub(r'(?<!\w)(/post/\d+)', r'<a href="\1">\1</a>', str(escape(s))))
+    return Markup(re.sub(r'(?<!\w)(/post/\d+)', r'<a href="\1">\1</a>', str(escape(s or ''))))  # nosec B704
 
 @app.template_filter('bbcode')
 def bbcode_filter(s):
     # parse_bbcode echappe le texte AVANT de generer le HTML.
     from app.utils import parse_bbcode
-    return Markup(parse_bbcode(s or ''))
+    return Markup(parse_bbcode(s or ''))  # nosec B704
 
 
 @app.template_filter('comment_html')
 def comment_html_filter(comment):
-    """HTML sur d'un commentaire, nouveau (BBCode) ou ancien (HTML assaini)."""
+    """HTML sur d'un commentaire : objet Comment (BBCode ou ancien HTML assaini)
+    ou simple chaine (traitee comme du BBCode)."""
     from app.utils import parse_bbcode, sanitize_legacy_html
+    if isinstance(comment, str) or comment is None:
+        return Markup(parse_bbcode(comment or ''))  # nosec B704
     if comment.content_format == 'bbcode':
-        return Markup(parse_bbcode(comment.content or ''))
-    return Markup(sanitize_legacy_html(comment.content or ''))
+        return Markup(parse_bbcode(comment.content or ''))  # nosec B704
+    return Markup(sanitize_legacy_html(comment.content or ''))  # nosec B704
+
+
+@app.template_filter('excerpt')
+def excerpt_filter(text, length=180):
+    """Plain-text preview of a post (BBCode/HTML rendered, then stripped)."""
+    from app.utils import render_rich_html
+    plain = Markup(render_rich_html(text)).striptags()  # nosec B704
+    if len(plain) <= length:
+        return plain
+    return plain[:length].rsplit(' ', 1)[0] + '…'
+
+
+@app.template_filter('slug')
+def slug_filter(text):
+    from app.services import slugify
+    return slugify(text)
+
+
+@app.template_filter('qr_data_uri')
+def qr_data_uri_filter(text):
+    """QR code as an inline PNG data: URI (generated server-side, no JS, no CDN)."""
+    import base64, io, qrcode
+    buf = io.BytesIO()
+    qrcode.make(str(text or ''), box_size=4, border=2).save(buf, format='PNG')
+    return 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode('ascii')
+
+
+@app.template_filter('rich_html')
+def rich_html_filter(s):
+    from app.utils import render_rich_html
+    return Markup(render_rich_html(s))  # nosec B704
 
 
 if __name__ == '__main__':

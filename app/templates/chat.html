@@ -1,5 +1,9 @@
 {% extends 'layout.html' %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/chat.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="chat-page">
     <div class="chat-header">
@@ -9,6 +13,7 @@
 
     <div class="chat-container">
         <div class="chat-messages" id="chat-messages">
+          <div class="chat-messages-inner">
             {% for message in messages %}
             <div class="message {% if message.sender_id == current_user.id %}message-sent{% else %}message-received{% endif %}">
                 <div class="message-header">
@@ -29,7 +34,7 @@
                             </a>
                         {% endif %}
                     {% endif %}
-                    {% if message.content %}
+                    {% if message.get_decrypted_content() %}
                         {# Pas de `| safe` : un message est du texte, et le rendre en HTML brut
                        transformait le chat en XSS stockee vers l'administrateur. #}
                         <p>{{ message.get_decrypted_content() if message.is_encrypted else message.content }}</p>
@@ -37,6 +42,7 @@
                 </div>
             </div>
             {% endfor %}
+          </div>
         </div>
 
         <div class="chat-input-container">
@@ -45,11 +51,10 @@
                 <div class="input-group">
                     <textarea name="message" placeholder="{{ t('chat.placeholder') }}" rows="2" class="message-input"></textarea>
                     <div class="file-upload-group">
-                        <input type="file" name="file" id="file-input" style="display: none;">
                         <label for="file-input" class="file-upload-btn">
                             <span class="icon-paperclip"></span> {{ t('chat.attach') }}
                         </label>
-                        <span id="file-name" class="file-name"></span>
+                        <input type="file" name="file" id="file-input" class="file-input-visible">
                     </div>
                     <button type="submit" class="send-btn">
                         <span class="icon-paper-plane"></span> {{ t('chat.send') }}
@@ -60,203 +65,5 @@
     </div>
 </div>
 
-<style>
-.chat-page {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-}
 
-.chat-header {
-    text-align: center;
-    margin-bottom: 2rem;
-}
-
-.chat-header h2 {
-    font-family: var(--font-display);
-    color: var(--ash);
-    margin-bottom: 0.5rem;
-}
-
-.chat-header p {
-    color: var(--ash-dim);
-    font-size: 0.9rem;
-}
-
-.chat-container {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-    height: 500px;
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-messages {
-    flex: 1;
-    padding: 1rem;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.message {
-    max-width: 70%;
-    padding: 0.8rem;
-    border-radius: 6px;
-    position: relative;
-}
-
-.message-sent {
-    align-self: flex-end;
-    background: rgba(125, 147, 200, 0.2);
-    border: 1px solid rgba(125, 147, 200, 0.3);
-}
-
-.message-received {
-    align-self: flex-start;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.message-header {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
-}
-
-.message-author {
-    font-weight: 600;
-    color: var(--ash);
-}
-
-.message-time {
-    color: var(--ash-dim);
-}
-
-.message-content p {
-    margin: 0;
-    color: var(--ash);
-    line-height: 1.4;
-}
-
-.message-image, .message-video {
-    max-width: 100%;
-    border-radius: 6px;
-    margin-top: 0.5rem;
-}
-
-.message-file {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--moon-bright);
-    text-decoration: none;
-    padding: 0.5rem;
-    background: rgba(125, 147, 200, 0.1);
-    border-radius: 6px;
-    margin-top: 0.5rem;
-}
-
-.message-file:hover {
-    background: rgba(125, 147, 200, 0.2);
-}
-
-.chat-input-container {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1rem;
-}
-
-.input-group {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-}
-
-.message-input {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    padding: 0.8rem;
-    color: var(--ash);
-    resize: none;
-    font-family: inherit;
-}
-
-.message-input:focus {
-    outline: none;
-    border-color: rgba(125, 147, 200, 0.5);
-}
-
-.file-upload-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.file-upload-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 0.8rem;
-    cursor: pointer;
-    color: var(--ash-dim);
-    transition: all 0.3s ease;
-}
-
-.file-upload-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: var(--ash);
-}
-
-.file-name {
-    font-size: 0.7rem;
-    color: var(--ash-dim);
-    margin-top: 0.2rem;
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.send-btn {
-    background: rgba(125, 147, 200, 0.2);
-    border: 1px solid rgba(125, 147, 200, 0.3);
-    border-radius: 6px;
-    padding: 0.8rem;
-    color: var(--moon-bright);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.send-btn:hover {
-    background: rgba(125, 147, 200, 0.3);
-    color: var(--moon-bright);
-}
-</style>
-
-<script>
-// Auto-scroll to bottom
-function scrollToBottom() {
-    const chatMessages = document.getElementById('chat-messages');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Display selected file name
-document.getElementById('file-input').addEventListener('change', function(e) {
-    const fileName = document.getElementById('file-name');
-    if (e.target.files.length > 0) {
-        fileName.textContent = e.target.files[0].name;
-    } else {
-        fileName.textContent = '';
-    }
-});
-
-// Initial scroll
-scrollToBottom();
-</script>
 {% endblock %}

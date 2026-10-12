@@ -71,6 +71,7 @@ DEFAULTS = {
     'nav.admin':        {'en': 'Admin panel',      'fr': 'Administration'},
     'nav.donate':       {'en': 'Support the blog', 'fr': 'Soutenir le blog'},
     'nav.language':     {'en': 'Language',         'fr': 'Langue'},
+    'nav.search':       {'en': 'Search',           'fr': 'Rechercher'},
 
     # --------------------------------------------------------------- home
     'home.hero.eyebrow': {'en': 'Written when the house is quiet',
@@ -111,6 +112,21 @@ DEFAULTS = {
     'posts.reply':       {'en': 'Reply',           'fr': 'Répondre'},
     'posts.edit':        {'en': 'Edit',            'fr': 'Modifier'},
     'posts.delete':      {'en': 'Delete',          'fr': 'Supprimer'},
+    'posts.comment.reply_placeholder': {'en': 'Write your reply…',
+                                        'fr': 'Écrire ta réponse…'},
+    'posts.search.submit': {'en': 'Search',          'fr': 'Rechercher'},
+    'posts.search.heading': {'en': 'Search',         'fr': 'Recherche'},
+    'posts.search.empty': {'en': 'Type something to search.',
+                           'fr': 'Saisis quelque chose à rechercher.'},
+    'posts.search.short': {'en': 'Use at least 2 characters.',
+                           'fr': 'Utilise au moins 2 caractères.'},
+    'posts.search.none': {'en': 'No post matches your search.',
+                          'fr': 'Aucun article ne correspond à ta recherche.'},
+    'posts.search.limited': {'en': 'Too many searches, please wait a minute.',
+                             'fr': 'Trop de recherches, attends une minute.'},
+    'posts.tag.heading': {'en': 'Tag',              'fr': 'Étiquette'},
+    'posts.category.heading': {'en': 'Category',    'fr': 'Catégorie'},
+    'posts.none_found':  {'en': 'No posts found.', 'fr': 'Aucun article trouvé.'},
 
     # -------------------------------------------------------------- about
     'about.eyebrow':     {'en': 'About',           'fr': 'À propos'},
@@ -190,6 +206,69 @@ DEFAULTS = {
                               'fr': 'Au moins 12 caractères.'},
     'account.password.submit': {'en': 'Change password', 'fr': 'Changer le mot de passe'},
     'account.password.link': {'en': 'Change password',   'fr': 'Changer le mot de passe'},
+    'account.sec.link':  {'en': 'Account security: password, 2FA, sessions, export, delete account',
+                          'fr': 'Sécurité du compte : mot de passe, 2FA, sessions, export, suppression'},
+    'account.sec.title': {'en': 'Account security', 'fr': 'Sécurité du compte'},
+    'account.sec.lead':  {'en': 'Password, two-factor authentication, sessions and your personal data.',
+                          'fr': 'Mot de passe, authentification à deux facteurs, sessions et données personnelles.'},
+    'account.sec.password.title': {'en': 'Change password', 'fr': 'Changer le mot de passe'},
+    'account.sec.password.note': {'en': 'You will be logged out of every other device.',
+                                  'fr': 'Tu seras déconnecté de tous les autres appareils.'},
+    'account.sec.password.submit': {'en': 'Change password', 'fr': 'Changer le mot de passe'},
+    'account.sec.2fa.title': {'en': 'Two-factor authentication',
+                              'fr': 'Authentification à deux facteurs'},
+    'account.sec.2fa.active': {'en': '2FA is active.', 'fr': 'La 2FA est active.'},
+    'account.sec.2fa.left': {'en': 'Recovery codes left:', 'fr': 'Codes de secours restants :'},
+    'account.sec.2fa.recovery.open': {'en': 'Generate new recovery codes',
+                                      'fr': 'Générer de nouveaux codes de secours'},
+    'account.sec.2fa.recovery.submit': {'en': 'Generate (the old codes stop working)',
+                                        'fr': 'Générer (les anciens codes cessent de fonctionner)'},
+    'account.sec.2fa.disable': {'en': 'Disable 2FA', 'fr': 'Désactiver la 2FA'},
+    'account.sec.2fa.inactive': {'en': '2FA is not enabled. It protects your account even if your '
+                                       'password leaks.',
+                                 'fr': 'La 2FA n\'est pas activée. Elle protège ton compte même '
+                                       'si ton mot de passe fuit.'},
+    'account.sec.2fa.enable': {'en': 'Enable 2FA', 'fr': 'Activer la 2FA'},
+    'account.sec.sessions.title': {'en': 'Sessions', 'fr': 'Sessions'},
+    'account.sec.sessions.body': {'en': 'Lost a device or used a shared computer? Log out everywhere '
+                                        'except here.',
+                                  'fr': 'Appareil perdu ou ordinateur partagé ? Déconnecte-toi '
+                                        'partout sauf ici.'},
+    'account.sec.sessions.submit': {'en': 'Log out all other sessions',
+                                    'fr': 'Déconnecter toutes les autres sessions'},
+    'account.sec.export.title': {'en': 'Download my data', 'fr': 'Télécharger mes données'},
+    'account.sec.export.body': {'en': 'A JSON file with your account, comments, messages '
+                                      '(decrypted), likes and notifications.',
+                                'fr': 'Un fichier JSON avec ton compte, tes commentaires, tes '
+                                      'messages (déchiffrés), tes likes et tes notifications.'},
+    'account.sec.export.open': {'en': 'Export my data', 'fr': 'Exporter mes données'},
+    'account.sec.export.submit': {'en': 'Download', 'fr': 'Télécharger'},
+    'account.sec.delete.title': {'en': 'Delete my account', 'fr': 'Supprimer mon compte'},
+    'account.sec.delete.body': {'en': 'Your account, messages, attachments, likes and '
+                                      'notifications are erased. Your comments stay, anonymized. '
+                                      'This cannot be undone.',
+                                'fr': 'Ton compte, tes messages, tes pièces jointes, tes likes et '
+                                      'tes notifications sont effacés. Tes commentaires restent, '
+                                      'anonymisés. C\'est irréversible.'},
+    'account.sec.delete.open': {'en': 'Delete my account', 'fr': 'Supprimer mon compte'},
+    'account.sec.delete.submit': {'en': 'Delete forever', 'fr': 'Supprimer définitivement'},
+    'account.recovery.title': {'en': 'Your 2FA recovery codes', 'fr': 'Tes codes de secours 2FA'},
+    'account.recovery.lead': {'en': 'If you lose your authenticator app, each of these codes lets '
+                                    'you log in once instead of a 6-digit code.',
+                              'fr': 'Si tu perds ton application d\'authentification, chacun de '
+                                    'ces codes permet de te connecter une fois, à la place du '
+                                    'code à 6 chiffres.'},
+    'account.recovery.warning': {'en': 'They are shown only now. Save them in your password '
+                                       'manager or print them, then close this page.',
+                                 'fr': 'Ils ne sont affichés que maintenant. Enregistre-les dans '
+                                       'ton gestionnaire de mots de passe ou imprime-les, puis '
+                                       'ferme cette page.'},
+    'account.recovery.note': {'en': 'Any previous recovery codes no longer work. You can generate '
+                                    'a new set from the account security page.',
+                              'fr': 'Les anciens codes de secours ne fonctionnent plus. Tu peux '
+                                    'en générer de nouveaux depuis la page de sécurité du compte.'},
+    'account.recovery.continue': {'en': 'I saved them, continue',
+                                  'fr': 'Je les ai enregistrés, continuer'},
 
     # --------------------------------------------------------------- chat
     'chat.title':        {'en': 'Chat',            'fr': 'Chat'},
@@ -219,6 +298,15 @@ DEFAULTS = {
                            'fr': 'Masquer le widget'},
     'donate.widget.newtab': {'en': 'Open it in a new tab instead',
                              'fr': 'L\'ouvrir plutôt dans un nouvel onglet'},
+    'donate.widget.note': {'en': 'The swap page is hosted by trocador.app, a third party. It is '
+                                 'only contacted if you click the link below; it then sees your '
+                                 'IP address and browser.',
+                           'fr': 'La page d\'échange est hébergée par trocador.app, un tiers. '
+                                 'Il n\'est contacté que si tu cliques sur le lien ci-dessous ; '
+                                 'il voit alors ton adresse IP et ton navigateur.'},
+    'donate.qr_alt':     {'en': 'QR code of the address', 'fr': 'QR code de l\'adresse'},
+    'donate.address_hint': {'en': 'Click to select, then copy',
+                            'fr': 'Clique pour sélectionner, puis copie'},
     'donate.widget.warning': {'en': 'The swap widget is hosted by trocador.app. Loading it lets '
                                     'that third party see your IP address and browser. It stays '
                                     'unloaded until you ask for it.',
@@ -228,9 +316,9 @@ DEFAULTS = {
     'donate.crypto.title': {'en': 'Donate with crypto',
                             'fr': 'Faire un don en cryptomonnaie'},
     'donate.crypto.body': {'en': 'Choose your preferred cryptocurrency and scan the QR code, or '
-                                 'tap an address to copy it.',
-                           'fr': 'Choisis ta cryptomonnaie et scanne le QR code, ou touche une '
-                                 'adresse pour la copier.'},
+                                 'click an address to select it, then copy.',
+                           'fr': 'Choisis ta cryptomonnaie et scanne le QR code, ou clique '
+                                 'sur une adresse pour la sélectionner, puis la copier.'},
 
 
     # ------------------------------------------------- private (chat, profil)
@@ -278,6 +366,11 @@ DEFAULTS = {
     'totp.manual':       {'en': 'Or enter this key manually:',
                           'fr': 'Ou saisis cette clé manuellement :'},
     'totp.qr_alt':       {'en': 'TOTP QR code', 'fr': 'QR code TOTP'},
+    'totp.disable_sub':  {'en': 'Enter your current password and a valid code from your '
+                                'authenticator app (or a recovery code) to turn off 2FA.',
+                          'fr': 'Saisis ton mot de passe actuel et un code valide de ton '
+                                'application d\'authentification (ou un code de secours) pour '
+                                'désactiver la 2FA.'},
     'totp.current_password': {'en': 'Current password', 'fr': 'Mot de passe actuel'},
     'totp.enable_short': {'en': 'Enable 2FA',      'fr': 'Activer la 2FA'},
     'totp.setup_sub':    {'en': 'Scan the QR code with an authenticator app (Google '
@@ -435,8 +528,8 @@ def render_rich(raw):
 
     Les navigateurs envoient les sauts de ligne d'un textarea en `\r\n` : on
     normalise d'abord, sinon `\r\n\r\n` ne serait jamais reconnu comme une
-    ligne vide. `parse_bbcode` echappe avant de mettre en forme ; les <br> sont
-    ajoutes apres, sur du HTML deja sur.
+    ligne vide. `parse_bbcode` echappe avant de mettre en forme et convertit lui-meme
+    les sauts de ligne simples en <br>.
     """
     from markupsafe import Markup
     from app.utils import parse_bbcode
@@ -444,9 +537,10 @@ def render_rich(raw):
     raw = (raw or '').replace('\r\n', '\n').replace('\r', '\n')
     blocks = [b.strip() for b in raw.split('\n\n') if b.strip()]
     html = ''.join(
-        '<p>' + parse_bbcode(b).replace('\n', '<br>') + '</p>' for b in blocks
+        '<p>' + parse_bbcode(b) + '</p>' for b in blocks
     )
-    return Markup(html)
+    # Reviewed: parse_bbcode HTML-escapes its input before building any markup.
+    return Markup(html)  # nosec B704
 
 
 def get_rich_text(key, lang=None):

@@ -1,12 +1,26 @@
-import secrets
 from datetime import datetime
 from flask_login import UserMixin
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SubmitField
-from wtforms.validators import DataRequired, Email
 
 from . import db
+
+# Many-to-many link between posts and tags
+post_tags = db.Table(
+    'post_tags',
+    db.Column('post_id', db.Integer, db.ForeignKey('post.id'), primary_key=True),
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+)
+
+
+class Tag(db.Model):
+    __tablename__ = 'tag'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(40), unique=True, nullable=False)
+    slug = db.Column(db.String(50), unique=True, nullable=False, index=True)
+
+    def __repr__(self):
+        return f"Tag('{self.name}')"
+
 
 # Post Model
 class Post(db.Model):
@@ -22,12 +36,15 @@ class Post(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     likes_count = db.Column(db.Integer, default=0)
     views_count = db.Column(db.Integer, default=0)
+    category = db.Column(db.String(60), nullable=True, index=True)
 
     # Relationships
     revisions = db.relationship('Revision', back_populates='post', lazy=True)
     author = db.relationship('User', back_populates='posts')
     comments = db.relationship('Comment', back_populates='post', lazy=True)
     likes = db.relationship('Like', back_populates='post', lazy=True)
+    tags = db.relationship('Tag', secondary=post_tags, lazy='subquery',
+                           backref=db.backref('posts', lazy=True))
 
     def __repr__(self):
         return f"Post('{self.title}', '{self.date_posted}')"
@@ -119,14 +136,15 @@ class User(db.Model, UserMixin):
     totp_secret = db.Column(db.String(255), nullable=True)
     # Dernier pas TOTP accepte : un code deja utilise ne peut pas etre rejoue.
     totp_last_counter = db.Column(db.Integer, nullable=True)
-    # Jeton de session : change au changement de mot de passe / de 2FA, ce qui
-    # invalide les cookies de session et "remember" deja emis.
-    session_token = db.Column(db.String(32), nullable=True)
+    # SHA-256 hashes of the unused 2FA recovery codes (JSON list)
+    recovery_codes = db.Column(db.Text, nullable=True)
+    # Bumped on password change / "log out everywhere": invalidates every
+    # existing session and remember-me cookie of this user.
+    session_version = db.Column(db.Integer, nullable=False, default=0, server_default='0')
 
     # Pose a la creation d'un compte dont le mot de passe a ete genere par un
     # script : tant qu'il vaut True, toute navigation est renvoyee vers le
-    # changement de mot de passe. Une consigne dans un README ne s'applique
-    # pas toute seule.
+    # changement de mot de passe.
     must_change_password = db.Column(db.Boolean, default=False, nullable=False)
 
     # Bannissement. `is_banned` coupe l'acces des la session suivante ET la
@@ -146,12 +164,12 @@ class User(db.Model, UserMixin):
     notifications = db.relationship('Notification', back_populates='user', lazy=True)
 
     def get_id(self):
-        # "<id>:<jeton>" ; un ancien cookie ("5", sans jeton) vaut jeton vide.
-        return f"{self.id}:{self.session_token or ''}"
+        # Flask-Login stores this in the session / remember cookie
+        return f"{self.id}:{self.session_version or 0}"
 
     def rotate_session_token(self):
         """Invalide toutes les sessions et cookies "remember" deja emis."""
-        self.session_token = secrets.token_hex(16)
+        self.session_version = (self.session_version or 0) + 1
 
     def get_badges(self):
         """Returns the user's badge list"""
