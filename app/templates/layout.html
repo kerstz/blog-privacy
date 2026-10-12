@@ -1,14 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MyBlog{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/icons.css') }}">
+    <title>{% block title %}depressedyoungmanblog{% endblock %}</title>
+    <meta name="referrer" content="no-referrer">
+    {# Aucune police distante. Charger Google Fonts revenait a transmettre a
+       Google, pour chaque page vue, l'adresse IP du lecteur, son User-Agent et
+       l'URL consultee (via le Referer) — exactement ce qu'un blog dedie a la
+       vie privee doit eviter. Les piles de repli definies dans style.css
+       (Georgia / system-ui / ui-monospace) prennent le relais ; deposer les
+       fichiers .woff2 dans app/static/fonts/ suffit a retrouver Fraunces et
+       IBM Plex en auto-hebergement. #}
+    <link rel="stylesheet" href="{{ static_v('css/style.css') }}">
+    <link rel="stylesheet" href="{{ static_v('css/icons.css') }}">
     {% block extra_head %}{% endblock %}
     {% block extra_css %}{% endblock %}
 </head>
@@ -16,15 +21,15 @@
     <!-- Navbar -->
     <header>
         <nav class="navbar">
-            <a class="navbar-brand" href="{{ url_for('index') }}">My<span class="redact">Blog</span></a>
+            <a class="navbar-brand" href="{{ url_for('index') }}">depressedyoungman<span class="brand-suffix">blog</span></a>
             <ul class="navbar-menu">
-                <li><a href="{{ url_for('about') }}">About</a></li>
-                <li><a href="{{ url_for('contact') }}">Contact</a></li>
+                <li><a href="{{ url_for('about') }}">{{ t('nav.about') }}</a></li>
+                <li><a href="{{ url_for('contact') }}">{{ t('nav.contact') }}</a></li>
 
                 {% if current_user.is_authenticated %}
                     {% if current_user.is_admin %}
                         <li><a href="{{ url_for('admin_dashboard') }}" class="panel-btn">
-                            <span class="icon-cog"></span>
+                            <span class="icon-cog"></span> {{ t('nav.admin') }}
                         </a></li>
                     {% endif %}
                     <li><a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="user-btn">
@@ -33,26 +38,49 @@
                         {% else %}
                             <span class="icon-user"></span>
                         {% endif %}
+                        {{ t('nav.profile') }}
                     </a></li>
                     <li><a href="{{ url_for('notifications') }}" class="notification-btn">
-                        <span class="icon-bell"></span>
+                        <span class="icon-bell"></span> {{ t('nav.notifications') }}
                         {% if current_user.unread_notifications_count() > 0 %}
                             <span class="notification-badge">{{ current_user.unread_notifications_count() }}</span>
                         {% endif %}
                     </a></li>
                     <li><a href="{{ url_for('logout') }}" class="logout-btn">
-                        <span class="icon-sign-out"></span>
+                        <span class="icon-sign-out"></span> {{ t('nav.logout') }}
                     </a></li>
                 {% else %}
-                    <li><a href="{{ url_for('register') }}">Register</a></li>
-                    <li><a href="{{ url_for('login') }}" class="login-btn">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">{{ t('nav.register') }}</a></li>
+                    <li><a href="{{ url_for('login') }}" class="login-btn">{{ t('nav.login') }}</a></li>
                 {% endif %}
+                <li class="lang-switch" role="group" aria-label="{{ t('nav.language') }}">
+                    {% for code, name in LANGUAGES.items() %}
+                        <a href="{{ url_for(request.endpoint or 'index', **dict(request.view_args or {}, lang=code)) }}"
+                           class="lang-option{% if current_language() == code %} is-active{% endif %}"
+                           lang="{{ code }}"
+                           {% if current_language() == code %}aria-current="true"{% endif %}>{{ code|upper }}</a>
+                    {% endfor %}
+                </li>
             </ul>
         </nav>
     </header>
 
     <!-- Main Content -->
     <main class="container">
+        {# Les messages flash n'etaient rendus nulle part sur le site public :
+           « Login failed », « Too many requests », « Account suspended » ou
+           « Message sent » restaient invisibles et s'accumulaient en session
+           jusqu'a une page d'administration. #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flashes" role="status">
+                {% for category, message in messages %}
+                    <p class="flash flash-{{ category }}">{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
         <div class="content">
             {% block content %}
             {% endblock %}
@@ -63,7 +91,7 @@
     <footer class="footer">
         <div class="footer-container">
             <a href="{{ url_for('donate') }}" class="donate-btn">
-                <span class="icon-heart"></span> Support the blog
+                <span class="icon-heart"></span> {{ t('nav.donate') }}
             </a>
         </div>
     </footer>

@@ -1,27 +1,31 @@
 from flask import render_template, url_for, flash, redirect, request, abort, send_from_directory, session, jsonify, Response, stream_with_context, has_request_context
 from flask_login import login_user, current_user, logout_user, login_required
 from app import app, db, bcrypt, socketio, csrf
-from app.utils import parse_bbcode
-from app.forms import LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm, StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm, TOTPVerifyForm
+from app.utils import parse_bbcode, html_to_text
+from app.forms import LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm, StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm, TOTPVerifyForm, ChangePasswordForm, SiteTextImportForm
 from app.models import User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like, Notification, Badge, ContactMessage
-from app.utils import rate_limit, role_required, process_image_file
+from app.utils import (rate_limit, role_required, process_image_file, anonymous_client_key,
+                       hashed_key, record_failure, too_many_failures, clear_failures,
+                       purge_store)
+from app.encryption import message_encryption
 from functools import wraps
 from urllib.parse import urlparse, urljoin
 from datetime import datetime, timedelta
 from flask_socketio import emit
 from werkzeug.utils import secure_filename
+from sqlalchemy.exc import IntegrityError
 import re
 import os
-import sqlite3
 import json
 import base64
 import queue
 import time
 import uuid
-import requests
-from threading import Lock, Thread
+import math
+import hmac
+import secrets
+from threading import Lock
 from PIL import Image
-import piexif
 import pyotp
 import io
 
@@ -49,197 +53,55 @@ mobile_event_subscribers = []
 mobile_event_lock = Lock()
 action_rate_limit_lock = Lock()
 action_rate_limit_buckets = {}
-telegram_update_lock = Lock()
-telegram_last_update_id = 0
-telegram_last_poll_at = 0.0
-telegram_users_lock = Lock()
-TELEGRAM_USERS_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'instance', 'telegram_users.db')
-telegram_poller_started = False
-telegram_poller_lock = Lock()
-telegram_reply_state = {}
-telegram_admin_state = {}
-telegram_auth_sessions = {}
-telegram_process_started_at = time.time()
 
 
-def _ensure_telegram_users_db():
-    os.makedirs(os.path.dirname(TELEGRAM_USERS_DB_PATH), exist_ok=True)
-    with sqlite3.connect(TELEGRAM_USERS_DB_PATH) as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS telegram_users (
-                chat_id INTEGER PRIMARY KEY,
-                username TEXT,
-                first_name TEXT,
-                has_pending INTEGER DEFAULT 0,
-                last_message TEXT,
-                last_message_at TEXT,
-                last_replied_at TEXT,
-                updated_at TEXT
-            )
-            """
-        )
-        conn.commit()
 
 
-def _telegram_users_upsert(chat_id, username, first_name, has_pending=None, last_message=None):
-    _ensure_telegram_users_db()
-    now_iso = datetime.utcnow().isoformat() + 'Z'
-
-    with telegram_users_lock:
-        with sqlite3.connect(TELEGRAM_USERS_DB_PATH) as conn:
-            conn.execute(
-                """
-                INSERT INTO telegram_users (chat_id, username, first_name, has_pending, last_message, last_message_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(chat_id) DO UPDATE SET
-                    username=excluded.username,
-                    first_name=excluded.first_name,
-                    updated_at=excluded.updated_at
-                """,
-                (chat_id, username, first_name, 0, None, None, now_iso)
-            )
-
-            if has_pending is not None:
-                conn.execute(
-                    "UPDATE telegram_users SET has_pending=?, updated_at=? WHERE chat_id=?",
-                    (1 if has_pending else 0, now_iso, chat_id)
-                )
-            if last_message is not None:
-                conn.execute(
-                    "UPDATE telegram_users SET last_message=?, last_message_at=?, updated_at=? WHERE chat_id=?",
-                    (last_message, now_iso, now_iso, chat_id)
-                )
-            conn.commit()
 
 
-def _blog_non_admin_users():
-    return User.query.filter_by(is_admin=False).order_by(User.username.asc()).all()
 
 
-def _blog_users_with_messages(admin_user_id):
-    if not admin_user_id:
-        return []
-
-    users = _blog_non_admin_users()
-    users_with_messages = []
-    for user in users:
-        has_user_message = Message.query.filter(
-            Message.sender_id == user.id,
-            Message.receiver_id == admin_user_id
-        ).first() is not None
-        if has_user_message:
-            users_with_messages.append(user)
-    return users_with_messages
 
 
-def _blog_users_pending_reply(admin_user_id):
-    if not admin_user_id:
-        return []
-
-    users = _blog_users_with_messages(admin_user_id)
-    pending = []
-    for user in users:
-        latest_message = Message.query.filter(
-            ((Message.sender_id == admin_user_id) & (Message.receiver_id == user.id)) |
-            ((Message.sender_id == user.id) & (Message.receiver_id == admin_user_id))
-        ).order_by(Message.id.desc()).first()
-
-        if latest_message and latest_message.sender_id == user.id:
-            pending.append(user)
-    return pending
 
 
-def _format_blog_users_lines(title, users):
-    if not users:
-        return [f"{title}: none"]
-
-    lines = [f"{title} ({len(users)}):"]
-    for user in users[:60]:
-        lines.append(f"- {user.username} (user_id={user.id})")
-    if len(users) > 60:
-        lines.append(f"...and {len(users) - 60} more.")
-    return lines
 
 
-def _telegram_set_admin_state(chat_id, mode, **payload):
-    telegram_admin_state[chat_id] = {'mode': mode, **payload}
 
 
-def _telegram_get_admin_state(chat_id):
-    return telegram_admin_state.get(chat_id)
 
 
-def _telegram_clear_admin_state(chat_id):
-    telegram_admin_state.pop(chat_id, None)
 
 
-def _telegram_admin_user_id():
-    # Primary lock for Telegram actor identity (private user account).
-    return (os.environ.get('TELEGRAM_ADMIN_USER_ID') or '').strip()
 
 
-def _telegram_is_actor_authorized(actor_user_id):
-    actor = str(actor_user_id or '').strip()
-    explicit_admin = _telegram_admin_user_id()
-    if explicit_admin:
-        return actor == explicit_admin
-    # Backward-compatible fallback: private bot chat uses same numeric id.
-    configured_chat_id = (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    return bool(actor and configured_chat_id and actor == configured_chat_id)
 
 
-def _telegram_pin_required():
-    return bool((os.environ.get('TELEGRAM_ADMIN_PIN') or '').strip())
 
 
-def _telegram_session_ttl_seconds():
-    try:
-        ttl = int((os.environ.get('TELEGRAM_ADMIN_SESSION_TTL') or '900').strip())
-    except Exception:
-        ttl = 900
-    return max(300, min(ttl, 3600))
 
 
-def _telegram_is_session_valid(actor_user_id):
-    expiry = telegram_auth_sessions.get(str(actor_user_id or ''))
-    return bool(expiry and time.time() < expiry)
 
 
-def _telegram_start_session(actor_user_id):
-    if not actor_user_id:
-        return
-    telegram_auth_sessions[str(actor_user_id)] = time.time() + _telegram_session_ttl_seconds()
 
 
-def _telegram_clear_session(actor_user_id):
-    telegram_auth_sessions.pop(str(actor_user_id or ''), None)
 
 
-def _telegram_audit_log(actor_user_id, action, details=None):
-    details_text = (details or '').strip()
-    line = f"🔐 [AUDIT] {action} | by={actor_user_id}"
-    if details_text:
-        line += f" | {details_text}"
-    app.logger.info(line)
-    audit_chat_id = (os.environ.get('TELEGRAM_AUDIT_CHAT_ID') or os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    if audit_chat_id:
-        telegram_send_message_to_chat(audit_chat_id, line, disable_notification=True)
 
 
-def _to_positive_int(text):
-    try:
-        value = int(str(text).strip())
-        return value if value > 0 else None
-    except Exception:
-        return None
 
 
-def _action_rate_limited(action_key, max_calls, window_seconds):
+def _action_rate_limited(action_key, max_calls, window_seconds, actor_key=None):
+    """Vrai si l'acteur a depasse `max_calls` en `window_seconds`.
+
+    `actor_key` remplace la cle client : utile quand la limite doit porter sur
+    un compte cible (2FA en attente) et non sur le visiteur courant.
+    """
     now = time.time()
-    actor_key = f"ip:{request.remote_addr or 'unknown'}"
-    if current_user.is_authenticated:
-        actor_key = f"user:{current_user.id}"
+    if actor_key is None:
+        actor_key = anonymous_client_key()
+        if current_user.is_authenticated:
+            actor_key = f"user:{current_user.id}"
     bucket_key = f"{action_key}:{actor_key}"
     with action_rate_limit_lock:
         bucket = action_rate_limit_buckets.get(bucket_key, [])
@@ -249,221 +111,44 @@ def _action_rate_limited(action_key, max_calls, window_seconds):
             return True
         bucket.append(now)
         action_rate_limit_buckets[bucket_key] = bucket
+        purge_store(action_rate_limit_buckets, now)
     return False
 
 
-def _posts_quick_lines(limit=10):
-    posts = Post.query.order_by(Post.id.desc()).limit(limit).all()
-    if not posts:
-        return ["📝 Posts: none"]
-    lines = [f"📝 Latest posts ({len(posts)}):"]
-    for post in posts:
-        status = "✅ published" if post.is_published else "🕓 draft"
-        lines.append(f"- #{post.id} {post.title[:45]} ({status})")
-    return lines
 
 
-def _comments_quick_lines(limit=10):
-    comments = Comment.query.order_by(Comment.id.desc()).limit(limit).all()
-    if not comments:
-        return ["💬 Comments: none"]
-    lines = [f"💬 Latest comments ({len(comments)}):"]
-    for comment in comments:
-        preview = (comment.get_decrypted_content() if hasattr(comment, 'get_decrypted_content') else comment.content) if comment.content else ""
-        preview = (preview or "").replace('\n', ' ').strip()
-        if len(preview) > 50:
-            preview = preview[:47] + "..."
-        lines.append(f"- #{comment.id} by user_id={comment.author_id or 'unknown'}: {preview}")
-    return lines
 
 
-def _human_uptime(seconds):
-    seconds = max(0, int(seconds))
-    days, rem = divmod(seconds, 86400)
-    hours, rem = divmod(rem, 3600)
-    minutes, sec = divmod(rem, 60)
-    if days:
-        return f"{days}d {hours}h {minutes}m"
-    if hours:
-        return f"{hours}h {minutes}m"
-    if minutes:
-        return f"{minutes}m {sec}s"
-    return f"{sec}s"
 
 
-def _build_page_nav(kind, offset, page_size, total_count):
-    prev_offset = max(0, offset - page_size)
-    next_offset = offset + page_size
-    has_prev = offset > 0
-    has_next = next_offset < total_count
-    nav_row = []
-    if has_prev:
-        nav_row.append({"text": "⬅️ Prev", "callback_data": f"nav:{kind}:{prev_offset}"})
-    if has_next:
-        nav_row.append({"text": "Next ➡️", "callback_data": f"nav:{kind}:{next_offset}"})
-    return nav_row
 
 
-def _posts_page_payload(offset=0, page_size=6):
-    total_count = Post.query.count()
-    posts = Post.query.order_by(Post.id.desc()).offset(max(0, offset)).limit(page_size).all()
-    lines = [f"📝 Posts ({total_count}) | offset={max(0, offset)}"]
-    if not posts:
-        lines.append("No posts found.")
-    for post in posts:
-        status = "✅ published" if post.is_published else "🕓 draft"
-        lines.append(f"- #{post.id} {post.title[:42]} ({status})")
-    return lines, posts, total_count
 
 
-def _users_page_payload(offset=0, page_size=8):
-    base_query = User.query.filter_by(is_admin=False).order_by(User.username.asc())
-    total_count = base_query.count()
-    users = base_query.offset(max(0, offset)).limit(page_size).all()
-    lines = [f"👥 Users ({total_count}) | offset={max(0, offset)}"]
-    if not users:
-        lines.append("No users found.")
-    for user in users:
-        role = "admin" if user.is_admin else "user"
-        lines.append(f"- #{user.id} @{user.username} ({role})")
-    return lines, users, total_count
 
 
-def _comments_page_payload(offset=0, page_size=8):
-    total_count = Comment.query.count()
-    comments = Comment.query.order_by(Comment.id.desc()).offset(max(0, offset)).limit(page_size).all()
-    lines = [f"💬 Comments ({total_count}) | offset={max(0, offset)}"]
-    if not comments:
-        lines.append("No comments found.")
-    for comment in comments:
-        preview = (comment.content or "").replace("\n", " ").strip()
-        if len(preview) > 45:
-            preview = preview[:42] + "..."
-        lines.append(f"- #{comment.id} by user_id={comment.author_id or 'n/a'}: {preview or '(empty)'}")
-    return lines, comments, total_count
 
 
-def _posts_inline_markup(posts, offset, total_count, page_size):
-    rows = []
-    for post in posts[:5]:
-        rows.append([
-            {"text": f"✅ Pub #{post.id}", "callback_data": f"post_pub:{post.id}"},
-            {"text": f"🗑️ Del #{post.id}", "callback_data": f"post_del:{post.id}"}
-        ])
-    nav_row = _build_page_nav("posts", offset, page_size, total_count)
-    if nav_row:
-        rows.append(nav_row)
-    rows.append([{"text": "🏠 Main menu", "callback_data": "nav:menu:0"}])
-    return {"inline_keyboard": rows}
 
 
-def _users_inline_markup(users, offset, total_count, page_size):
-    rows = []
-    for user in users[:5]:
-        rows.append([
-            {"text": f"⬆️ #{user.id}", "callback_data": f"user_prom:{user.id}"},
-            {"text": f"⬇️ #{user.id}", "callback_data": f"user_dem:{user.id}"},
-            {"text": f"🗑️ #{user.id}", "callback_data": f"user_del:{user.id}"}
-        ])
-    nav_row = _build_page_nav("users", offset, page_size, total_count)
-    if nav_row:
-        rows.append(nav_row)
-    rows.append([{"text": "🏠 Main menu", "callback_data": "nav:menu:0"}])
-    return {"inline_keyboard": rows}
 
 
-def _comments_inline_markup(comments, offset, total_count, page_size):
-    rows = []
-    for comment in comments[:6]:
-        rows.append([{"text": f"🗑️ Delete #{comment.id}", "callback_data": f"comment_del:{comment.id}"}])
-    nav_row = _build_page_nav("comments", offset, page_size, total_count)
-    if nav_row:
-        rows.append(nav_row)
-    rows.append([{"text": "🏠 Main menu", "callback_data": "nav:menu:0"}])
-    return {"inline_keyboard": rows}
 
 
-def telegram_send_posts_page(offset=0, page_size=6):
-    lines, posts, total_count = _posts_page_payload(offset=offset, page_size=page_size)
-    return telegram_send_message(
-        "\n".join(lines),
-        reply_markup=_posts_inline_markup(posts, max(0, offset), total_count, page_size)
-    )
 
 
-def telegram_send_users_page(offset=0, page_size=8):
-    lines, users, total_count = _users_page_payload(offset=offset, page_size=page_size)
-    return telegram_send_message(
-        "\n".join(lines),
-        reply_markup=_users_inline_markup(users, max(0, offset), total_count, page_size)
-    )
 
 
-def telegram_send_comments_page(offset=0, page_size=8):
-    lines, comments, total_count = _comments_page_payload(offset=offset, page_size=page_size)
-    return telegram_send_message(
-        "\n".join(lines),
-        reply_markup=_comments_inline_markup(comments, max(0, offset), total_count, page_size)
-    )
 
 
-def telegram_posts_menu_markup():
-    return {
-        "keyboard": [
-            ["📋 List posts", "➕ New post"],
-            ["✅ Publish post", "🗑️ Delete post"],
-            ["🏠 Main menu"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
-def telegram_users_menu_markup():
-    return {
-        "keyboard": [
-            ["📋 List users", "⬆️ Promote user"],
-            ["⬇️ Demote user", "🗑️ Delete user"],
-            ["🏠 Main menu"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
-def telegram_comments_menu_markup():
-    return {
-        "keyboard": [
-            ["📋 List comments", "🗑️ Delete comment"],
-            ["🏠 Main menu"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
-def telegram_messages_menu_markup():
-    return {
-        "keyboard": [
-            ["📋 Full list", "👥 All users"],
-            ["📨 Sent users", "⏳ Pending users"],
-            ["💬 Reply helper", "⚡ Reply last"],
-            ["❌ Cancel reply", "🏠 Main menu"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
-def telegram_confirm_menu_markup():
-    return {
-        "keyboard": [
-            ["✅ Confirm", "❌ Cancel"],
-            ["🏠 Main menu"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
 def parse_basic_auth():
@@ -480,31 +165,83 @@ def parse_basic_auth():
         return None, None
 
 
+# Hash bcrypt d'une valeur aleatoire, utilise pour egaliser le temps de reponse
+# quand le compte n'existe pas (login web et API mobile).
+_DUMMY_PASSWORD_HASH = bcrypt.generate_password_hash(uuid.uuid4().hex).decode('utf-8')
+
+# Verrouillage de l'API mobile : par pseudo (strict) et par client (large).
+# Derriere un service onion tous les clients partagent la meme adresse : la
+# limite par client y est donc globale, d'ou un seuil plus haut que par pseudo.
+ADMIN_API_USER_MAX_FAILURES = 10
+ADMIN_API_CLIENT_MAX_FAILURES = 30
+ADMIN_API_LOCKOUT_SECONDS = 900
+
+
+def _mobile_api_enabled():
+    return os.environ.get('MOBILE_API_ENABLED', 'true').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
+
+def _admin_api_error(message, status, **headers):
+    return jsonify({'error': message}), status, headers
+
+
 def authenticate_admin_api():
+    """Authentifie l'appel Basic Auth. Retourne (utilisateur, None) ou (None, reponse).
+
+    - une verification bcrypt est toujours faite, meme pour un pseudo inconnu
+      (sinon le chronometre revele quels pseudos sont admins) ;
+    - verrouillage apres des echecs repetes, par pseudo et par client ;
+    - les comptes bannis, a changement de mot de passe force ou protegés par
+      2FA sont refuses : Basic Auth ne peut pas porter le second facteur.
+    """
     username, password = parse_basic_auth()
     if not username or not password:
-        return None
+        return None, _admin_api_error(
+            'Authentication required for admin mobile API.', 401,
+            **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
+
+    user_key = 'admin_api:user:' + hashed_key(username.lower())
+    client_key = 'admin_api:client:' + anonymous_client_key()
+    if (too_many_failures(user_key, ADMIN_API_USER_MAX_FAILURES, ADMIN_API_LOCKOUT_SECONDS)
+            or too_many_failures(client_key, ADMIN_API_CLIENT_MAX_FAILURES,
+                                 ADMIN_API_LOCKOUT_SECONDS)):
+        return None, _admin_api_error(
+            'Too many failed attempts. Try again later.', 429,
+            **{'Retry-After': str(ADMIN_API_LOCKOUT_SECONDS)})
 
     user = User.query.filter_by(username=username, is_admin=True).first()
-    if not user:
-        return None
+    password_ok = bcrypt.check_password_hash(
+        user.password if user else _DUMMY_PASSWORD_HASH, password)
+    if not user or not password_ok:
+        record_failure(user_key)
+        record_failure(client_key)
+        return None, _admin_api_error(
+            'Authentication required for admin mobile API.', 401,
+            **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
 
-    if not bcrypt.check_password_hash(user.password, password):
-        return None
+    if user.is_banned:
+        return None, _admin_api_error('This account has been suspended.', 403)
+    if user.must_change_password:
+        return None, _admin_api_error(
+            'Password change required: sign in on the website first.', 403)
+    if user.totp_enabled:
+        return None, _admin_api_error(
+            'This account uses two-factor authentication, which the mobile '
+            'API (Basic Auth) cannot satisfy. API access is refused for it.', 403)
 
-    return user
+    clear_failures(user_key)
+    return user, None
 
 
 def admin_api_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        admin_user = authenticate_admin_api()
-        if not admin_user:
-            return (
-                jsonify({'error': 'Authentication required for admin mobile API.'}),
-                401,
-                {'WWW-Authenticate': 'Basic realm="Admin Mobile API"'}
-            )
+        if not _mobile_api_enabled():
+            abort(404)
+        admin_user, error = authenticate_admin_api()
+        if error is not None:
+            return error
 
         request.admin_api_user = admin_user
         return f(*args, **kwargs)
@@ -553,1373 +290,652 @@ def publish_mobile_event(event_type, payload):
                 continue
 
 
-def telegram_is_enabled():
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    chat_id = (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    return bool(token and chat_id)
 
 
-def telegram_main_menu_markup():
-    return {
-        "keyboard": [
-            ["📝 Posts", "👥 Users"],
-            ["💬 Comments", "📨 Messages"],
-            ["📊 Status", "⚡ Reply last"],
-            ["ℹ️ Help", "🔎 Search"],
-            ["❌ Cancel reply"]
-        ],
-        "resize_keyboard": True,
-        "one_time_keyboard": False
-    }
 
 
-def telegram_send_message_to_chat(chat_id, text, disable_notification=False, reply_markup=None):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token or not chat_id:
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        'chat_id': chat_id,
-        'text': text
-    }
-    if disable_notification:
-        payload['disable_notification'] = True
-    if reply_markup is not None:
-        payload['reply_markup'] = json.dumps(reply_markup)
-
-    try:
-        response = requests.post(url, data=payload, timeout=10)
-        data = response.json()
-        if not data.get('ok'):
-            app.logger.warning("Telegram sendMessage failed: %s", data)
-        return bool(data.get('ok'))
-    except Exception:
-        app.logger.exception("Telegram sendMessage exception")
-        return False
 
 
-def telegram_send_message(text, disable_notification=False, reply_markup=None):
-    chat_id = (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    return telegram_send_message_to_chat(
-        chat_id,
-        text,
-        disable_notification=disable_notification,
-        reply_markup=reply_markup
-    )
 
 
 def _project_root():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
 
+def _uploads_root():
+    return os.path.abspath(os.path.join(_project_root(), UPLOAD_FOLDER))
+
+
 def _absolute_upload_path(stored_path):
+    """Chemin absolu d'une piece jointe, borne au dossier uploads/.
+
+    `Message.file_path` ne contient plus que le nom du fichier ; on accepte
+    encore les anciennes valeurs relatives ("uploads/x.jpg") et absolues, mais
+    tout chemin qui sortirait de uploads/ est rejete.
+    """
     if not stored_path:
         return None
-    if os.path.isabs(stored_path):
-        return stored_path
-    return os.path.join(_project_root(), stored_path)
-
-
-def telegram_send_photo(chat_id, file_path, caption=None, reply_markup=None):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token or not chat_id:
-        return False
-
-    absolute_path = _absolute_upload_path(file_path)
-    if not absolute_path or not os.path.exists(absolute_path):
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/sendPhoto"
-    data = {'chat_id': chat_id}
-    if caption:
-        data['caption'] = caption
-    if reply_markup is not None:
-        data['reply_markup'] = json.dumps(reply_markup)
-
-    try:
-        with open(absolute_path, 'rb') as image_file:
-            response = requests.post(url, data=data, files={'photo': image_file}, timeout=20)
-        result = response.json()
-        if not result.get('ok'):
-            app.logger.warning("Telegram sendPhoto failed: %s", result)
-        return bool(result.get('ok'))
-    except Exception:
-        app.logger.exception("Telegram sendPhoto exception")
-        return False
-
-
-def telegram_send_document(chat_id, file_path, caption=None, reply_markup=None):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token or not chat_id:
-        return False
-
-    absolute_path = _absolute_upload_path(file_path)
-    if not absolute_path or not os.path.exists(absolute_path):
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/sendDocument"
-    data = {'chat_id': chat_id}
-    if caption:
-        data['caption'] = caption
-    if reply_markup is not None:
-        data['reply_markup'] = json.dumps(reply_markup)
-
-    try:
-        with open(absolute_path, 'rb') as file_obj:
-            response = requests.post(url, data=data, files={'document': file_obj}, timeout=20)
-        result = response.json()
-        if not result.get('ok'):
-            app.logger.warning("Telegram sendDocument failed: %s", result)
-        return bool(result.get('ok'))
-    except Exception:
-        app.logger.exception("Telegram sendDocument exception")
-        return False
-
-
-def telegram_get_file_path(file_id):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token or not file_id:
+    candidate = stored_path if os.path.isabs(stored_path) else os.path.join(_project_root(), UPLOAD_FOLDER, os.path.basename(stored_path))
+    candidate = os.path.abspath(candidate)
+    root = _uploads_root()
+    if os.path.commonpath([candidate, root]) != root:
         return None
+    return candidate
 
-    url = f"https://api.telegram.org/bot{token}/getFile"
-    try:
-        response = requests.get(url, params={'file_id': file_id}, timeout=10)
-        data = response.json()
-        if not data.get('ok'):
-            app.logger.warning("Telegram getFile failed: %s", data)
-            return None
-        return data.get('result', {}).get('file_path')
-    except Exception:
-        app.logger.exception("Telegram getFile exception")
-        return None
-
-
-def telegram_download_file_to_uploads(file_id, preferred_ext='jpg'):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token:
-        return None
-
-    remote_file_path = telegram_get_file_path(file_id)
-    if not remote_file_path:
-        return None
-
-    ext = os.path.splitext(remote_file_path)[1].lower().strip('.')
-    if not ext:
-        ext = preferred_ext
-    if len(ext) > 8:
-        ext = preferred_ext
-
-    filename = f"tg_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:10]}.{ext}"
-    relative_path = os.path.join('uploads', filename)
-    absolute_path = _absolute_upload_path(relative_path)
-    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
-
-    file_url = f"https://api.telegram.org/file/bot{token}/{remote_file_path}"
-    try:
-        response = requests.get(file_url, timeout=20)
-        response.raise_for_status()
-        with open(absolute_path, 'wb') as output_file:
-            output_file.write(response.content)
-        return relative_path
-    except Exception:
-        app.logger.exception("Telegram file download exception")
-        return None
-
-
-def telegram_answer_callback_query(callback_query_id, text=None):
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token or not callback_query_id:
-        return False
-
-    url = f"https://api.telegram.org/bot{token}/answerCallbackQuery"
-    payload = {'callback_query_id': callback_query_id}
-    if text:
-        payload['text'] = text
-    try:
-        response = requests.post(url, data=payload, timeout=10)
-        data = response.json()
-        return bool(data.get('ok'))
-    except Exception:
-        app.logger.exception("Telegram answerCallbackQuery exception")
-        return False
-
-
-def telegram_inline_reply_markup(target_user_id):
-    return {
-        "inline_keyboard": [
-            [
-                {"text": "💬 Reply", "callback_data": f"reply_to:{target_user_id}"}
-            ]
-        ]
-    }
-
-
-def notify_admin_telegram_new_message(message):
-    """Send website -> Telegram notification for admin."""
-    if not telegram_is_enabled():
-        return
-    if not message or not message.sender or message.sender.is_admin:
-        return
-
-    text_preview = (message.get_decrypted_content() if message.is_encrypted else message.content) or ''
-    text_preview = text_preview.strip()
-    if len(text_preview) > 250:
-        text_preview = text_preview[:247] + '...'
-
-    if message.file_path and not text_preview:
-        text_preview = f"[{message.file_type or 'file'} attachment]"
-
-    caption = (
-        f"📩 From @{message.sender.username} (user_id={message.sender_id})\n"
-        f"📝 {text_preview if text_preview else '(no text)'}\n"
-        f"👇 Tap Reply to answer directly."
-    )
-
-    sent = False
-    if message.file_path:
-        if message.file_type == 'image':
-            sent = telegram_send_photo(
-                (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip(),
-                message.file_path,
-                caption=caption,
-                reply_markup=telegram_inline_reply_markup(message.sender_id)
-            )
-        else:
-            sent = telegram_send_document(
-                (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip(),
-                message.file_path,
-                caption=caption,
-                reply_markup=telegram_inline_reply_markup(message.sender_id)
-            )
-
-    if not sent:
-        notification_text = (
-            f"📩 New message from @{message.sender.username} (user_id={message.sender_id})\n\n"
-            f"📝 {text_preview}\n\n"
-            f"👇 Tap Reply to answer directly."
-        )
-        telegram_send_message(
-            notification_text,
-            reply_markup=telegram_inline_reply_markup(message.sender_id)
-        )
-
-
-def parse_telegram_reply_command(text):
-    match = re.match(r'^/reply(?:@[A-Za-z0-9_]+)?\s+(\S+)(?:\s+(.+))?$', text.strip(), re.DOTALL)
-    if not match:
-        return None, None
-    target = match.group(1).strip()
-    message = match.group(2).strip() if match.group(2) else None
-    return target, message
-
-
-def resolve_blog_user_reference(user_ref):
-    """Resolve /reply target by user_id or @username."""
-    if not user_ref:
-        return None
-
-    normalized = user_ref.strip()
-    if normalized.startswith('@'):
-        normalized = normalized[1:]
-
-    if normalized.isdigit():
-        return User.query.filter_by(id=int(normalized), is_admin=False).first()
-
-    return User.query.filter_by(username=normalized, is_admin=False).first()
-
-
-def get_most_recent_pending_user(admin_user_id):
-    pending_users = _blog_users_pending_reply(admin_user_id)
-    if not pending_users:
-        return None
-
-    best_user = None
-    best_message_id = -1
-    for user in pending_users:
-        latest_user_message = Message.query.filter(
-            Message.sender_id == user.id,
-            Message.receiver_id == admin_user_id
-        ).order_by(Message.id.desc()).first()
-        if latest_user_message and latest_user_message.id > best_message_id:
-            best_message_id = latest_user_message.id
-            best_user = user
-
-    return best_user
-
-
-def _first_admin_user():
-    return User.query.filter_by(is_admin=True).order_by(User.id.asc()).first()
-
-
-def _bridge_admin_user():
-    """Return sender account used by Telegram bridge replies."""
-    admin_user = _first_admin_user()
-    if admin_user:
-        return admin_user
-
-    fallback_user = User.query.filter_by(id=1).first()
-    if fallback_user:
-        return fallback_user
-
-    return User.query.order_by(User.id.asc()).first()
-
-
-def process_telegram_callback_query(callback_query):
-    configured_chat_id = (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    if not configured_chat_id:
-        return False
-
-    callback_id = callback_query.get('id')
-    callback_data = (callback_query.get('data') or '').strip()
-    callback_message = callback_query.get('message') or {}
-    callback_chat_id = str((callback_message.get('chat') or {}).get('id', ''))
-    callback_actor_id = str((callback_query.get('from') or {}).get('id', ''))
-
-    if callback_chat_id != configured_chat_id:
-        telegram_answer_callback_query(callback_id, "Not authorized")
-        return False
-    if not _telegram_is_actor_authorized(callback_actor_id):
-        telegram_answer_callback_query(callback_id, "Admin access denied")
-        return False
-    if _telegram_pin_required() and not _telegram_is_session_valid(callback_actor_id):
-        _telegram_set_admin_state(callback_chat_id, "await_pin", actor_user_id=callback_actor_id)
-        telegram_answer_callback_query(callback_id, "Session expired")
-        telegram_send_message("🔒 Session expired. Send your admin PIN to continue.")
-        return False
-    _telegram_start_session(callback_actor_id)
-
-    if callback_data.startswith('nav:'):
-        _, section, raw_offset = (callback_data.split(':', 2) + ['0', '0'])[:3]
-        offset = _to_positive_int(raw_offset)
-        offset = 0 if offset is None else offset
-        if section == 'menu':
-            telegram_answer_callback_query(callback_id, "Main menu")
-            telegram_send_message("🤖 Admin control panel", reply_markup=telegram_main_menu_markup())
-            return True
-        if section == 'posts':
-            telegram_answer_callback_query(callback_id, "Posts page")
-            telegram_send_posts_page(offset=offset)
-            return True
-        if section == 'users':
-            telegram_answer_callback_query(callback_id, "Users page")
-            telegram_send_users_page(offset=offset)
-            return True
-        if section == 'comments':
-            telegram_answer_callback_query(callback_id, "Comments page")
-            telegram_send_comments_page(offset=offset)
-            return True
-
-    if callback_data.startswith('post_pub:'):
-        post_id = _to_positive_int(callback_data.split(':', 1)[1])
-        post = Post.query.get(post_id) if post_id else None
-        if not post:
-            telegram_answer_callback_query(callback_id, "Post not found")
-            return False
-        post.is_published = True
-        post.is_draft = False
-        post.scheduled_date = post.scheduled_date or datetime.utcnow()
-        db.session.commit()
-        _telegram_audit_log(callback_actor_id, "publish_post", f"post_id={post.id} via=inline")
-        telegram_answer_callback_query(callback_id, f"Published #{post.id}")
-        telegram_send_message(f"✅ Post #{post.id} published.")
-        return True
-
-    if callback_data.startswith('post_del:'):
-        post_id = _to_positive_int(callback_data.split(':', 1)[1])
-        post = Post.query.get(post_id) if post_id else None
-        if not post:
-            telegram_answer_callback_query(callback_id, "Post not found")
-            return False
-        _telegram_set_admin_state(
-            callback_chat_id,
-            "confirm_delete_post",
-            post_id=post.id,
-            post_title=post.title[:80]
-        )
-        telegram_answer_callback_query(callback_id, f"Confirm delete #{post.id}")
-        telegram_send_message(
-            f"⚠️ Confirm deletion of post #{post.id}: {post.title[:80]}",
-            reply_markup=telegram_confirm_menu_markup()
-        )
-        return True
-
-    if callback_data.startswith('user_prom:'):
-        user_id = _to_positive_int(callback_data.split(':', 1)[1])
-        user = User.query.get(user_id) if user_id else None
-        if not user:
-            telegram_answer_callback_query(callback_id, "User not found")
-            return False
-        user.is_admin = True
-        db.session.commit()
-        _telegram_audit_log(callback_actor_id, "promote_user", f"user_id={user.id} via=inline")
-        telegram_answer_callback_query(callback_id, f"Promoted #{user.id}")
-        telegram_send_message(f"⬆️ User @{user.username} promoted.")
-        return True
-
-    if callback_data.startswith('user_dem:'):
-        user_id = _to_positive_int(callback_data.split(':', 1)[1])
-        user = User.query.get(user_id) if user_id else None
-        if not user:
-            telegram_answer_callback_query(callback_id, "User not found")
-            return False
-        if user.is_admin and User.query.filter_by(is_admin=True).count() <= 1:
-            telegram_answer_callback_query(callback_id, "Blocked")
-            telegram_send_message("🛡️ Blocked: cannot demote the last admin.")
-            return False
-        user.is_admin = False
-        db.session.commit()
-        _telegram_audit_log(callback_actor_id, "demote_user", f"user_id={user.id} via=inline")
-        telegram_answer_callback_query(callback_id, f"Demoted #{user.id}")
-        telegram_send_message(f"⬇️ User @{user.username} demoted.")
-        return True
-
-    if callback_data.startswith('user_del:'):
-        user_id = _to_positive_int(callback_data.split(':', 1)[1])
-        user = User.query.get(user_id) if user_id else None
-        if not user:
-            telegram_answer_callback_query(callback_id, "User not found")
-            return False
-        _telegram_set_admin_state(
-            callback_chat_id,
-            "confirm_delete_user",
-            user_id=user.id,
-            username=(user.username or '')[:80]
-        )
-        telegram_answer_callback_query(callback_id, f"Confirm delete #{user.id}")
-        telegram_send_message(
-            f"⚠️ Confirm deletion of user @{(user.username or 'unknown')[:80]} (id={user.id})\n"
-            f"Type exactly: ✅ Confirm {user.id}",
-            reply_markup=telegram_confirm_menu_markup()
-        )
-        return True
-
-    if callback_data.startswith('comment_del:'):
-        comment_id = _to_positive_int(callback_data.split(':', 1)[1])
-        comment = Comment.query.get(comment_id) if comment_id else None
-        if not comment:
-            telegram_answer_callback_query(callback_id, "Comment not found")
-            return False
-        preview = (comment.content or '').replace('\n', ' ').strip()
-        if len(preview) > 80:
-            preview = preview[:77] + "..."
-        _telegram_set_admin_state(
-            callback_chat_id,
-            "confirm_delete_comment",
-            comment_id=comment.id,
-            preview=preview
-        )
-        telegram_answer_callback_query(callback_id, f"Confirm delete #{comment.id}")
-        telegram_send_message(
-            f"⚠️ Confirm deletion of comment #{comment.id}:\n{preview or '(empty)'}",
-            reply_markup=telegram_confirm_menu_markup()
-        )
-        return True
-
-    if callback_data.startswith('reply_to:'):
-        try:
-            target_user_id = int(callback_data.split(':', 1)[1])
-        except Exception:
-            telegram_answer_callback_query(callback_id, "Invalid target")
-            return False
-
-        target_user = User.query.filter_by(id=target_user_id, is_admin=False).first()
-        if not target_user:
-            telegram_answer_callback_query(callback_id, "Unknown user")
-            telegram_send_message("❌ Unknown target user.", disable_notification=True)
-            return False
-
-        telegram_reply_state[callback_chat_id] = target_user.id
-        _telegram_clear_admin_state(callback_chat_id)
-        _telegram_start_session(callback_actor_id)
-        telegram_answer_callback_query(callback_id, f"Replying to @{target_user.username}")
-        telegram_send_message(
-            f"💬 Reply mode enabled for @{target_user.username} (id={target_user.id}).\n"
-            f"✍️ Send your message now.\n"
-            f"❌ Use /cancel to stop.",
-            reply_markup=telegram_main_menu_markup()
-        )
-        return True
-
-    telegram_answer_callback_query(callback_id)
-    return False
-
-
-def process_telegram_update_message(message_data):
-    configured_chat_id = (os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-    incoming_chat_id = str(message_data.get('chat', {}).get('id', ''))
-    if not configured_chat_id:
-        return False
-
-    from_user = message_data.get('from') or {}
-    incoming_actor_id = str(from_user.get('id', ''))
-    incoming_username = from_user.get('username') or ''
-    incoming_first_name = from_user.get('first_name') or ''
-    incoming_text = (message_data.get('text') or '').strip()
-    incoming_caption = (message_data.get('caption') or '').strip()
-    incoming_photos = message_data.get('photo') or []
-    incoming_document = message_data.get('document') or {}
-
-    if incoming_chat_id:
-        # Track all users who contacted the bot (/start or normal message)
-        has_pending = bool(incoming_text and not incoming_text.lower().startswith('/start'))
-        tracked_last_message = incoming_text if incoming_text else (incoming_caption if incoming_caption else None)
-        try:
-            parsed_chat_id = int(incoming_chat_id)
-            _telegram_users_upsert(
-                chat_id=parsed_chat_id,
-                username=incoming_username,
-                first_name=incoming_first_name,
-                has_pending=has_pending,
-                last_message=tracked_last_message
-            )
-        except ValueError:
-            pass
-
-    # Non-admin chats are tracked only; no bridge command expected
-    if incoming_chat_id != configured_chat_id:
-        return False
-
-    has_media = bool(incoming_photos or incoming_document)
-    if not incoming_text and not has_media:
-        return False
-
-    command_token = ''
-    command_parts = []
-    if incoming_text and incoming_text.startswith('/'):
-        command_token = incoming_text.split()[0].lower()
-        if '@' in command_token:
-            command_token = command_token.split('@', 1)[0]
-        command_parts = incoming_text.strip().split(maxsplit=2)
-
-    admin_state = _telegram_get_admin_state(incoming_chat_id)
-    pin = (os.environ.get('TELEGRAM_ADMIN_PIN') or '').strip()
-
-    if command_token == '/start':
-        if not _telegram_is_actor_authorized(incoming_actor_id):
-            telegram_send_message("⛔ Access denied for this Telegram account.")
-            return False
-        if _telegram_pin_required() and not _telegram_is_session_valid(incoming_actor_id):
-            _telegram_set_admin_state(incoming_chat_id, "await_pin", actor_user_id=incoming_actor_id)
-            telegram_send_message("🔒 Enter admin PIN to unlock the control panel.")
-            return False
-        _telegram_start_session(incoming_actor_id)
-
-    if not _telegram_is_actor_authorized(incoming_actor_id):
-        if incoming_text:
-            telegram_send_message("⛔ Access denied for this Telegram account.")
-        return False
-
-    if _telegram_pin_required() and not _telegram_is_session_valid(incoming_actor_id):
-        if command_token == '/cancel':
-            _telegram_clear_admin_state(incoming_chat_id)
-            _telegram_clear_session(incoming_actor_id)
-            telegram_send_message("❌ Session auth cancelled.")
-            return False
-        if (
-            admin_state
-            and admin_state.get('mode') == 'await_pin'
-            and str(admin_state.get('actor_user_id', '')) == incoming_actor_id
-            and incoming_text
-            and not command_token.startswith('/')
-        ):
-            if incoming_text.strip() == pin:
-                _telegram_clear_admin_state(incoming_chat_id)
-                _telegram_start_session(incoming_actor_id)
-                telegram_send_message("✅ PIN accepted. Control panel unlocked.", reply_markup=telegram_main_menu_markup())
-            else:
-                telegram_send_message("❌ Wrong PIN. Try again or use /cancel.")
-            return False
-        _telegram_set_admin_state(incoming_chat_id, "await_pin", actor_user_id=incoming_actor_id)
-        telegram_send_message("🔒 Session locked. Send your admin PIN.")
-        return False
-
-    _telegram_start_session(incoming_actor_id)
-
-    admin_user = _bridge_admin_user()
-    admin_user_id = admin_user.id if admin_user else None
-
-    # ----- Friendly button menu handlers -----
-    if incoming_text in ("🏠 Main menu", "/menu", "/panel"):
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message(
-            "🤖 Admin control panel\nChoose a section:",
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if incoming_text == "ℹ️ Help":
-        telegram_send_message(
-            "🧭 Blog control commands:\n"
-            "📝 Posts, 👥 Users, 💬 Comments, 📨 Messages\n"
-            "You can use buttons or slash commands.\n"
-            "Examples:\n"
-            "/posts [page], /users [page], /comments [page]\n"
-            "/finduser <query>, /findpost <query>\n"
-            "/status\n"
-            "/reply 12 hello\n"
-            "Type /menu anytime.",
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if incoming_text == "📊 Status" or command_token == '/status':
-        total_users = User.query.count()
-        non_admin_users = User.query.filter_by(is_admin=False).count()
-        total_posts = Post.query.count()
-        draft_posts = Post.query.filter_by(is_draft=True).count()
-        total_comments = Comment.query.count()
-        pending_users = len(_blog_users_pending_reply(admin_user_id))
-        uptime = _human_uptime(time.time() - telegram_process_started_at)
-        telegram_send_message(
-            "📊 MyBlog status\n"
-            f"👥 users: {total_users} (non-admin: {non_admin_users})\n"
-            f"📝 posts: {total_posts} (drafts: {draft_posts})\n"
-            f"💬 comments: {total_comments}\n"
-            f"⏳ pending chats: {pending_users}\n"
-            f"⏱️ bot uptime: {uptime}",
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if incoming_text == "🔎 Search":
-        _telegram_set_admin_state(incoming_chat_id, "await_search_query")
-        telegram_send_message("🔎 Send query.\nExamples:\nfind user john\nfind post privacy")
-        return False
-
-    if incoming_text == "📝 Posts":
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message("📝 Posts menu", reply_markup=telegram_posts_menu_markup())
-        return False
-
-    if incoming_text == "👥 Users":
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message("👥 Users menu", reply_markup=telegram_users_menu_markup())
-        return False
-
-    if incoming_text == "💬 Comments":
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message("💬 Comments menu", reply_markup=telegram_comments_menu_markup())
-        return False
-
-    if incoming_text == "📨 Messages":
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message("📨 Messages menu", reply_markup=telegram_messages_menu_markup())
-        return False
-
-    if incoming_text == "📋 List posts" or command_token == '/posts':
-        page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
-        offset = max(0, ((page or 1) - 1) * 6)
-        telegram_send_posts_page(offset=offset, page_size=6)
-        return False
-
-    if incoming_text == "📋 List users":
-        telegram_send_users_page(offset=0, page_size=8)
-        return False
-
-    if incoming_text == "📋 List comments" or command_token == '/comments':
-        page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
-        offset = max(0, ((page or 1) - 1) * 8)
-        telegram_send_comments_page(offset=offset, page_size=8)
-        return False
-
-    if incoming_text == "➕ New post":
-        _telegram_set_admin_state(incoming_chat_id, "await_new_post_title")
-        telegram_send_message("➕ Send the new post title:", reply_markup=telegram_posts_menu_markup())
-        return False
-
-    if incoming_text == "✅ Publish post":
-        _telegram_set_admin_state(incoming_chat_id, "await_publish_post_id")
-        telegram_send_message("✅ Send the post ID to publish:", reply_markup=telegram_posts_menu_markup())
-        return False
-
-    if incoming_text == "🗑️ Delete post":
-        _telegram_set_admin_state(incoming_chat_id, "await_delete_post_id")
-        telegram_send_message("🗑️ Send the post ID to delete:", reply_markup=telegram_posts_menu_markup())
-        return False
-
-    if incoming_text == "⬆️ Promote user":
-        _telegram_set_admin_state(incoming_chat_id, "await_promote_user_id")
-        telegram_send_message("⬆️ Send the user ID to promote:", reply_markup=telegram_users_menu_markup())
-        return False
-
-    if incoming_text == "⬇️ Demote user":
-        _telegram_set_admin_state(incoming_chat_id, "await_demote_user_id")
-        telegram_send_message("⬇️ Send the user ID to demote:", reply_markup=telegram_users_menu_markup())
-        return False
-
-    if incoming_text == "🗑️ Delete user":
-        _telegram_set_admin_state(incoming_chat_id, "await_delete_user_id")
-        telegram_send_message("🗑️ Send the user ID to delete:", reply_markup=telegram_users_menu_markup())
-        return False
-
-    if incoming_text == "🗑️ Delete comment":
-        _telegram_set_admin_state(incoming_chat_id, "await_delete_comment_id")
-        telegram_send_message("🗑️ Send the comment ID to delete:", reply_markup=telegram_comments_menu_markup())
-        return False
-
-    if incoming_text == "📋 Full list":
-        all_users = _blog_non_admin_users()
-        users_with_messages = _blog_users_with_messages(admin_user_id)
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-        lines = []
-        lines.extend(_format_blog_users_lines("👥 All blog users", all_users))
-        lines.append("")
-        lines.extend(_format_blog_users_lines("📨 Users who sent messages", users_with_messages))
-        lines.append("")
-        lines.extend(_format_blog_users_lines("⏳ Pending (not replied/seen yet)", users_pending_reply))
-        telegram_send_message("\n".join(lines), reply_markup=telegram_messages_menu_markup())
-        return False
-
-    if incoming_text == "👥 All users":
-        all_users = _blog_non_admin_users()
-        telegram_send_message(
-            "\n".join(_format_blog_users_lines("👥 All blog users", all_users)),
-            reply_markup=telegram_messages_menu_markup()
-        )
-        return False
-
-    if incoming_text == "📨 Sent users":
-        users_with_messages = _blog_users_with_messages(admin_user_id)
-        telegram_send_message(
-            "\n".join(_format_blog_users_lines("📨 Users who sent messages", users_with_messages)),
-            reply_markup=telegram_messages_menu_markup()
-        )
-        return False
-
-    if incoming_text == "⏳ Pending users":
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-        telegram_send_message(
-            "\n".join(_format_blog_users_lines("⏳ Pending (not replied/seen yet)", users_pending_reply)),
-            reply_markup=telegram_messages_menu_markup()
-        )
-        return False
-
-    if incoming_text == "💬 Reply helper":
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-        lines = [
-            "💬 Reply helper:",
-            "1) Send: /reply <user_id_or_username>",
-            "2) Then send your message",
-            "",
-            "⏳ Pending users:"
-        ]
-        lines.extend(_format_blog_users_lines("Pending", users_pending_reply))
-        telegram_send_message("\n".join(lines), reply_markup=telegram_messages_menu_markup())
-        return False
-
-    if incoming_text == "⚡ Reply last":
-        _telegram_set_admin_state(incoming_chat_id, "await_replylast_text")
-        telegram_send_message("⚡ Send the message text for the most recent pending user.")
-        return False
-
-    if incoming_text in ("❌ Cancel reply", "❌ Cancel"):
-        command_token = '/cancel'
-
-    # ----- Stateful admin actions for post/user/comment management -----
-    if admin_state and not command_token.startswith('/'):
-        mode = admin_state.get('mode')
-
-        if mode == "await_search_query":
-            query = (incoming_text or "").strip()
-            normalized = query.lower()
-            if normalized.startswith('find user '):
-                normalized = normalized[len('find user '):].strip()
-                users = User.query.filter(User.username.ilike(f"%{normalized}%")).order_by(User.username.asc()).limit(20).all() if normalized else []
-                lines = [f"🔎 Users matching '{normalized}':"]
-                if not users:
-                    lines.append("No matches.")
-                for user in users:
-                    lines.append(f"- #{user.id} @{user.username}")
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("\n".join(lines), reply_markup=telegram_users_menu_markup())
-                return False
-            if normalized.startswith('find post '):
-                normalized = normalized[len('find post '):].strip()
-                posts = Post.query.filter(Post.title.ilike(f"%{normalized}%")).order_by(Post.id.desc()).limit(20).all() if normalized else []
-                lines = [f"🔎 Posts matching '{normalized}':"]
-                if not posts:
-                    lines.append("No matches.")
-                for post in posts:
-                    status = "published" if post.is_published else "draft"
-                    lines.append(f"- #{post.id} {post.title[:48]} ({status})")
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("\n".join(lines), reply_markup=telegram_posts_menu_markup())
-                return False
-            telegram_send_message("Use: find user <text> OR find post <text>")
-            return False
-
-        if mode == "await_new_post_title":
-            title = incoming_text.strip()
-            if not title:
-                telegram_send_message("❌ Title cannot be empty. Send the title again.")
-                return False
-            _telegram_set_admin_state(incoming_chat_id, "await_new_post_content", title=title)
-            telegram_send_message("✍️ Great. Now send the post content.")
-            return False
-
-        if mode == "await_new_post_content":
-            content = incoming_text.strip()
-            title = admin_state.get('title', '').strip()
-            if not content or not title:
-                telegram_send_message("❌ Content cannot be empty. Send content again.")
-                return False
-            if not admin_user:
-                telegram_send_message("❌ No sender account found on the blog.")
-                return False
-            post = Post(
-                title=title,
-                content=content,
-                author_id=admin_user.id,
-                is_published=False,
-                is_draft=True,
-                scheduled_date=datetime.utcnow()
-            )
-            db.session.add(post)
-            db.session.commit()
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(
-                f"✅ Draft created: #{post.id} {post.title}\nUse '✅ Publish post' when ready.",
-                reply_markup=telegram_posts_menu_markup()
-            )
-            return False
-
-        if mode == "await_publish_post_id":
-            post_id = _to_positive_int(incoming_text)
-            post = Post.query.get(post_id) if post_id else None
-            if not post:
-                telegram_send_message("❌ Invalid post ID. Try again.")
-                return False
-            post.is_published = True
-            post.is_draft = False
-            post.scheduled_date = post.scheduled_date or datetime.utcnow()
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "publish_post", f"post_id={post.id}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"✅ Post #{post.id} published.", reply_markup=telegram_posts_menu_markup())
-            return False
-
-        if mode == "await_delete_post_id":
-            post_id = _to_positive_int(incoming_text)
-            post = Post.query.get(post_id) if post_id else None
-            if not post:
-                telegram_send_message("❌ Invalid post ID. Try again.")
-                return False
-            _telegram_set_admin_state(
-                incoming_chat_id,
-                "confirm_delete_post",
-                post_id=post.id,
-                post_title=post.title[:80]
-            )
-            telegram_send_message(
-                f"⚠️ Confirm deletion of post #{post.id}: {post.title[:80]}",
-                reply_markup=telegram_confirm_menu_markup()
-            )
-            return False
-
-        if mode == "await_promote_user_id":
-            user_id = _to_positive_int(incoming_text)
-            user = User.query.get(user_id) if user_id else None
-            if not user:
-                telegram_send_message("❌ Invalid user ID. Try again.")
-                return False
-            user.is_admin = True
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "promote_user", f"user_id={user.id}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"⬆️ User @{user.username} promoted.", reply_markup=telegram_users_menu_markup())
-            return False
-
-        if mode == "await_demote_user_id":
-            user_id = _to_positive_int(incoming_text)
-            user = User.query.get(user_id) if user_id else None
-            if not user:
-                telegram_send_message("❌ Invalid user ID. Try again.")
-                return False
-            if user.is_admin:
-                admin_count = User.query.filter_by(is_admin=True).count()
-                if admin_count <= 1:
-                    telegram_send_message("🛡️ Blocked: cannot demote the last admin.")
-                    return False
-            user.is_admin = False
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "demote_user", f"user_id={user.id}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"⬇️ User @{user.username} demoted.", reply_markup=telegram_users_menu_markup())
-            return False
-
-        if mode == "await_delete_user_id":
-            user_id = _to_positive_int(incoming_text)
-            user = User.query.get(user_id) if user_id else None
-            if not user:
-                telegram_send_message("❌ Invalid user ID. Try again.")
-                return False
-            _telegram_set_admin_state(
-                incoming_chat_id,
-                "confirm_delete_user",
-                user_id=user.id,
-                username=(user.username or '')[:80]
-            )
-            telegram_send_message(
-                f"⚠️ Confirm deletion of user @{(user.username or 'unknown')[:80]} (id={user.id})\n"
-                f"Type exactly: ✅ Confirm {user.id}",
-                reply_markup=telegram_confirm_menu_markup()
-            )
-            return False
-
-        if mode == "await_delete_comment_id":
-            comment_id = _to_positive_int(incoming_text)
-            comment = Comment.query.get(comment_id) if comment_id else None
-            if not comment:
-                telegram_send_message("❌ Invalid comment ID. Try again.")
-                return False
-            preview = (comment.content or '').replace('\n', ' ').strip()
-            if len(preview) > 80:
-                preview = preview[:77] + "..."
-            _telegram_set_admin_state(
-                incoming_chat_id,
-                "confirm_delete_comment",
-                comment_id=comment.id,
-                preview=preview
-            )
-            telegram_send_message(
-                f"⚠️ Confirm deletion of comment #{comment.id}:\n{preview or '(empty)'}",
-                reply_markup=telegram_confirm_menu_markup()
-            )
-            return False
-
-        if mode == "confirm_delete_post":
-            if incoming_text != "✅ Confirm":
-                telegram_send_message("⚠️ Press '✅ Confirm' or '❌ Cancel'.", reply_markup=telegram_confirm_menu_markup())
-                return False
-            post_id = _to_positive_int(admin_state.get('post_id'))
-            post = Post.query.get(post_id) if post_id else None
-            if not post:
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("❌ Post not found anymore.", reply_markup=telegram_posts_menu_markup())
-                return False
-            post_title = post.title
-            db.session.delete(post)
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "delete_post", f"post_id={post_id}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"🗑️ Post deleted: #{post_id} {post_title}", reply_markup=telegram_posts_menu_markup())
-            return False
-
-        if mode == "confirm_delete_user":
-            expected_user_id = _to_positive_int(admin_state.get('user_id'))
-            expected_confirm = f"✅ Confirm {expected_user_id}" if expected_user_id else "✅ Confirm"
-            if incoming_text != expected_confirm:
-                telegram_send_message(
-                    f"⚠️ Type exactly: {expected_confirm}\nOr press ❌ Cancel.",
-                    reply_markup=telegram_confirm_menu_markup()
-                )
-                return False
-            user_id = expected_user_id
-            user = User.query.get(user_id) if user_id else None
-            if not user:
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("❌ User not found anymore.", reply_markup=telegram_users_menu_markup())
-                return False
-            if user.is_admin:
-                admin_count = User.query.filter_by(is_admin=True).count()
-                if admin_count <= 1:
-                    _telegram_clear_admin_state(incoming_chat_id)
-                    telegram_send_message("🛡️ Blocked: cannot delete the last admin account.", reply_markup=telegram_users_menu_markup())
-                    return False
-            username = user.username
-            db.session.delete(user)
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "delete_user", f"user_id={user_id} username={username}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"🗑️ User @{username} deleted.", reply_markup=telegram_users_menu_markup())
-            return False
-
-        if mode == "confirm_delete_comment":
-            if incoming_text != "✅ Confirm":
-                telegram_send_message("⚠️ Press '✅ Confirm' or '❌ Cancel'.", reply_markup=telegram_confirm_menu_markup())
-                return False
-            comment_id = _to_positive_int(admin_state.get('comment_id'))
-            comment = Comment.query.get(comment_id) if comment_id else None
-            if not comment:
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("❌ Comment not found anymore.", reply_markup=telegram_comments_menu_markup())
-                return False
-            db.session.delete(comment)
-            db.session.commit()
-            _telegram_audit_log(incoming_actor_id, "delete_comment", f"comment_id={comment_id}")
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(f"🗑️ Comment #{comment_id} deleted.", reply_markup=telegram_comments_menu_markup())
-            return False
-
-        if mode == "await_replylast_text":
-            reply_text = incoming_text.strip()
-            if not reply_text:
-                telegram_send_message("❌ Message cannot be empty. Send text again.")
-                return False
-            target_user = get_most_recent_pending_user(admin_user_id)
-            if not target_user:
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("⏳ No pending users right now.", reply_markup=telegram_messages_menu_markup())
-                return False
-            if not admin_user:
-                _telegram_clear_admin_state(incoming_chat_id)
-                telegram_send_message("❌ No sender account found on the blog.")
-                return False
-            reply_message = Message(sender_id=admin_user.id, receiver_id=target_user.id)
-            reply_message.set_encrypted_content(reply_text)
-            db.session.add(reply_message)
-            db.session.commit()
-            publish_mobile_event('new_message', serialize_chat_message(reply_message))
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(
-                f"✅ Reply sent to @{target_user.username} (user_id={target_user.id}).",
-                reply_markup=telegram_messages_menu_markup()
-            )
-            return True
-
-    if command_token == '/list':
-        all_users = _blog_non_admin_users()
-        users_with_messages = _blog_users_with_messages(admin_user_id)
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-
-        lines = []
-        lines.extend(_format_blog_users_lines("👥 All blog users", all_users))
-        lines.append("")
-        lines.extend(_format_blog_users_lines("📨 Users who sent messages", users_with_messages))
-        lines.append("")
-        lines.extend(_format_blog_users_lines("⏳ Pending (not replied/seen yet)", users_pending_reply))
-        lines.append("")
-        lines.append("💡 Use: /reply <user_id> <message>")
-        telegram_send_message("\n".join(lines), reply_markup=telegram_main_menu_markup())
-        return False
-
-    if command_token == '/users':
-        page = _to_positive_int(command_parts[1]) if len(command_parts) > 1 else 1
-        offset = max(0, ((page or 1) - 1) * 8)
-        telegram_send_users_page(offset=offset, page_size=8)
-        return False
-
-    if command_token == '/finduser':
-        match = re.match(r'^/finduser(?:@[A-Za-z0-9_]+)?\s+(.+)$', incoming_text.strip(), re.IGNORECASE | re.DOTALL)
-        query = match.group(1).strip() if match else ''
-        users = User.query.filter(User.username.ilike(f"%{query}%")).order_by(User.username.asc()).limit(20).all() if query else []
-        lines = [f"🔎 Users matching '{query}':"]
-        if not users:
-            lines.append("No matches.")
-        for user in users:
-            lines.append(f"- #{user.id} @{user.username}")
-        telegram_send_message("\n".join(lines), reply_markup=telegram_users_menu_markup())
-        return False
-
-    if command_token == '/findpost':
-        match = re.match(r'^/findpost(?:@[A-Za-z0-9_]+)?\s+(.+)$', incoming_text.strip(), re.IGNORECASE | re.DOTALL)
-        query = match.group(1).strip() if match else ''
-        posts = Post.query.filter(Post.title.ilike(f"%{query}%")).order_by(Post.id.desc()).limit(20).all() if query else []
-        lines = [f"🔎 Posts matching '{query}':"]
-        if not posts:
-            lines.append("No matches.")
-        for post in posts:
-            status = "published" if post.is_published else "draft"
-            lines.append(f"- #{post.id} {post.title[:48]} ({status})")
-        telegram_send_message("\n".join(lines), reply_markup=telegram_posts_menu_markup())
-        return False
-
-    if command_token == '/sent':
-        users_with_messages = _blog_users_with_messages(admin_user_id)
-        telegram_send_message(
-            "\n".join(_format_blog_users_lines("📨 Users who sent messages", users_with_messages)),
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if command_token == '/pending':
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-        telegram_send_message(
-            "\n".join(_format_blog_users_lines("⏳ Pending (not replied/seen yet)", users_pending_reply)),
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if command_token == '/replylast':
-        match = re.match(r'^/replylast\s+(.+)$', incoming_text.strip(), re.DOTALL | re.IGNORECASE)
-        if not match:
-            telegram_send_message("Invalid format.\nUse: /replylast <message>", disable_notification=True)
-            return False
-
-        reply_text = match.group(1).strip()
-        if not reply_text:
-            telegram_send_message("Message cannot be empty.", disable_notification=True)
-            return False
-
-        target_user = get_most_recent_pending_user(admin_user_id)
-        if not target_user:
-            telegram_send_message("No pending users right now.", disable_notification=True)
-            return False
-
-        if not admin_user:
-            telegram_send_message("No sender account found on the blog.", disable_notification=True)
-            return False
-
-        reply_message = Message(sender_id=admin_user.id, receiver_id=target_user.id)
-        reply_message.set_encrypted_content(reply_text)
-        db.session.add(reply_message)
-        db.session.commit()
-        publish_mobile_event('new_message', serialize_chat_message(reply_message))
-        telegram_send_message(
-            f"Reply sent to {target_user.username} (user_id={target_user.id}).",
-            disable_notification=True
-        )
-        return True
-
-    if command_token in ('/start', '/help'):
-        telegram_send_message(
-            "🤖 MyBlog Telegram admin is active.\n"
-            "Use the emoji keyboard for user-friendly control:\n"
-            "📝 Posts, 👥 Users, 💬 Comments, 📨 Messages.\n"
-            "Quick commands:\n"
-            "/menu, /status, /posts [page], /users [page], /comments [page]\n"
-            "/finduser <query>, /findpost <query>, /list, /pending\n"
-            "/reply <user_id_or_username> <message>\n"
-            "/replylast <message>\n"
-            "/cancel",
-            reply_markup=telegram_main_menu_markup()
-        )
-        return False
-
-    if command_token == '/reply' and len(command_parts) == 1:
-        users_pending_reply = _blog_users_pending_reply(admin_user_id)
-        lines = [
-            "💬 Reply helper:",
-            "1) Send: /reply <user_id_or_username>",
-            "2) Then send your text message.",
-            "",
-            "⏳ Pending users:"
-        ]
-        lines.extend(_format_blog_users_lines("Pending", users_pending_reply))
-        telegram_send_message("\n".join(lines), reply_markup=telegram_main_menu_markup())
-        return False
-
-    target_user_ref, reply_text = parse_telegram_reply_command(incoming_text)
-    if command_token == '/reply' and target_user_ref:
-        target_user = resolve_blog_user_reference(target_user_ref)
-        if not target_user:
-            telegram_send_message(
-                "❌ Unknown target user.\nUse /users to see valid usernames/user_ids.",
-                disable_notification=True,
-                reply_markup=telegram_main_menu_markup()
-            )
-            return False
-
-        # Two-step reply mode: /reply <user>, then send plain text
-        if not reply_text:
-            telegram_reply_state[incoming_chat_id] = target_user.id
-            _telegram_clear_admin_state(incoming_chat_id)
-            telegram_send_message(
-                f"💬 Reply mode enabled for @{target_user.username} (id={target_user.id}).\n"
-                "✍️ Now send your message text directly.\n"
-                "❌ Use /cancel to stop."
-            )
-            return False
-
-        admin_user = _first_admin_user()
-        if not admin_user:
-            telegram_send_message("No admin account found on the blog.", disable_notification=True)
-            return False
-
-        reply_message = Message(sender_id=admin_user.id, receiver_id=target_user.id)
-        reply_message.set_encrypted_content(reply_text)
-        db.session.add(reply_message)
-        db.session.commit()
-        publish_mobile_event('new_message', serialize_chat_message(reply_message))
-        telegram_send_message(f"Reply sent to {target_user.username} (id={target_user.id}).", disable_notification=True)
-        return True
-
-    # If no command and reply mode exists, send to selected user
-    if not command_token.startswith('/'):
-        pending_target_user_id = telegram_reply_state.get(incoming_chat_id)
-        if pending_target_user_id:
-            admin_user = _bridge_admin_user()
-            target_user = User.query.filter_by(id=pending_target_user_id, is_admin=False).first()
-            if not admin_user or not target_user:
-                telegram_send_message("Reply mode target not found. Use /reply again.", disable_notification=True)
-                telegram_reply_state.pop(incoming_chat_id, None)
-                return False
-
-            reply_message = Message(sender_id=admin_user.id, receiver_id=target_user.id)
-
-            # Support Telegram -> blog image/file replies.
-            uploaded_file_path = None
-            uploaded_file_type = None
-
-            if incoming_photos:
-                best_photo = incoming_photos[-1]
-                photo_file_id = best_photo.get('file_id')
-                uploaded_file_path = telegram_download_file_to_uploads(photo_file_id, preferred_ext='jpg')
-                uploaded_file_type = 'image' if uploaded_file_path else None
-            elif incoming_document:
-                doc_file_id = incoming_document.get('file_id')
-                mime_type = (incoming_document.get('mime_type') or '').lower()
-                doc_name = incoming_document.get('file_name') or ''
-                preferred_ext = os.path.splitext(doc_name)[1].lower().strip('.') if doc_name else 'bin'
-                uploaded_file_path = telegram_download_file_to_uploads(doc_file_id, preferred_ext=preferred_ext or 'bin')
-                if uploaded_file_path:
-                    uploaded_file_type = 'image' if mime_type.startswith('image/') else 'file'
-
-            outgoing_text = incoming_text or incoming_caption or ""
-            reply_message.set_encrypted_content(outgoing_text)
-            if uploaded_file_path:
-                reply_message.file_path = uploaded_file_path
-                reply_message.file_type = uploaded_file_type or 'file'
-
-            db.session.add(reply_message)
-            db.session.commit()
-            publish_mobile_event('new_message', serialize_chat_message(reply_message))
-            telegram_send_message(
-                f"✅ Reply sent to @{target_user.username} (id={target_user.id}).\n"
-                "Reply mode disabled.",
-                reply_markup=telegram_main_menu_markup()
-            )
-            telegram_reply_state.pop(incoming_chat_id, None)
-            return True
-
-    if command_token == '/cancel':
-        telegram_reply_state.pop(incoming_chat_id, None)
-        _telegram_clear_admin_state(incoming_chat_id)
-        telegram_send_message("❌ Reply mode cancelled.", disable_notification=True, reply_markup=telegram_main_menu_markup())
-        return False
-
-    if not target_user_ref or not reply_text:
-        telegram_send_message(
-            "❌ Invalid format.\nUse: /reply <user_id_or_username> <message>\n"
-            "or /reply <user_id_or_username> then write your message.",
-            disable_notification=True
-        )
-        return False
-
-    admin_user = _bridge_admin_user()
-    target_user = resolve_blog_user_reference(target_user_ref)
-    if not admin_user or not target_user:
-        telegram_send_message("❌ Unknown target user. Reply not sent.", disable_notification=True)
-        return False
-
-    reply_message = Message(sender_id=admin_user.id, receiver_id=target_user.id)
-    reply_message.set_encrypted_content(reply_text)
-    db.session.add(reply_message)
-    db.session.commit()
-
-    publish_mobile_event('new_message', serialize_chat_message(reply_message))
-    telegram_send_message(f"✅ Reply sent to @{target_user.username} (id={target_user.id}).", disable_notification=True)
-    return True
-
-
-def telegram_fetch_updates(timeout=0):
-    """Fetch bot updates and inject Telegram replies into website chat."""
-    global telegram_last_update_id
-
-    token = (os.environ.get('TELEGRAM_BOT_TOKEN') or '').strip()
-    if not token:
-        return 0
-
-    timeout = max(0, min(int(timeout), 50))
-    params = {'timeout': timeout}
-
-    with telegram_update_lock:
-        if telegram_last_update_id:
-            params['offset'] = telegram_last_update_id
-
-        url = f"https://api.telegram.org/bot{token}/getUpdates"
-        try:
-            response = requests.get(url, params=params, timeout=timeout + 10)
-            data = response.json()
-        except Exception:
-            return 0
-
-        if not data.get('ok'):
-            return 0
-
-        processed = 0
-        for update in data.get('result', []):
-            update_id = update.get('update_id')
-            if isinstance(update_id, int):
-                telegram_last_update_id = max(telegram_last_update_id, update_id + 1)
-
-            callback_query = update.get('callback_query')
-            if callback_query:
-                process_telegram_callback_query(callback_query)
-
-            message_data = update.get('message')
-            if message_data and process_telegram_update_message(message_data):
-                processed += 1
-
-        return processed
-
-
-def poll_telegram_updates_if_needed():
-    global telegram_last_poll_at
-    if not telegram_is_enabled():
-        return
-
-    now = time.time()
-    if now - telegram_last_poll_at < 2:
-        return
-
-    telegram_last_poll_at = now
-    telegram_fetch_updates(timeout=0)
-
-
-def telegram_polling_worker():
-    while True:
-        try:
-            with app.app_context():
-                poll_telegram_updates_if_needed()
-        except Exception:
-            app.logger.exception("Telegram polling worker error")
-        time.sleep(2)
-
-
-def ensure_telegram_poller_started():
-    global telegram_poller_started
-    if not telegram_is_enabled():
-        return
-
-    with telegram_poller_lock:
-        if telegram_poller_started:
-            return
-        Thread(target=telegram_polling_worker, daemon=True).start()
-        telegram_poller_started = True
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.before_request
-def telegram_before_request_poll():
-    # Keep Telegram bot commands responsive without JavaScript/webhooks.
-    ensure_telegram_poller_started()
-    poll_telegram_updates_if_needed()
+def enforce_ban():
+    """Deconnecte un compte banni des sa requete suivante.
+
+    Sans ce controle, un utilisateur banni resterait actif jusqu'a l'expiration
+    de son cookie de session — soit jusqu'a quatre heures.
+    """
+    if getattr(current_user, 'is_authenticated', False) and getattr(current_user, 'is_banned', False):
+        logout_user()
+        session.clear()
+        if request.endpoint not in ('static', 'login'):
+            flash('This account has been suspended.', 'danger')
+            return redirect(url_for('login'))
+
+
+@app.before_request
+def enforce_password_change():
+    """Renvoie vers le changement de mot de passe tant qu'il est exige.
+
+    Sans ce garde, `must_change_password` ne serait qu'une colonne : le compte
+    cree par le script de deploiement resterait utilisable indefiniment avec le
+    mot de passe imprime dans un fichier.
+    """
+    if not getattr(current_user, 'is_authenticated', False):
+        return
+    if not getattr(current_user, 'must_change_password', False):
+        return
+    # On laisse passer ce dont la page a besoin, et la deconnexion.
+    if request.endpoint in ('change_password', 'logout', 'static', 'static_v'):
+        return
+    return redirect(url_for('change_password'))
+
+
+@app.before_request
+def publish_due_scheduled_posts():
+    """Publie les articles dont la date de programmation est passee.
+
+    Ce hook vivait auparavant dans `telegram_before_request_poll`, qui servait
+    surtout a faire tourner le long-polling du bot. Le pont Telegram a ete
+    archive (voir archive/telegram/) ; la publication programmee, elle, reste
+    une fonctionnalite du blog.
+    """
     from app.utils import publish_scheduled_posts
     publish_scheduled_posts()
 
 
+# Politique de securite du contenu : tout est servi depuis notre propre
+# origine. Aucun domaine tiers n'est autorise — ni Google Fonts, ni un CDN de
+# CKEditor : chaque requete vers un tiers revelerait a celui-ci l'adresse IP du
+# lecteur, l'URL consultee et son User-Agent.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "img-src 'self' data:; "
+    "media-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "connect-src 'self' ws: wss:; "
+    "font-src 'self' data:; "
+    "object-src 'none'; frame-ancestors 'none'; base-uri 'self'; "
+    "form-action 'self'; frame-src 'none'; worker-src 'self'"
+)
+
+
 @app.after_request
 def apply_security_headers(response):
-    response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    response.headers.setdefault('X-Frame-Options', 'DENY')
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
-    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
-    response.headers.setdefault('Permissions-Policy', 'geolocation=(), microphone=(), camera=()')
+    # no-referrer : aucune URL de ce site ne doit fuiter vers un site externe
+    # quand un lecteur suit un lien sortant.
+    response.headers.setdefault('Referrer-Policy', 'no-referrer')
     response.headers.setdefault(
-        'Content-Security-Policy',
-        "default-src 'self'; "
-        "img-src 'self' data: https:; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.ckeditor.com; "
-        "connect-src 'self' ws: wss:; "
-        "font-src 'self' data: https://fonts.gstatic.com; "
-        "object-src 'none'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+        'Permissions-Policy',
+        'geolocation=(), microphone=(), camera=(), payment=(), usb=(), '
+        'magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()'
     )
+    response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+    response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
+    response.headers.setdefault('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+
+    # HSTS uniquement sur une connexion HTTPS effective : l'envoyer en clair
+    # n'a aucun effet, et l'envoyer a tort peut rendre un site de test
+    # inaccessible.
+    if request.is_secure or os.environ.get('FORCE_HSTS', '').lower() in ('1', 'true', 'yes'):
+        response.headers.setdefault(
+            'Strict-Transport-Security', 'max-age=63072000; includeSubDomains'
+        )
+
+    # Ne pas annoncer la pile serveur.
+    response.headers['Server'] = 'server'
     return response
 
 
-# Start Telegram polling as soon as routes are imported (even without web traffic).
-ensure_telegram_poller_started()
+@app.route('/admin/flag_image/<int:message_id>', methods=['POST'])
+@admin_required
+def flag_message_image(message_id):
+    """Signale la piece jointe d'un message : bannit l'auteur, retient le hash.
+
+    C'est ainsi que la liste de blocage se remplit. Les bases de reference
+    (NCMEC, PhotoDNA, IWF) ne sont pas distribuees publiquement ; ici la liste
+    est le produit des decisions de moderation prises sur ce site. Une fois une
+    image signalee, toute nouvelle tentative de la televerser — meme ré-encodee
+    ou redimensionnee — est refusee automatiquement.
+    """
+    from app.image_safety import (dhash_of_path, format_dhash, quarantine_file,
+                                  sha256_of_file)
+    from app.models import BlockedImageHash, BlockedUploadEvent
+
+    form = EmptyForm()
+    if not form.validate_on_submit():
+        flash('Session expired. Please try again.', 'danger')
+        return redirect(url_for('admin_chat'))
+
+    message = Message.query.get_or_404(message_id)
+    if not message.file_path:
+        flash('This message has no attachment.', 'danger')
+        return redirect(url_for('admin_chat_user', user_id=message.sender_id))
+
+    path = _absolute_upload_path(message.file_path)
+    if not path or not os.path.exists(path):
+        flash('The file is no longer on disk.', 'danger')
+        return redirect(url_for('admin_chat_user', user_id=message.sender_id))
+
+    digest = sha256_of_file(path)
+    try:
+        perceptual = format_dhash(dhash_of_path(path))
+    except Exception:
+        # Fichier non decodable comme image : on retient au moins le SHA-256.
+        perceptual = None
+
+    entry = BlockedImageHash.query.filter_by(sha256=digest).first()
+    if entry is None:
+        entry = BlockedImageHash(
+            sha256=digest,
+            dhash=perceptual,
+            label=f'Flagged by {current_user.username} on message {message.id}',
+        )
+        db.session.add(entry)
+        db.session.flush()
+
+    author = message.sender
+    banned_name = None
+    if author and not author.is_admin:
+        author.is_banned = True
+        author.banned_at = datetime.utcnow()
+        author.ban_reason = 'Flagged image upload'
+        author.rotate_session_token()
+        banned_name = author.username
+
+    quarantined = quarantine_file(path, reason=f'flagged by admin {current_user.id}')
+
+    db.session.add(BlockedUploadEvent(
+        user_id=author.id if author else None,
+        matched_hash_id=entry.id,
+        distance=0,
+        sha256=digest,
+        quarantine_name=quarantined,
+    ))
+
+    # Le message perd sa piece jointe : le fichier n'est plus servable.
+    message.file_path = None
+    message.file_type = None
+    db.session.commit()
+
+    app.logger.warning('Admin %s flagged image on message %s (user %s)',
+                       current_user.id, message.id, author.id if author else None)
+
+    if banned_name:
+        flash(f'Image blocked, hash recorded, and {banned_name} was banned.', 'success')
+    else:
+        flash('Image blocked and hash recorded.', 'success')
+    return redirect(url_for('admin_moderation'))
+
+
+@app.route('/admin/moderation', methods=['GET'])
+@admin_required
+def admin_moderation():
+    """Liste de blocage, televersements refuses et comptes bannis."""
+    from app.models import BlockedImageHash, BlockedUploadEvent
+
+    return render_template(
+        'admin_moderation.html',
+        form=EmptyForm(),
+        blocked=BlockedImageHash.query.order_by(BlockedImageHash.added_at.desc()).all(),
+        events=BlockedUploadEvent.query.order_by(BlockedUploadEvent.created_at.desc()).limit(100).all(),
+        banned=User.query.filter_by(is_banned=True).order_by(User.banned_at.desc()).all(),
+    )
+
+
+@app.route('/admin/moderation/unblock/<int:hash_id>', methods=['POST'])
+@admin_required
+def admin_unblock_hash(hash_id):
+    """Retire une empreinte de la liste — pour corriger un faux positif."""
+    from app.models import BlockedImageHash
+
+    if not EmptyForm().validate_on_submit():
+        flash('Session expired. Please try again.', 'danger')
+        return redirect(url_for('admin_moderation'))
+
+    entry = BlockedImageHash.query.get_or_404(hash_id)
+    db.session.delete(entry)
+    db.session.commit()
+    flash('Hash removed from the block list.', 'success')
+    return redirect(url_for('admin_moderation'))
+
+
+@app.route('/admin/moderation/unban/<int:user_id>', methods=['POST'])
+@admin_required
+def admin_unban_user(user_id):
+    """Leve un bannissement."""
+    if not EmptyForm().validate_on_submit():
+        flash('Session expired. Please try again.', 'danger')
+        return redirect(url_for('admin_moderation'))
+
+    user = User.query.get_or_404(user_id)
+    user.is_banned = False
+    user.banned_at = None
+    user.ban_reason = None
+    db.session.commit()
+    flash(f'{user.username} can sign in again.', 'success')
+    return redirect(url_for('admin_moderation'))
+
+
+SITE_TEXT_STATUSES = ('all', 'edited', 'default', 'partial', 'unused', 'orphan')
+
+
+def _site_text_filters(source):
+    """Filtres de l'editeur (q, group, status), valides et bornes."""
+    from app.site_text import GROUPS
+    q = (source.get('q') or '').strip()[:100]
+    group = source.get('group') or ''
+    if group not in {prefix for prefix, _label in GROUPS}:
+        group = ''
+    status = source.get('status') or 'all'
+    if status not in SITE_TEXT_STATUSES:
+        status = 'all'
+    return q, group, status
+
+
+def _site_text_context(rows, q, group, status, **extra):
+    """Contexte du gabarit de l'editeur : cles visibles, compteurs, etat."""
+    from app.site_text import (DEFAULTS, GROUPS, LANGUAGES, RICH_KEYS, fingerprint,
+                               key_usage, orphan_keys)
+
+    usage = key_usage()
+    orphans = orphan_keys(rows)
+
+    def is_partial(row):
+        return row is not None and (row.text_en is None) != (row.text_fr is None)
+
+    counts = {
+        'total': len(DEFAULTS),
+        'edited': sum(1 for k in DEFAULTS if k in rows),
+        'partial': sum(1 for k in DEFAULTS if is_partial(rows.get(k))),
+        'unused': sum(1 for k in DEFAULTS if k not in usage),
+        'orphan': len(orphans),
+    }
+
+    needle = q.lower()
+
+    def visible(key):
+        row = rows.get(key)
+        known = key in DEFAULTS
+        if group and key.split('.')[0] != group:
+            return False
+        if status == 'edited' and not (known and row):
+            return False
+        if status == 'default' and not (known and not row):
+            return False
+        if status == 'partial' and not is_partial(row):
+            return False
+        if status == 'unused' and not (known and key not in usage):
+            return False
+        if status == 'orphan' and known:
+            return False
+        if needle:
+            haystack = [key]
+            if known:
+                haystack += [DEFAULTS[key].get('en') or '', DEFAULTS[key].get('fr') or '']
+            if row:
+                haystack += [row.text_en or '', row.text_fr or '']
+            if not any(needle in h.lower() for h in haystack):
+                return False
+        return True
+
+    groups = []
+    for prefix, label in GROUPS:
+        keys = sorted(k for k in DEFAULTS if k.split('.')[0] == prefix and visible(k))
+        if keys:
+            groups.append((prefix, label, keys))
+    shown_orphans = [k for k in orphans if visible(k)] if status in ('all', 'orphan') else []
+
+    context = dict(
+        form=EmptyForm(),
+        import_form=SiteTextImportForm(),
+        groups=groups,
+        orphans=shown_orphans,
+        defaults=DEFAULTS,
+        overrides=rows,
+        languages=LANGUAGES,
+        rich_keys=RICH_KEYS,
+        usage=usage,
+        counts=counts,
+        group_options=GROUPS,
+        status_options=SITE_TEXT_STATUSES,
+        q=q, group=group, status=status,
+        fps={k: fingerprint(r) for k, r in rows.items()},
+        fingerprint=fingerprint,
+        submitted={}, previews={}, errors={}, conflicts=[],
+        is_partial=is_partial,
+    )
+    context.update(extra)
+    return context
+
+
+@app.route('/admin/texts', methods=['GET', 'POST'])
+@admin_required
+def manage_site_texts():
+    """Editeur des textes fixes du site, en francais et en anglais.
+
+    Un champ laisse vide n'ecrit pas une chaine vide : il supprime la
+    personnalisation et le texte revient a sa valeur par defaut.
+
+    Chaque cle affichee porte une empreinte (`::fp`) de son etat au moment du
+    rendu. A l'enregistrement, seules les cles dont le champ a change sont
+    ecrites, et une cle modifiee entre-temps par quelqu'un d'autre est signalee
+    comme conflit au lieu d'etre ecrasee. Une cle absente du formulaire (filtre
+    actif) n'est jamais touchee.
+    """
+    from app.models import SiteText
+    from app.site_text import (DEFAULTS, LANGUAGES, RICH_KEYS, apply_change,
+                               effective_override, fingerprint, fingerprint_values,
+                               orphan_keys, render_rich, validate_value)
+
+    rows = {row.key: row for row in SiteText.query.all()}
+
+    if request.method == 'GET':
+        q, group, status = _site_text_filters(request.args)
+        return render_template('manage_site_texts.html',
+                               **_site_text_context(rows, q, group, status))
+
+    q, group, status = _site_text_filters(request.form)
+    redirect_args = {k: v for k, v in (('q', q), ('group', group),
+                                       ('status', status if status != 'all' else ''))
+                     if v}
+
+    if not EmptyForm().validate_on_submit():
+        flash('Session expired. Please try again.', 'danger')
+        return redirect(url_for('manage_site_texts', **redirect_args))
+    if _action_rate_limited('site_texts', 30, 60):
+        flash('Too many changes in a short time. Please wait a minute.', 'danger')
+        return redirect(url_for('manage_site_texts', **redirect_args))
+
+    action = request.form.get('action', 'save')
+    if action not in ('save', 'preview'):
+        action = 'save'
+
+    changes = []      # (key, en, fr, action)
+    errors = {}
+    conflicts = []
+    previews = {}
+    submitted = {}
+    fps = {}
+
+    for key in list(DEFAULTS) + orphan_keys(rows):
+        fp_form = request.form.get(f'{key}::fp')
+        if fp_form is None:
+            continue  # cle non affichee (filtre) : surtout ne pas y toucher
+        fps[key] = fp_form
+        known = key in DEFAULTS
+        row = rows.get(key)
+
+        if request.form.get(f'{key}::reset'):
+            target, act = (None, None), 'reset'
+        elif known:
+            target = tuple(effective_override(key, lang, request.form.get(f'{key}::{lang}'))
+                           for lang in ('en', 'fr'))
+            act = 'save'
+            submitted[key] = {lang: request.form.get(f'{key}::{lang}') or ''
+                              for lang in LANGUAGES}
+        else:
+            continue  # orphelin : reset uniquement
+
+        target_fp = fingerprint_values(*target)
+        if target_fp == fp_form:
+            continue  # rien touche
+        if target_fp == fingerprint(row):
+            continue  # deja a jour
+        if fp_form != fingerprint(row):
+            conflicts.append(key)
+            continue
+
+        problems = [m for m in (validate_value(key, lang, val)
+                                for lang, val in zip(('en', 'fr'), target)) if m]
+        if problems:
+            errors[key] = problems
+            continue
+
+        changes.append((key, target[0], target[1], act))
+        if key in RICH_KEYS:
+            previews[key] = {lang: render_rich(val) for lang, val in zip(('en', 'fr'), target)
+                             if val}
+
+    if action == 'preview' or errors or conflicts:
+        if errors or conflicts:
+            flash('Nothing was saved. Fix the highlighted texts and try again.', 'danger')
+        else:
+            flash('Preview only: nothing was saved.', 'info')
+        context = _site_text_context(rows, q, group, status, submitted=submitted,
+                                     previews=previews, errors=errors,
+                                     conflicts=conflicts)
+        context['fps'] = {**context['fps'], **fps}
+        return render_template('manage_site_texts.html', **context), \
+            (400 if (errors or conflicts) else 200)
+
+    changed = 0
+    for key, en, fr, act in changes:
+        if apply_change(key, en, fr, act, current_user.id):
+            changed += 1
+    db.session.commit()
+    flash(f'{changed} text(s) updated.' if changed else 'No changes to save.',
+          'success' if changed else 'info')
+    return redirect(url_for('manage_site_texts', **redirect_args))
+
+
+@app.route('/admin/texts/history/<path:key>')
+@admin_required
+def manage_site_text_history(key):
+    """Historique d'une cle : etat courant, defauts, dernieres revisions."""
+    from app.models import SiteText, SiteTextRevision
+    from app.site_text import DEFAULTS, LANGUAGES, REVISIONS_KEPT
+
+    row = SiteText.query.filter_by(key=key).first()
+    revisions = (SiteTextRevision.query.filter_by(key=key)
+                 .order_by(SiteTextRevision.id.desc()).limit(REVISIONS_KEPT).all())
+    if key not in DEFAULTS and row is None and not revisions:
+        abort(404)
+    return render_template('site_text_history.html', form=EmptyForm(), key=key,
+                           row=row, default=DEFAULTS.get(key), revisions=revisions,
+                           languages=LANGUAGES)
+
+
+@app.route('/admin/texts/revert/<int:rev_id>', methods=['POST'])
+@admin_required
+def revert_site_text(rev_id):
+    """Restaure l'etat d'une revision (ecrit lui-meme une nouvelle revision)."""
+    from app.models import SiteTextRevision
+    from app.site_text import apply_change, effective_override, validate_value
+
+    rev = SiteTextRevision.query.get_or_404(rev_id)
+    back = url_for('manage_site_text_history', key=rev.key)
+
+    if not EmptyForm().validate_on_submit():
+        flash('Session expired. Please try again.', 'danger')
+        return redirect(back)
+    if _action_rate_limited('site_texts', 30, 60):
+        flash('Too many changes in a short time. Please wait a minute.', 'danger')
+        return redirect(back)
+
+    en = effective_override(rev.key, 'en', rev.text_en)
+    fr = effective_override(rev.key, 'fr', rev.text_fr)
+    problems = [m for m in (validate_value(rev.key, 'en', en),
+                            validate_value(rev.key, 'fr', fr)) if m]
+    if problems:
+        flash('This version can no longer be restored: ' + ' '.join(problems), 'danger')
+        return redirect(back)
+
+    if apply_change(rev.key, en, fr, 'revert', current_user.id):
+        db.session.commit()
+        flash('Version restored.', 'success')
+    else:
+        flash('Already at this version.', 'info')
+    return redirect(back)
+
+
+@app.route('/admin/texts/export.json')
+@admin_required
+def export_site_texts():
+    """Export JSON des seules personnalisations (pas les defauts)."""
+    from app.models import SiteText
+
+    texts = {row.key: {'en': row.text_en, 'fr': row.text_fr}
+             for row in SiteText.query.order_by(SiteText.key).all()}
+    body = json.dumps({'format': 'site-text/1', 'texts': texts},
+                      ensure_ascii=False, indent=2, sort_keys=True)
+    return Response(body, mimetype='application/json', headers={
+        'Content-Disposition': 'attachment; filename=site-texts.json',
+        'Cache-Control': 'no-store',
+    })
+
+
+@app.route('/admin/texts/import', methods=['POST'])
+@admin_required
+def import_site_texts():
+    """Import JSON : tout ou rien, cles inconnues ignorees et signalees."""
+    from app.site_text import DEFAULTS, apply_change, effective_override, validate_value
+
+    back = url_for('manage_site_texts')
+    form = SiteTextImportForm()
+    if not form.validate_on_submit():
+        flash('Choose a .json file exported from this page.', 'danger')
+        return redirect(back)
+    if _action_rate_limited('site_texts', 30, 60):
+        flash('Too many changes in a short time. Please wait a minute.', 'danger')
+        return redirect(back)
+
+    limit = 256 * 1024
+    raw = form.file.data.read(limit + 1)
+    if len(raw) > limit:
+        flash('File too large (256 KB maximum).', 'danger')
+        return redirect(back)
+    try:
+        payload = json.loads(raw.decode('utf-8'))
+    except (ValueError, UnicodeDecodeError):
+        flash('Invalid JSON file.', 'danger')
+        return redirect(back)
+    texts = payload.get('texts') if isinstance(payload, dict) else None
+    if not isinstance(payload, dict) or payload.get('format') != 'site-text/1' \
+            or not isinstance(texts, dict):
+        flash('Unrecognised file format (expected "site-text/1").', 'danger')
+        return redirect(back)
+
+    problems = []
+    skipped = 0
+    planned = []
+    for key, entry in texts.items():
+        if key not in DEFAULTS:
+            skipped += 1
+            continue
+        if not isinstance(entry, dict):
+            problems.append(f'{key}: invalid entry.')
+            continue
+        values = []
+        for lang in ('en', 'fr'):
+            value = entry.get(lang)
+            if value is not None and not isinstance(value, str):
+                problems.append(f'{key}: {lang.upper()} must be text or null.')
+                break
+            value = effective_override(key, lang, value)
+            message = validate_value(key, lang, value)
+            if message:
+                problems.append(f'{key}: {message}')
+                break
+            values.append(value)
+        else:
+            planned.append((key, values[0], values[1]))
+
+    if problems:
+        shown = ' | '.join(problems[:5])
+        more = f' (+{len(problems) - 5} more)' if len(problems) > 5 else ''
+        flash(f'Import refused, nothing was written. {shown}{more}', 'danger')
+        return redirect(back)
+
+    imported = sum(1 for key, en, fr in planned
+                   if apply_change(key, en, fr, 'import', current_user.id))
+    db.session.commit()
+    flash(f'{imported} imported, {skipped} unknown key(s) skipped.',
+          'success' if imported else 'info')
+    return redirect(back)
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    """Decourage l'indexation et l'archivage automatique du site."""
+    body = (
+        "User-agent: *\n"
+        "Disallow: /chat\n"
+        "Disallow: /admin\n"
+        "Disallow: /uploads/\n"
+        "Disallow: /profile/\n"
+        "Disallow: /notifications\n"
+        "Disallow: /api/\n"
+    )
+    return Response(body, mimetype='text/plain')
+
+
 
 
 def _conversation_latest_message_id(admin_id, user_id):
@@ -1937,13 +953,6 @@ def wait_for_conversation_message(admin_id, user_id, last_seen_id, timeout_secon
         if latest_id > last_seen_id:
             return True
 
-        remaining = int(deadline - time.time())
-        if telegram_is_enabled() and remaining > 0:
-            telegram_fetch_updates(timeout=min(8, remaining))
-            latest_id = _conversation_latest_message_id(admin_id, user_id)
-            if latest_id > last_seen_id:
-                return True
-
         time.sleep(1)
 
     return False
@@ -1951,7 +960,8 @@ def wait_for_conversation_message(admin_id, user_id, last_seen_id, timeout_secon
 # 🔹 Home Page
 @app.route('/')
 def index():
-    posts = Post.query.order_by(Post.date_posted.desc()).all()
+    posts = Post.query.filter(Post.is_published.is_(True)) \
+        .order_by(Post.date_posted.desc()).all()
     return render_template('index.html', posts=posts)
 
 
@@ -1982,18 +992,25 @@ def contact():
         )
         db.session.add(contact_msg)
         db.session.commit()
-        telegram_send_message(
-            f"📬 New contact message from {contact_msg.name} ({contact_msg.email}):\n\n{contact_msg.message}"
-        )
         flash('Your message has been sent successfully!', 'success')
         return redirect(url_for('contact'))
     return render_template('contact.html', form=form)
+
+
+def _require_visible_post(post):
+    """404 pour un brouillon ou un article programme, sauf pour un admin."""
+    if post.is_published:
+        return
+    if current_user.is_authenticated and current_user.is_admin:
+        return
+    abort(404)
 
 
 # 🔹 View a Blog Post
 @app.route('/post/<int:post_id>', methods=['GET', 'POST'])
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
+    _require_visible_post(post)
     form = CommentForm()
     # Increment view counter once per session
     if request.method == 'GET':
@@ -2011,7 +1028,9 @@ def post_detail(post_id):
                 return redirect(url_for('post_detail', post_id=post.id))
             content = form.content.data.strip()
             if content:
-                comment = Comment(content=parse_bbcode(content), post_id=post.id, author_id=current_user.id)
+                # Texte brut : converti (et echappe) au rendu par `comment_html`.
+                comment = Comment(content=content, content_format='bbcode',
+                                  post_id=post.id, author_id=current_user.id)
                 db.session.add(comment)
                 db.session.commit()
                 
@@ -2029,14 +1048,8 @@ def post_detail(post_id):
                         related_comment_id=comment.id
                     )
                     db.session.add(notification)
-                    
-                    # Emit real-time notification
-                    socketio.emit('notification', {
-                        'type': 'comment',
-                        'title': 'New comment!',
-                        'message': f'{current_user.username} commented on your article "{post.title}"',
-                        'user_id': post.author_id
-                    })
+                    # Pas de socketio.emit : sans salon, l'evenement partait vers
+                    # tous les sockets connectes. La notification est en base.
                 
                 # Check and award badges
                 check_and_award_badges(current_user)
@@ -2049,14 +1062,14 @@ def post_detail(post_id):
             flash('You must be logged in to comment.', 'danger')
         return redirect(url_for('post_detail', post_id=post.id))
 
-    # BBCode render (server-side)
-    post.content = parse_bbcode(post.content)
-
+    # Le BBCode de l'article est converti au rendu (filtre `bbcode`) : on ne
+    # modifie plus l'objet ORM, qui risquait de persister du HTML au prochain commit.
     return render_template('post_detail.html', post=post, form=form)
 
 
 # 🔹 Register a User
 @app.route('/register', methods=['GET', 'POST'])
+@rate_limit('register', max_calls=10, window_seconds=3600)
 def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
@@ -2065,6 +1078,7 @@ def register():
     if form.validate_on_submit():
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, password=hashed_password)
+        user.rotate_session_token()
         db.session.add(user)
         db.session.commit()
         flash('Your account has been created! You can now log in.', 'success')
@@ -2073,27 +1087,94 @@ def register():
     return render_template('register.html', title='Register', form=form)
 
 
+# TOTP : un code est valable un pas de 30 s, avec une tolerance d'un pas de
+# chaque cote ; le pas accepte est memorise pour interdire le rejeu.
+TOTP_STEP_SECONDS = 30
+PRE_2FA_MAX_AGE = 300
+
+
+def _totp_secret(user):
+    """Secret TOTP en clair. Une ancienne valeur non chiffree est rendue telle quelle."""
+    if not user or not user.totp_secret:
+        return None
+    return message_encryption.decrypt_message(user.totp_secret)
+
+
+def _store_totp_secret(user, secret):
+    user.totp_secret = message_encryption.encrypt_message(secret)
+
+
+def _verify_totp(user, code, secret=None):
+    """Retourne le pas TOTP accepte, ou None.
+
+    Refuse un code deja utilise (`totp_last_counter`) : valid_window=1 laissait
+    un code observe rejouable pendant ~90 s.
+    """
+    secret = secret or _totp_secret(user)
+    code = re.sub(r'\s+', '', code or '')
+    if not secret or not re.fullmatch(r'\d{6}', code):
+        return None
+    last = user.totp_last_counter if user.totp_last_counter is not None else -1
+    current = int(time.time()) // TOTP_STEP_SECONDS
+    try:
+        generator = pyotp.TOTP(secret)
+        for counter in (current - 1, current, current + 1):
+            if hmac.compare_digest(generator.generate_otp(counter), code) and counter > last:
+                return counter
+    except Exception:
+        return None
+    return None
+
+
+def _clear_pre_2fa():
+    for key in ('pre_2fa_user_id', 'pre_2fa_remember', 'pre_2fa_at'):
+        session.pop(key, None)
+
+
+def _login_failure_key(username):
+    return 'login:' + hashed_key((username or '').lower())
+
+
 # 🔹 Login a User
 @app.route('/login', methods=['GET', 'POST'])
-@rate_limit('login', max_calls=5, window_seconds=300)
+@rate_limit('login', max_calls=30, window_seconds=300)
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('index'))
 
     form = LoginForm()
     if form.validate_on_submit():
+        fkey = _login_failure_key(form.username.data)
+        # Verrouillage par pseudo (y compris inexistant : pas d'enumeration).
+        # Meme message qu'un mot de passe faux, et pas de bcrypt.
+        if too_many_failures(fkey, 10, 900):
+            flash('Login failed. Check your username and password.', 'danger')
+            return render_template('login.html', title='Login', form=form)
+
         user = User.query.filter_by(username=form.username.data).first()
-        if user and bcrypt.check_password_hash(user.password, form.password.data):
+        # Toujours une verification bcrypt : sans elle, une reponse instantanee
+        # sur un pseudo inexistant contre ~250 ms sur un pseudo existant permet
+        # d'enumerer les comptes au chronometre.
+        password_ok = bcrypt.check_password_hash(
+            user.password if user else _DUMMY_PASSWORD_HASH, form.password.data)
+        if user and password_ok:
+            # Le statut "suspendu" n'est revele qu'apres le mot de passe : sinon
+            # il permet d'enumerer les comptes bannis.
+            if user.is_banned:
+                flash('This account has been suspended.', 'danger')
+                return render_template('login.html', title='Login', form=form)
+            clear_failures(fkey)
             if user.totp_enabled:
                 # Store pre-auth state in session; do NOT log in yet
                 session['pre_2fa_user_id'] = user.id
                 session['pre_2fa_remember'] = form.remember_me.data
+                session['pre_2fa_at'] = int(time.time())
                 return redirect(url_for('login_totp'))
             login_user(user, remember=form.remember_me.data)
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
-        else:
-            flash('Login failed. Check your username and password.', 'danger')
+        record_failure(fkey)
+        flash('Login failed. Check your username and password.', 'danger')
 
     return render_template('login.html', title='Login', form=form)
 
@@ -2107,18 +1188,37 @@ def login_totp():
         # No pending pre-auth — redirect to login
         return redirect(url_for('login'))
 
+    # L'etat "mot de passe valide" expire : il ne doit pas survivre des heures.
+    started = session.get('pre_2fa_at')
+    if not isinstance(started, int) or int(time.time()) - started > PRE_2FA_MAX_AGE:
+        _clear_pre_2fa()
+        flash('The verification step expired. Please sign in again.', 'danger')
+        return redirect(url_for('login'))
+
     user = User.query.get(user_id)
-    if not user or not user.totp_enabled:
-        session.pop('pre_2fa_user_id', None)
-        session.pop('pre_2fa_remember', None)
+    if not user or not user.totp_enabled or user.is_banned:
+        _clear_pre_2fa()
         return redirect(url_for('login'))
 
     form = TOTPVerifyForm()
     if form.validate_on_submit():
-        totp = pyotp.TOTP(user.totp_secret)
-        if totp.verify(form.code.data.strip(), valid_window=1):
+        # Limite par compte cote serveur : le cookie de session etant rejouable
+        # par le client, un compteur qui y vivrait serait contournable.
+        if _action_rate_limited('totp_verify', 5, 300, actor_key=f'pending:{user.id}'):
+            _clear_pre_2fa()
+            flash('Too many invalid codes. Please sign in again in a few minutes.', 'danger')
+            return redirect(url_for('login'))
+
+        counter = _verify_totp(user, form.code.data)
+        if counter is not None:
             remember = session.pop('pre_2fa_remember', False)
-            session.pop('pre_2fa_user_id', None)
+            _clear_pre_2fa()
+            user.totp_last_counter = counter
+            # Ancien secret en clair : on le chiffre maintenant qu'il est prouve valide.
+            stored = user.totp_secret
+            if stored and message_encryption.decrypt_message(stored) == stored:
+                _store_totp_secret(user, stored)
+            db.session.commit()
             login_user(user, remember=remember)
             flash(f"Welcome {user.username}, you are now logged in!", "success")
             return redirect(url_for('admin_dashboard') if user.is_admin else url_for('index'))
@@ -2132,28 +1232,109 @@ def login_totp():
 @app.route('/logout')
 def logout():
     # Clear any pending pre-2FA session state
-    session.pop('pre_2fa_user_id', None)
-    session.pop('pre_2fa_remember', None)
+    _clear_pre_2fa()
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('login'))
+
+
+def _conversations_awaiting_reply(admin_id):
+    """Conversations dont le dernier message vient du lecteur.
+
+    C'est le seul signal fiable ici : `Message` n'a pas d'indicateur de lecture,
+    mais si le dernier message d'un fil n'est pas de l'admin, personne n'a
+    encore repondu.
+    """
+    pending = 0
+    for user in User.query.filter(User.is_admin.is_(False)).all():
+        last = Message.query.filter(
+            ((Message.sender_id == admin_id) & (Message.receiver_id == user.id)) |
+            ((Message.sender_id == user.id) & (Message.receiver_id == admin_id))
+        ).order_by(Message.id.desc()).first()
+        if last and last.sender_id == user.id:
+            pending += 1
+    return pending
 
 
 # 🔹 Admin Dashboard
 @app.route('/admin_dashboard')
 @admin_required
 def admin_dashboard():
-    # Get statistics for dashboard
-    total_posts = Post.query.count()
-    total_users = User.query.count()
-    total_comments = Comment.query.count()
-    total_banners = Banner.query.count()
-    
-    return render_template('admin_dashboard.html', 
-                         total_posts=total_posts,
-                         total_users=total_users,
-                         total_comments=total_comments,
-                         total_banners=total_banners)
+    """Ce qui attend l'administrateur, et rien d'autre en premier plan.
+
+    L'ancienne version affichait quatre compteurs (articles, comptes,
+    commentaires, bannieres). Ces nombres ne changent pratiquement jamais et
+    n'indiquent aucune action : ils sont relegues en bas de page. Le haut
+    repond a la seule question utile — est-ce que quelque chose attend ?
+    """
+    from app.models import BlockedUploadEvent
+
+    now = datetime.utcnow()
+
+    pending_replies = _conversations_awaiting_reply(current_user.id)
+    unread_contact = ContactMessage.query.filter_by(is_read=False).count()
+    drafts = Post.query.filter(Post.is_draft.is_(True), Post.is_published.is_(False),
+                              Post.scheduled_date.is_(None)).count()
+    scheduled = Post.query.filter(
+        Post.is_published.is_(False),
+        Post.scheduled_date.isnot(None),
+        Post.scheduled_date > now,
+    ).count()
+    recent_blocks = BlockedUploadEvent.query.filter(
+        BlockedUploadEvent.created_at > now - timedelta(days=30)
+    ).count()
+
+    # Chaque entree n'apparait que si son compte est non nul : une liste de
+    # zeros n'est pas une liste de taches.
+    waiting = [
+        {'count': pending_replies,
+         'label': 'conversation awaiting a reply',
+         'plural': 'conversations awaiting a reply',
+         'url': url_for('admin_chat'), 'urgent': True},
+        {'count': unread_contact,
+         'label': 'unread contact message',
+         'plural': 'unread contact messages',
+         'url': url_for('manage_posts'), 'urgent': True},
+        {'count': recent_blocks,
+         'label': 'blocked upload this month',
+         'plural': 'blocked uploads this month',
+         'url': url_for('admin_moderation'), 'urgent': True},
+        {'count': drafts,
+         'label': 'draft left open',
+         'plural': 'drafts left open',
+         'url': url_for('manage_posts'), 'urgent': False},
+        {'count': scheduled,
+         'label': 'post scheduled to go out',
+         'plural': 'posts scheduled to go out',
+         'url': url_for('manage_posts'), 'urgent': False},
+    ]
+    waiting = [item for item in waiting if item['count']]
+
+    latest_post = Post.query.order_by(Post.date_posted.desc()).first()
+    latest_comment = Comment.query.order_by(Comment.date_posted.desc()).first()
+
+    return render_template(
+        'admin_dashboard.html',
+        waiting=waiting,
+        total_posts=Post.query.filter_by(is_published=True).count(),
+        total_users=User.query.filter(User.is_admin.is_(False)).count(),
+        total_comments=Comment.query.count(),
+        total_banners=Banner.query.filter_by(is_active=True).count(),
+        latest_post=latest_post,
+        latest_comment=latest_comment,
+        now=now,
+    )
+
+
+# Adresse du widget de swap tiers. Centralisee ici pour que le gabarit n'ait
+# pas a la coder en dur, et pour qu'il soit visible en un coup d'oeil qu'une
+# origine externe est impliquee.
+TROCADOR_WIDGET_URL = (
+    'https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet'
+    '&address=47wJbYtPB6SLd4P9PCwLcKfTgXCTnZGPwUuGSv3dPTGuG1RmhcB8LVQUVHATAAW1Q6ZVJQQ82EeC9Rzox7aWt6jgCtw54Pj'
+    '&donation=True&amount=0.0001&name=Blog+Support'
+    '&description=Thanks+for+supporting+the+blog&bgcolor='
+)
 
 
 # 🔹 Donate Page
@@ -2162,16 +1343,43 @@ def donate():
     form = EmptyForm()
 
     if request.method == 'POST':
-        amount = float(request.form.get('amount', 0))
-        if amount > 0:
-            new_donor = Donor(name='Anonymous', amount=amount)
-            db.session.add(new_donor)
-            db.session.commit()
-            flash("Thank you for your donation!", "success")
+        try:
+            amount = float((request.form.get('amount') or '0').strip())
+        except ValueError:
+            amount = None
+        if amount is None or not math.isfinite(amount) or not 0 < amount <= 100000:
+            flash('Please enter a valid amount.', 'danger')
+            return redirect(url_for('donate'))
+        # Seules les saisies valides comptent : une faute de frappe ne doit pas
+        # consommer le quota.
+        if _action_rate_limited('donate', 3, 3600):
+            flash('Too many submissions. Please try again later.', 'danger')
+            return redirect(url_for('donate'))
+        new_donor = Donor(name='Anonymous', amount=round(amount, 4))
+        db.session.add(new_donor)
+        db.session.commit()
+        flash("Thank you for your donation!", "success")
         return redirect(url_for('donate'))
 
     top_donors = Donor.query.order_by(Donor.amount.desc()).limit(5).all()
-    return render_template('donate.html', form=form, top_donors=top_donors)
+
+    # Le widget de swap tiers n'est charge que si le lecteur le demande
+    # explicitement (?embed=1). Voir TROCADOR_WIDGET_URL.
+    embed_widget = request.args.get('embed') == '1'
+    response = Response(render_template(
+        'donate.html',
+        form=form,
+        top_donors=top_donors,
+        embed_widget=embed_widget,
+        trocador_url=TROCADOR_WIDGET_URL,
+    ))
+    if embed_widget:
+        # CSP assouplie pour cette seule reponse, et uniquement pour l'origine
+        # du widget.
+        response.headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY.replace(
+            "frame-src 'none'", "frame-src https://trocador.app"
+        )
+    return response
 
 
 # File Upload Configuration
@@ -2184,7 +1392,15 @@ CHAT_ALLOWED_EXTENSIONS = {
     'ppt', 'pptx', 'json', 'xml', 'svg', 'webm', 'ogg'
 }
 PROFILE_ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'}
+# Pas de SVG : servi depuis la meme origine, un SVG peut embarquer du <script>.
+IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+# Garde-fous contre les bombes de decompression. 40 megapixels laisse passer
+# tout appareil photo grand public ; au-dela c'est une image forgee.
+MAX_IMAGE_PIXELS = 40_000_000
+# Pillow leve DecompressionBombError au-dela de 2x cette valeur : meme limite
+# partout, y compris pour les chemins qui n'appellent pas _validate_uploaded_file.
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+MAX_IMAGE_SIDE = 12_000
 ALLOWED_MIME_EXACT = {
     'application/pdf', 'application/zip', 'application/json', 'application/xml',
     'application/msword',
@@ -2240,6 +1456,15 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
         try:
             stream.seek(0)
             with Image.open(stream) as img:
+                # Bombe de decompression : un PNG de quelques kilo-octets peut
+                # declarer 50000x50000 pixels et faire allouer des gigaoctets a
+                # Pillow au moment du decodage. On refuse sur les dimensions
+                # AVANT de decoder quoi que ce soit.
+                width, height = img.size
+                if width * height > MAX_IMAGE_PIXELS:
+                    return False, "Image dimensions are too large."
+                if width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE:
+                    return False, "Image dimensions are too large."
                 img.verify()
             stream.seek(0)
         except Exception:
@@ -2248,25 +1473,118 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
 
     return True, ""
 
-# Function to modify image metadata
-def modify_exif_data(file_path):
+def screen_uploaded_image(file_path, user):
+    """Refuse une image figurant dans la liste de hash bloques.
+
+    Retourne None si l'image passe. Sinon : met le fichier en quarantaine,
+    bannit l'auteur, journalise l'evenement, et retourne un message d'erreur.
+
+    A appeler AVANT le nettoyage des metadonnees : celui-ci ré-encode l'image et
+    modifie donc son SHA-256. Le dHash, lui, survit aux deux.
+    """
+    from app.image_safety import check_image, quarantine_file
+    from app.models import BlockedImageHash, BlockedUploadEvent
+
     try:
-        image = Image.open(file_path)
-        exif_dict = piexif.load(image.info.get('exif', b''))
+        match, distance = check_image(path=file_path)
+    except Exception:
+        # Un echec du controle ne doit pas laisser passer l'image en silence,
+        # mais ne doit pas non plus bloquer un televersement legitime : on
+        # journalise et on laisse passer, en le signalant a l'admin.
+        app.logger.exception('Image screening failed; upload allowed unchecked.')
+        return None
 
-        # Remove GPS information
-        if 'GPS' in exif_dict:
-            exif_dict['GPS'] = {}
+    if match is None:
+        return None
 
-        # Add custom tag
-        exif_dict['0th'][piexif.ImageIFD.Make] = "Modified"
-        exif_dict['0th'][piexif.ImageIFD.Model] = "Edited"
-        exif_dict['0th'][piexif.ImageIFD.Software] = "ChatUploader"
+    from app.image_safety import sha256_of_file
+    digest = sha256_of_file(file_path)
+    quarantined = quarantine_file(
+        file_path,
+        reason=f'hash match id={match.id} label={match.label or "-"} distance={distance}'
+    )
 
-        exif_bytes = piexif.dump(exif_dict)
-        image.save(file_path, "jpeg", exif=exif_bytes)
-    except Exception as e:
-        print(f"EXIF modification error: {e}")
+    event = BlockedUploadEvent(
+        user_id=getattr(user, 'id', None),
+        matched_hash_id=match.id,
+        distance=distance,
+        sha256=digest,
+        quarantine_name=quarantined,
+    )
+    db.session.add(event)
+
+    # Bannissement immediat de l'auteur.
+    if getattr(user, 'is_authenticated', False) and not user.is_admin:
+        user.is_banned = True
+        user.banned_at = datetime.utcnow()
+        user.ban_reason = 'Blocked image upload'
+        user.rotate_session_token()
+
+    db.session.commit()
+
+    app.logger.warning(
+        'Blocked image upload: user_id=%s hash_id=%s distance=%s quarantine=%s',
+        getattr(user, 'id', None), match.id, distance, quarantined
+    )
+    return 'This file cannot be uploaded.'
+
+
+def random_upload_name(original_filename):
+    """Nom de fichier aleatoire conservant seulement l'extension.
+
+    L'ancien schema `chat_<user_id>_admin_<horodatage>_<nom original>` publiait
+    l'identifiant de l'auteur, l'heure d'envoi et le nom du fichier tel qu'il
+    existait sur sa machine — le tout dans une URL. On ne garde que l'extension.
+    """
+    ext = _file_ext(original_filename)
+    if ext not in CHAT_ALLOWED_EXTENSIONS:
+        ext = ''
+    return f"{uuid.uuid4().hex}{('.' + ext) if ext else ''}"
+
+
+def strip_image_metadata(file_path):
+    """Supprime reellement les metadonnees d'une image (EXIF, GPS, XMP, ICC).
+
+    L'implementation precedente *ajoutait* des tags EXIF factices ("Modified",
+    "ChatUploader") et reecrivait chaque fichier en JPEG, quel que soit son
+    format d'origine. Ici on reconstruit l'image a partir de ses seuls pixels :
+    aucun bloc de metadonnees ne survit, et le format d'origine est conserve.
+    """
+    try:
+        with Image.open(file_path) as image:
+            fmt = image.format or 'PNG'
+            image.load()
+            # copy() travaille sur le tampon C (l'ancienne boucle `putdata(list(
+            # getdata()))` allouait un objet Python par pixel : 3,6 Go pour un
+            # PNG de 131 Ko). On ne garde que la transparence ; ni `exif=`, ni
+            # `icc_profile=` ne sont passes a save().
+            keep = {k: image.info[k] for k in ('transparency',) if k in image.info}
+            clean = image.copy()
+            clean.info = dict(keep)
+            if fmt.upper() in ('JPEG', 'JPG'):
+                clean.convert('RGB').save(file_path, 'JPEG', quality=88)
+            elif fmt.upper() == 'WEBP':
+                clean.save(file_path, 'WEBP', quality=88, method=6)
+            elif fmt.upper() == 'GIF':
+                clean.save(file_path, fmt, **keep)
+            else:
+                clean.save(file_path, fmt)
+    except Exception:
+        # Une image dont on n'a pas pu garantir le nettoyage ne doit pas etre
+        # publiee : on la supprime plutot que de la servir avec ses coordonnees
+        # GPS intactes.
+        app.logger.warning('Metadata stripping failed; upload discarded.')
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        raise
+
+
+# Conserve pour compatibilite : tous les appels passent desormais par
+# strip_image_metadata.
+def modify_exif_data(file_path):
+    strip_image_metadata(file_path)
 
 @app.route('/chat', methods=['GET', 'POST'])
 @login_required
@@ -2288,15 +1606,26 @@ def chat():
                 max_bytes=MAX_UPLOAD_BYTES
             )
             if is_valid:
-                filename = secure_filename(file.filename)
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"chat_{current_user.id}_admin_{timestamp}_{filename}"
+                filename = random_upload_name(file.filename)
                 file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
 
-                # Modify image metadata if it's an image
-                if file.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')):
-                    modify_exif_data(file_path)
+                # Controle contre la liste de hash AVANT le nettoyage des
+                # metadonnees, qui ré-encode l'image et change son SHA-256.
+                if _file_ext(file.filename) in IMAGE_EXTENSIONS:
+                    refusal = screen_uploaded_image(file_path, current_user)
+                    if refusal:
+                        flash(refusal, 'danger')
+                        return redirect(url_for('index'))
+
+                # Nettoyage des metadonnees ; en cas d'echec le fichier est
+                # supprime et le message n'est pas enregistre.
+                if _file_ext(file.filename) in IMAGE_EXTENSIONS:
+                    try:
+                        strip_image_metadata(file_path)
+                    except Exception:
+                        flash('Upload rejected: image metadata could not be removed.', 'danger')
+                        return redirect(url_for('chat'))
 
                 # Determine file type
                 file_type = get_file_type(file.filename)
@@ -2305,53 +1634,75 @@ def chat():
                 message = Message(
                     sender_id=current_user.id,
                     receiver_id=_get_admin_user_id(),  # actual admin
-                    content=message_content if message_content else "",
-                    file_path=file_path,
+                    file_path=filename,
                     file_type=file_type
                 )
+                message.set_encrypted_content(message_content or "")
                 db.session.add(message)
                 db.session.commit()
                 publish_mobile_event('new_message', serialize_chat_message(message))
-                notify_admin_telegram_new_message(message)
                 flash("File sent!", "success")
             else:
                 flash(f"File upload failed: {validation_msg}", "danger")
 
         elif message_content:
-            # Save text message
+            # Save text message (chiffre au repos, comme les reponses admin)
             message = Message(
                 sender_id=current_user.id,
                 receiver_id=_get_admin_user_id(),  # actual admin
-                content=message_content
             )
+            message.set_encrypted_content(message_content)
             db.session.add(message)
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
-            notify_admin_telegram_new_message(message)
             flash("Message sent!", "success")
 
         return redirect(url_for('chat'))
 
-    # Get messages from most recent to oldest
-    messages = Message.query.order_by(Message.timestamp.desc()).all()
+    # Uniquement la conversation entre l'utilisateur courant et l'admin.
+    # La version precedente faisait `Message.query.all()` : n'importe quel
+    # compte connecte lisait les conversations privees de tous les autres.
+    admin_id = _get_admin_user_id()
+    messages = Message.query.filter(
+        ((Message.sender_id == current_user.id) & (Message.receiver_id == admin_id)) |
+        ((Message.sender_id == admin_id) & (Message.receiver_id == current_user.id))
+    ).order_by(Message.timestamp.desc()).all()
 
     return render_template('chat.html', form=form, messages=messages)
 
+@socketio.on('connect')
+def socket_connect(auth=None):
+    # Une connexion anonyme n'a aucune raison d'exister : refusee des le depart.
+    if not current_user.is_authenticated:
+        return False
+
+
 @socketio.on('message')
 def handle_message(data):
-    msg = data.get('msg', '').strip()
-    sender_id = current_user.id if current_user.is_authenticated else None
-    receiver_id = _get_admin_user_id()  # actual admin
+    # Seule source de verite pour l'expediteur : la session serveur. Le client
+    # ne fournit que le texte — jamais son propre identifiant.
+    if not current_user.is_authenticated:
+        return
+    # Meme compteur que la route /chat.
+    if _action_rate_limited('chat_submit', max_calls=30, window_seconds=300):
+        return
 
-    if msg and sender_id:
-        message = Message(sender_id=sender_id, receiver_id=receiver_id, content=msg)
-        db.session.add(message)
-        db.session.commit()
-        publish_mobile_event('new_message', serialize_chat_message(message))
-        notify_admin_telegram_new_message(message)
+    msg = (data or {}).get('msg', '').strip()
+    if not msg:
+        return
+    if len(msg) > 5000:
+        msg = msg[:5000]
 
-        # Émet le message à tous les clients connectés
-        emit('message', {"username": current_user.username, "msg": msg}, broadcast=True)
+    message = Message(sender_id=current_user.id, receiver_id=_get_admin_user_id())
+    message.set_encrypted_content(msg)
+    db.session.add(message)
+    db.session.commit()
+    publish_mobile_event('new_message', serialize_chat_message(message))
+
+    # Accuse de reception a l'expediteur uniquement. L'ancien `broadcast=True`
+    # rediffusait chaque message prive — avec le pseudo de son auteur — a tous
+    # les clients WebSocket connectes.
+    emit('message', {'msg': msg, 'mine': True})
 
 
 @app.route('/admin/chat')
@@ -2418,12 +1769,14 @@ def admin_chat_user(user_id):
                     max_bytes=MAX_UPLOAD_BYTES
                 )
                 if is_valid:
-                    filename = secure_filename(file.filename)
-                    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                    filename = f"chat_{current_user.id}_{user_id}_{timestamp}_{filename}"
-                    file_path = os.path.join('uploads', filename)
+                    filename = random_upload_name(file.filename)
+                    file_path = os.path.join(UPLOAD_FOLDER, filename)
                     file.save(file_path)
-                    # Media pipeline
+                    refusal = screen_uploaded_image(file_path, current_user)
+                    if refusal:
+                        flash(refusal, 'danger')
+                        return redirect(url_for('admin_chat_user', user_id=user_id))
+                    # Media pipeline (strip EXIF, resize, WebP)
                     processed = process_image_file(file_path)
                     if processed != file_path:
                         try:
@@ -2431,7 +1784,7 @@ def admin_chat_user(user_id):
                         except Exception:
                             pass
                         file_path = processed
-                    message.file_path = file_path
+                    message.file_path = os.path.basename(file_path)
                     message.file_type = get_file_type(file.filename)
                 else:
                     flash(f'File upload blocked: {validation_msg}', 'danger')
@@ -2441,21 +1794,14 @@ def admin_chat_user(user_id):
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
             
-            # Emit message via SocketIO
-            socketio.emit('message', {
-                'username': current_user.username,
-                'msg': content if content else f"File sent: {file.filename}",
-                'receiver_id': user_id,
-                'file_path': message.file_path,
-                'file_type': message.file_type
-            })
-            
+            # Pas de socketio.emit ici : sans salon (room), l'emission etait
+            # diffusee a *tous* les clients WebSocket connectes, en clair et
+            # avec le pseudo de l'admin. La page est de toute facon rechargee
+            # par le redirect ci-dessous.
+
             flash('Message sent!', 'success')
             return redirect(url_for('admin_chat_user', user_id=user_id))
 
-    # Pull Telegram replies (if configured) before rendering chat page
-    telegram_fetch_updates(timeout=0)
-    # Reload list after potential Telegram sync
     messages = Message.query.filter(
         ((Message.sender_id == current_user.id) & (Message.receiver_id == user_id)) |
         ((Message.sender_id == user_id) & (Message.receiver_id == current_user.id))
@@ -2466,8 +1812,7 @@ def admin_chat_user(user_id):
                          messages=messages, 
                          users=users, 
                          target_user=target_user,
-                         latest_message_id=latest_message_id,
-                         telegram_bridge_enabled=telegram_is_enabled())
+                         latest_message_id=latest_message_id)
 
 
 @app.route('/api/admin/mobile/ping', methods=['GET'])
@@ -2599,17 +1944,57 @@ def api_admin_mobile_stream():
     return response
 
 
-@app.route('/uploads/<filename>')
+def _attachment_message(filename):
+    """Retourne le Message dont `filename` est la piece jointe, s'il existe."""
+    base = os.path.basename(filename)
+    return Message.query.filter(
+        (Message.file_path == base) | (Message.file_path.like(f'%/{base}'))
+    ).first()
+
+
+def _serve_upload(filename):
+    """Sert un fichier de uploads/ en respectant la confidentialite du chat.
+
+    Une piece jointe de conversation n'est lisible que par ses deux
+    correspondants (et par un admin). Auparavant l'URL etait publique : le nom
+    de fichier contenait l'identifiant de l'auteur et un horodatage, ce qui la
+    rendait devinable, et rien n'exigeait d'etre connecte pour la telecharger.
+    """
+    safe_name = os.path.basename(filename)
+    if safe_name != filename or safe_name in ('', '.', '..'):
+        abort(404)
+
+    message = _attachment_message(safe_name)
+    if message is not None:
+        if not current_user.is_authenticated:
+            abort(404)
+        allowed = (
+            current_user.id in (message.sender_id, message.receiver_id)
+            or current_user.is_admin
+        )
+        if not allowed:
+            abort(404)
+
+    response = send_from_directory(_uploads_root(), safe_name)
+    # Pas de mise en cache partagee pour une piece jointe privee.
+    if message is not None:
+        response.headers['Cache-Control'] = 'private, no-store'
+    # Empeche l'execution d'un contenu servi depuis notre origine.
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers.setdefault('Content-Security-Policy', "default-src 'none'; sandbox")
+    return response
+
+
+@app.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     """Route to serve uploaded files"""
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
-    return send_from_directory(upload_dir, filename)
+    return _serve_upload(filename)
 
-@app.route('/static/uploads/<filename>')
+
+@app.route('/static/uploads/<path:filename>')
 def static_uploaded_file(filename):
     """Route to serve uploaded files from static/uploads"""
-    upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'uploads')
-    return send_from_directory(upload_dir, filename)
+    return _serve_upload(filename)
 
 
 # 🔹 File Upload Route
@@ -2623,14 +2008,17 @@ def manage_posts():
     if form.validate_on_submit():
         title = form.title.data
         content = form.content.data
-        scheduled_date = form.scheduled_date.data or datetime.utcnow()
-        is_published = form.is_published.data
+        # Pas de date = pas de programmation : sans `or utcnow()`, tout
+        # brouillon etait publie a la requete suivante.
+        scheduled_date = form.scheduled_date.data
+        is_published = bool(form.is_published.data)
         post = Post(
             title=title,
             content=content,
             author_id=current_user.id,
             scheduled_date=scheduled_date,
-            is_published=is_published
+            is_published=is_published,
+            is_draft=not is_published and scheduled_date is None,
         )
         db.session.add(post)
         db.session.commit()
@@ -2722,7 +2110,7 @@ def get_file_type(filename):
     
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
     
-    if ext in ['png', 'jpg', 'jpeg', 'gif']:
+    if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
         return 'image'
     elif ext in ['mp4', 'avi', 'mov', 'wmv']:
         return 'video'
@@ -2755,12 +2143,16 @@ def upload_file():
         flash(f'Invalid file type! {validation_msg}', 'danger')
         return redirect(url_for('chat'))
 
-    # Secure filename
-    filename = secure_filename(file.filename)
-    file_path = os.path.join('uploads', filename)
+    filename = random_upload_name(file.filename)
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
 
     # Save file
     file.save(file_path)
+
+    refusal = screen_uploaded_image(file_path, current_user)
+    if refusal:
+        flash(refusal, 'danger')
+        return redirect(url_for('index'))
 
     # Verify if it's a valid image by trying to open it with PIL
     try:
@@ -2802,6 +2194,7 @@ def demote_user(user_id):
 
     if user.is_admin:
         user.is_admin = False
+        user.rotate_session_token()
         db.session.commit()
         flash(f'User {user.username} has been demoted.', 'success')
 
@@ -2826,8 +2219,32 @@ def create_page():
 @admin_required
 def delete_post(post_id):
     post = Post.query.get_or_404(post_id)
-    db.session.delete(post)
-    db.session.commit()
+
+    # Les lignes qui pointent vers l'article ou ses commentaires (NOT NULL ou
+    # cle etrangere) doivent partir avant lui : sinon IntegrityError -> 500.
+    comment_ids = [c.id for c in Comment.query.filter_by(post_id=post.id).all()]
+    try:
+        Like.query.filter_by(post_id=post.id).delete(synchronize_session=False)
+        if comment_ids:
+            Like.query.filter(Like.comment_id.in_(comment_ids)) \
+                .delete(synchronize_session=False)
+            Notification.query.filter(Notification.related_comment_id.in_(comment_ids)) \
+                .update({'related_comment_id': None}, synchronize_session=False)
+            Comment.query.filter(Comment.id.in_(comment_ids)) \
+                .update({'parent_id': None}, synchronize_session=False)
+        Notification.query.filter_by(related_post_id=post.id) \
+            .update({'related_post_id': None}, synchronize_session=False)
+        if comment_ids:
+            Comment.query.filter(Comment.id.in_(comment_ids)) \
+                .delete(synchronize_session=False)
+        Revision.query.filter_by(post_id=post.id).delete(synchronize_session=False)
+        db.session.expire_all()
+        db.session.delete(Post.query.get(post.id))
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash('This post could not be deleted.', 'danger')
+        return redirect(url_for('manage_posts'))
     flash('Post deleted successfully!', 'success')
     return redirect(url_for('manage_posts'))
 
@@ -2850,13 +2267,73 @@ def edit_post(post_id):
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @admin_required
 def delete_user(user_id):
+    """Supprime un compte et tout ce qui y est rattache.
+
+    Les commentaires restent (affiches « [deleted] »), les articles passent a
+    l'admin qui supprime. Les messages du chat, eux, sont definitivement
+    supprimes : l'operation exige donc `purge_messages=1` des qu'il y en a.
+    """
     user = User.query.get_or_404(user_id)
 
-    if user:
+    if user.id == current_user.id:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('manage_users'))
+    if user.is_admin:
+        flash('Demote this administrator before deleting the account.', 'danger')
+        return redirect(url_for('manage_users'))
+
+    messages = Message.query.filter(
+        (Message.sender_id == user.id) | (Message.receiver_id == user.id)).all()
+    if messages and request.form.get('purge_messages') != '1':
+        flash(f'{user.username} has {len(messages)} chat message(s). Deleting the '
+              'account erases them permanently: tick "also delete messages" and '
+              'confirm.', 'danger')
+        return redirect(url_for('manage_users'))
+
+    from app.models import BlockedUploadEvent, SiteText, SiteTextRevision
+    username = user.username
+    files = [m.file_path for m in messages if m.file_path]
+    if user.profile_picture:
+        files.append(user.profile_picture)
+    try:
+        for comment in Comment.query.filter_by(author_id=user.id).all():
+            comment.author_id = None
+        for like in Like.query.filter_by(user_id=user.id).all():
+            if like.post_id:
+                target = Post.query.get(like.post_id)
+            else:
+                target = Comment.query.get(like.comment_id)
+            if target is not None:
+                target.likes_count = max(0, (target.likes_count or 0) - 1)
+            db.session.delete(like)
+        for message in messages:
+            db.session.delete(message)
+        Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+        BlockedUploadEvent.query.filter_by(user_id=user.id) \
+            .update({'user_id': None}, synchronize_session=False)
+        SiteText.query.filter_by(updated_by_id=user.id) \
+            .update({'updated_by_id': None}, synchronize_session=False)
+        SiteTextRevision.query.filter_by(changed_by_id=user.id) \
+            .update({'changed_by_id': None}, synchronize_session=False)
+        for post in Post.query.filter_by(author_id=user.id).all():
+            post.author_id = current_user.id
+        db.session.flush()
         db.session.delete(user)
         db.session.commit()
-        flash(f'User {user.username} deleted.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('This account could not be deleted.', 'danger')
+        return redirect(url_for('manage_users'))
 
+    # Les fichiers ne partent qu'une fois la base validee.
+    for stored in files:
+        path = _absolute_upload_path(stored)
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    flash(f'User {username} deleted.', 'success')
     return redirect(url_for('manage_users'))
 
 
@@ -2865,6 +2342,7 @@ def delete_user(user_id):
 def promote_user(user_id):
     user = User.query.get_or_404(user_id)
     user.is_admin = True
+    user.rotate_session_token()
     db.session.commit()
     flash(f"{user.username} has been promoted to admin.", "success")
     return redirect(url_for('manage_users'))
@@ -2893,7 +2371,8 @@ def delete_comment(comment_id, post_id):
 
 @app.route("/posts")
 def post_list():
-    posts = Post.query.order_by(Post.date_posted.desc()).all()
+    posts = Post.query.filter(Post.is_published.is_(True)) \
+        .order_by(Post.date_posted.desc()).all()
     return render_template("post_list.html", posts=posts)
 
 @app.route("/reply_to_comment/<int:post_id>/<int:comment_id>", methods=["POST"])
@@ -2901,13 +2380,19 @@ def post_list():
 @login_required
 def reply_to_comment(post_id, comment_id):
     post = Post.query.get_or_404(post_id)
+    _require_visible_post(post)
     parent_comment = Comment.query.get_or_404(comment_id)
 
     form = CommentForm()
 
     if form.validate_on_submit():
+        content = form.content.data.strip()
+        if not content:
+            flash("Error submitting your reply. Please make sure your reply is not empty.", "danger")
+            return redirect(url_for("post_detail", post_id=post.id))
         reply = Comment(
-            content=form.content.data,
+            content=content,
+            content_format='bbcode',
             author=current_user,
             post_id=post.id,
             parent_id=parent_comment.id
@@ -2929,14 +2414,6 @@ def reply_to_comment(post_id, comment_id):
                 related_comment_id=reply.id
             )
             db.session.add(notification)
-            
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
-                'type': 'reply',
-                'title': 'New reply!',
-                'message': f'Someone replied to your comment',
-                'user_id': parent_comment.author_id
-            })
         
         # Vérifier et attribuer les badges
         check_and_award_badges(current_user)
@@ -2961,13 +2438,42 @@ def edit_comment(comment_id, post_id):
 
     form = CommentForm()
     if form.validate_on_submit():
-        comment.content = form.content.data
+        content = form.content.data.strip()
+        if not content:
+            flash("Comment cannot be empty.", "danger")
+            return redirect(url_for("edit_comment", comment_id=comment.id, post_id=post_id))
+        # Texte brut + BBCode : une ligne ancienne (HTML) devient ainsi du texte
+        # propre des qu'elle est modifiee.
+        comment.content = content
+        comment.content_format = 'bbcode'
         db.session.commit()
         flash("Comment updated!", "success")
         return redirect(url_for("post_detail", post_id=post_id))
 
-    form.content.data = comment.content
+    # Pre-remplissage : une ancienne ligne HTML est affichee en texte (en
+    # memoire seulement, la base n'est pas touchee avant l'enregistrement).
+    form.content.data = (comment.content if comment.content_format == 'bbcode'
+                         else html_to_text(comment.content))
     return render_template("edit_comment.html", title="Edit Comment", form=form, post=post, comment=comment)  # 🔥 Passe `post`
+
+
+def _revoke_like_reward(author, points, related_post_id=None, related_comment_id=None):
+    """Annule l'effet d'un like retire : XP et notification non lue.
+
+    Sans cela, like/unlike en boucle donnait de l'XP sans limite et une
+    notification par cycle. Le niveau n'est jamais abaisse.
+    """
+    if author is None:
+        return
+    author.experience_points = max(0, (author.experience_points or 0) - points)
+    query = Notification.query.filter_by(user_id=author.id, type='like', is_read=False)
+    if related_comment_id is not None:
+        query = query.filter_by(related_comment_id=related_comment_id)
+    else:
+        query = query.filter_by(related_post_id=related_post_id, related_comment_id=None)
+    latest = query.order_by(Notification.id.desc()).first()
+    if latest is not None:
+        db.session.delete(latest)
 
 
 # 🔹 Système de Likes/Upvotes
@@ -2976,6 +2482,7 @@ def edit_comment(comment_id, post_id):
 @login_required
 def like_post(post_id):
     post = Post.query.get_or_404(post_id)
+    _require_visible_post(post)
     
     # Check if user already liked this post
     existing_like = Like.query.filter_by(user_id=current_user.id, post_id=post_id).first()
@@ -2983,7 +2490,9 @@ def like_post(post_id):
     if existing_like:
         # Remove like
         db.session.delete(existing_like)
-        post.likes_count = max(0, post.likes_count - 1)
+        post.likes_count = max(0, (post.likes_count or 0) - 1)
+        if post.author_id != current_user.id:
+            _revoke_like_reward(post.author, 5, related_post_id=post_id)
         flash('Like removed!', 'info')
     else:
         # Add like
@@ -3004,14 +2513,6 @@ def like_post(post_id):
                 related_post_id=post_id
             )
             db.session.add(notification)
-            
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
-                'type': 'like',
-                'title': 'New like!',
-                'message': f'{current_user.username} liked your article "{post.title}"',
-                'user_id': post.author_id
-            })
         
         flash('Article liked!', 'success')
     
@@ -3020,9 +2521,11 @@ def like_post(post_id):
 
 
 @app.route('/like_comment/<int:comment_id>', methods=['POST'])
+@rate_limit('like_comment', max_calls=20, window_seconds=300)
 @login_required
 def like_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
+    _require_visible_post(comment.post)
     
     # Check if user already liked this comment
     existing_like = Like.query.filter_by(user_id=current_user.id, comment_id=comment_id).first()
@@ -3030,7 +2533,9 @@ def like_comment(comment_id):
     if existing_like:
         # Remove like
         db.session.delete(existing_like)
-        comment.likes_count = max(0, comment.likes_count - 1)
+        comment.likes_count = max(0, (comment.likes_count or 0) - 1)
+        if comment.author_id and comment.author_id != current_user.id:
+            _revoke_like_reward(comment.author, 2, related_comment_id=comment_id)
         flash('Like removed!', 'info')
     else:
         # Add like
@@ -3052,14 +2557,6 @@ def like_comment(comment_id):
                 related_post_id=comment.post_id
             )
             db.session.add(notification)
-            
-            # Émettre une notification temps réel
-            socketio.emit('notification', {
-                'type': 'like',
-                'title': 'Comment liked!',
-                'message': f'{current_user.username} liked your comment',
-                'user_id': comment.author_id
-            })
         
         flash('Comment liked!', 'success')
     
@@ -3208,14 +2705,6 @@ def check_and_award_badges(user):
                 )
                 db.session.add(notification)
                 
-                # Émettre une notification temps réel
-                socketio.emit('notification', {
-                    'type': 'badge',
-                    'title': 'New badge unlocked!',
-                    'message': f'You unlocked the badge "{badge.name}": {badge.description}',
-                    'user_id': user.id
-                })
-                
                 flash(f'Congrats! You unlocked the badge "{badge.name}"!', 'success')
 
 
@@ -3248,18 +2737,27 @@ def edit_profile():
                 image_only=True
             )
             if is_valid:
-                filename = secure_filename(file.filename)
-                # Create unique name to avoid conflicts
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f"profile_{current_user.id}_{timestamp}_{filename}"
-                file_path = os.path.join('uploads', filename)
+                filename = random_upload_name(file.filename)
+                file_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(file_path)
-                
+
+                refusal = screen_uploaded_image(file_path, current_user)
+                if refusal:
+                    flash(refusal, 'danger')
+                    return redirect(url_for('index'))
+
+                try:
+                    strip_image_metadata(file_path)
+                except Exception:
+                    flash('Upload rejected: image metadata could not be removed.', 'danger')
+                    return redirect(url_for('edit_profile'))
+
                 # Remove old photo if it exists
-                if current_user.profile_picture and os.path.exists(current_user.profile_picture):
-                    os.remove(current_user.profile_picture)
-                
-                current_user.profile_picture = file_path
+                old_photo = _absolute_upload_path(current_user.profile_picture)
+                if old_photo and os.path.exists(old_photo):
+                    os.remove(old_photo)
+
+                current_user.profile_picture = filename
             else:
                 flash(f'Profile picture rejected: {validation_msg}', 'danger')
                 return redirect(url_for('edit_profile'))
@@ -3274,6 +2772,44 @@ def edit_profile():
     return render_template('edit_profile.html', form=form)
 
 
+@app.route('/account/password', methods=['GET', 'POST'])
+@login_required
+@rate_limit('change_password', max_calls=5, window_seconds=600)
+def change_password():
+    """Changement de mot de passe.
+
+    Aussi la sortie obligatoire quand `must_change_password` est pose : le
+    script de deploiement genere un mot de passe aleatoire, et cette page est
+    ce qui transforme « il faut le changer » en contrainte effective.
+    """
+    form = ChangePasswordForm()
+    forced = bool(current_user.must_change_password)
+
+    if form.validate_on_submit():
+        if not bcrypt.check_password_hash(current_user.password, form.current_password.data):
+            flash('The current password is not correct.', 'danger')
+            return render_template('change_password.html', form=form, forced=forced)
+
+        current_user.password = bcrypt.generate_password_hash(
+            form.new_password.data).decode('utf-8')
+        current_user.must_change_password = False
+        # Invalide les autres sessions et cookies "remember" de ce compte.
+        current_user.rotate_session_token()
+        db.session.commit()
+
+        # Rotation de session : l'identifiant de session precedent ne doit plus
+        # ouvrir le compte apres un changement de mot de passe.
+        user = current_user._get_current_object()
+        logout_user()
+        session.clear()
+        login_user(user)
+
+        flash('Password changed.', 'success')
+        return redirect(url_for('user_profile', user_id=user.id))
+
+    return render_template('change_password.html', form=form, forced=forced)
+
+
 # ─────────────────────────────────────────────────────────────────
 #  TOTP / 2FA routes
 # ─────────────────────────────────────────────────────────────────
@@ -3283,7 +2819,7 @@ def _totp_qr_data_uri(secret: str, username: str) -> str:
     import qrcode
     uri = pyotp.totp.TOTP(secret).provisioning_uri(
         name=username,
-        issuer_name='MyBlog'
+        issuer_name='depressedyoungman'
     )
     img = qrcode.make(uri)
     buf = io.BytesIO()
@@ -3312,12 +2848,17 @@ def totp_setup():
     pending_secret = session['totp_pending_secret']
 
     if form.validate_on_submit():
-        totp = pyotp.TOTP(pending_secret)
-        if totp.verify(form.code.data.strip(), valid_window=1):
-            current_user.totp_secret = pending_secret
+        counter = _verify_totp(current_user, form.code.data, secret=pending_secret)
+        if counter is not None:
+            _store_totp_secret(current_user, pending_secret)
+            current_user.totp_last_counter = counter
             current_user.totp_enabled = True
+            # Les sessions et cookies "remember" deja emis ne valent plus ;
+            # la session en cours est reouverte avec le nouveau jeton.
+            current_user.rotate_session_token()
             db.session.commit()
             session.pop('totp_pending_secret', None)
+            login_user(current_user._get_current_object())
             flash('Two-factor authentication has been enabled!', 'success')
             return redirect(url_for('user_profile', user_id=current_user.id))
         else:
@@ -3343,18 +2884,25 @@ def totp_disable():
     form = TOTPDisableForm()
 
     if form.validate_on_submit():
+        if _action_rate_limited('totp_disable', 5, 300,
+                                actor_key=f'totp_disable:{current_user.id}'):
+            flash('Too many attempts. Please wait a few minutes.', 'danger')
+            return render_template('totp_disable.html', form=form)
+
         if not bcrypt.check_password_hash(current_user.password, form.password.data):
             flash('Incorrect password.', 'danger')
             return render_template('totp_disable.html', form=form)
 
-        totp = pyotp.TOTP(current_user.totp_secret)
-        if not totp.verify(form.code.data.strip(), valid_window=1):
+        if _verify_totp(current_user, form.code.data) is None:
             flash('Invalid authentication code.', 'danger')
             return render_template('totp_disable.html', form=form)
 
         current_user.totp_enabled = False
         current_user.totp_secret = None
+        current_user.totp_last_counter = None
+        current_user.rotate_session_token()
         db.session.commit()
+        login_user(current_user._get_current_object())
         flash('Two-factor authentication has been disabled.', 'success')
         return redirect(url_for('user_profile', user_id=current_user.id))
 

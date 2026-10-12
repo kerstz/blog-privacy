@@ -2,20 +2,20 @@
 
 {% block content %}
 <div class="auth-container">
-    <h1>Create Account</h1>
+    <h1>{{ t('auth.register.title') }}</h1>
     <form method="POST" action="">
         {{ form.hidden_tag() }}
         <div class="input-group">
-            {{ form.username(class="input-field", placeholder="Username") }}
+            {{ form.username(class="input-field", placeholder=t('auth.username')) }}
         </div>
         <div class="input-group">
-            {{ form.password(class="input-field", placeholder="Password") }}
+            {{ form.password(class="input-field", placeholder=t('auth.password')) }}
         </div>
         <div class="input-group">
-            {{ form.confirm_password(class="input-field", placeholder="Confirm Password") }}
+            {{ form.confirm_password(class="input-field", placeholder=t('auth.password_confirm')) }}
         </div>
-        <button type="submit" class="auth-btn">Register</button>
+        <button type="submit" class="auth-btn">{{ t('auth.register.submit') }}</button>
     </form>
-    <p>Already have an account? <a href="{{ url_for('login') }}">Sign in here</a></p>
+    <p>{{ t('auth.register.has_account') }} <a href="{{ url_for('login') }}">{{ t('auth.register.signin') }}</a></p>
 </div>
 {% endblock %}

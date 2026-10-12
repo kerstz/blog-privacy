@@ -3,33 +3,34 @@
 {% block content %}
     <!-- Hero Section -->
     <section class="hero">
-        <h1>A quiet place to think out loud.</h1>
-        <p>My corner of the internet — notes on music, technology, privacy, and whatever happens to be on my mind. No tracking, no noise. Just writing.</p>
-        <a href="/posts" class="cta-button">Read the latest</a>
+        <p class="hero-eyebrow">{{ t('home.hero.eyebrow') }}</p>
+        <h1>{{ t('home.hero.title') }}</h1>
+        {{ t_rich('home.hero.body') }}
+        <a href="{{ url_for('post_list') }}" class="cta-button">{{ t('home.hero.cta') }}</a>
     </section>
 
     <!-- Latest Blog Posts -->
-    <h2>Recent entries</h2>
+    <h2>{{ t('home.recent') }}</h2>
 
     <div id="posts-grid">
         {% if posts %}
             {% for post in posts %}
             <article class="blog-post">
-                <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
+                <p class="post-meta">{{ fmt_date(post.date_posted) }}</p>
                 <h2><a href="{{ url_for('post_detail', post_id=post.id) }}" class="post-title">{{ post.title }}</a></h2>
                 <p class="post-excerpt">{{ post.content[:180] }}…</p>
-                <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
+                <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">{{ t('posts.read') }}</a>
             </article>
             {% endfor %}
         {% else %}
-            <p class="no-posts">Nothing published yet. Check back soon.</p>
+            <p class="no-posts">{{ t('home.empty') }}</p>
         {% endif %}
     </div>
 
     <!-- Contact Box -->
     <div class="contact-box">
-        <h3>Let's talk</h3>
-        <p>Questions, thoughts, or just want to say hello? I'll gladly reply.</p>
-        <a href="{{ url_for('contact') }}" class="plain-link">Send a message</a>
+        <h3>{{ t('home.contact.title') }}</h3>
+        {{ t_rich('home.contact.body') }}
+        <a href="{{ url_for('contact') }}" class="plain-link">{{ t('home.contact.cta') }}</a>
     </div>
 {% endblock %}

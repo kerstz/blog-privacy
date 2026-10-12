@@ -2,26 +2,25 @@
 
 {% block content %}
 <div class="contact-container">
-    <p class="eyebrow">Contact</p>
-    <h1 class="contact-title">Let's stay in touch</h1>
-    <p class="contact-subtitle">
-        If you have a question, feedback, or just want to talk, you're welcome here.
-    </p>
+    <p class="eyebrow">{{ t('contact.eyebrow') }}</p>
+    <h1 class="contact-title">{{ t('contact.title') }}</h1>
+    <p class="contact-subtitle">{{ t('contact.subtitle') }}</p>
 
     <div class="contact-box">
-        <h3><span class="icon-envelope"></span> Email</h3>
-        <p>You can send me an email if you prefer a more detailed message.</p>
-        <a href="mailto:contact@techblog.example" class="contact-btn">Send an Email</a>
+        <h3><span class="icon-envelope"></span> {{ t('contact.email_heading') }}</h3>
+        {{ t_rich('contact.body') }}
+        {% set contact_email = t('contact.email_address') %}
+        {% if contact_email and '@' in contact_email %}
+            <a href="mailto:{{ contact_email }}" class="contact-btn">{{ t('contact.email_cta') }}</a>
+        {% endif %}
     </div>
 
     <div class="contact-box">
-        <h3><span class="icon-comments"></span> Live Chat</h3>
-        <p>If you want a faster reply, use the chat. I usually answer there quicker than by email.</p>
-        <a href="/chat" class="contact-btn">Join the Chat</a>
+        <h3><span class="icon-comments"></span> {{ t('contact.chat_heading') }}</h3>
+        <p>{{ t('contact.chat_body') }}</p>
+        <a href="{{ url_for('chat') }}" class="contact-btn">{{ t('contact.chat_cta') }}</a>
     </div>
 
-    <p class="contact-footer">
-        Thanks for reaching out, I really appreciate it.
-    </p>
+    <p class="contact-footer">{{ t('contact.footer') }}</p>
 </div>
 {% endblock %}

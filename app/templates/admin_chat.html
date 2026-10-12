@@ -67,7 +67,7 @@
                                 {% endif %}
                             {% endif %}
                             {% if message.get_decrypted_content() %}
-                                <div class="message-text">{{ message.get_decrypted_content() | safe }}</div>
+                                <div class="message-text">{{ message.get_decrypted_content() }}</div>
                             {% endif %}
                         </div>
                     </div>
@@ -91,21 +91,22 @@
 }
 
 .chat-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 30px;
 }
 
 .chat-header h2 {
-    color: #8b93ff;
+    font-family: var(--font-display);
+    color: var(--ash);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 10px;
 }
 
 .chat-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     margin: 0;
 }
 
@@ -117,15 +118,15 @@
 }
 
 .users-sidebar {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border-radius: 15px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
     padding: 20px;
-    border: 2px solid #8b93ff;
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
 }
 
 .users-sidebar h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 20px;
     display: flex;
     align-items: center;
@@ -141,7 +142,7 @@
 
 .user-item {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    border-radius: 6px;
     transition: all 0.3s ease;
 }
 
@@ -163,7 +164,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -177,28 +178,28 @@
 }
 
 .user-name {
-    color: #e0e0e0;
+    color: var(--ash);
     font-weight: 600;
     font-size: 1rem;
 }
 
 .user-level {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.8rem;
 }
 
 .no-users {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     text-align: center;
     font-style: italic;
     padding: 20px;
 }
 
 .messages-area {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border-radius: 15px;
-    border: 2px solid #8b93ff;
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.2);
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
     display: flex;
     flex-direction: column;
 }
@@ -209,7 +210,7 @@
 }
 
 .messages-header h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin: 0;
     display: flex;
     align-items: center;
@@ -228,18 +229,18 @@
 
 .message-item {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
+    border-radius: 6px;
     padding: 15px;
-    border-left: 4px solid #8b93ff;
+    border-left: 4px solid var(--moon-bright);
 }
 
 .admin-message {
-    border-left-color: #51cf66;
-    background: rgba(81, 207, 102, 0.1);
+    border-left-color: var(--moon);
+    background: rgba(125, 147, 200, 0.1);
 }
 
 .user-message {
-    border-left-color: #8b93ff;
+    border-left-color: var(--moon-bright);
 }
 
 .message-header {
@@ -250,13 +251,13 @@
 }
 
 .sender-name {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-weight: 600;
     font-size: 0.9rem;
 }
 
 .admin-message .sender-name {
-    color: #51cf66;
+    color: var(--moon);
 }
 
 .message-time {
@@ -265,7 +266,7 @@
 }
 
 .message-content {
-    color: #e0e0e0;
+    color: var(--ash);
     line-height: 1.5;
 }
 
@@ -280,45 +281,45 @@
 .message-image {
     max-width: 300px;
     max-height: 200px;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .message-video {
     max-width: 400px;
     max-height: 300px;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .file-download {
-    color: #8b93ff;
+    color: var(--moon-bright);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
     gap: 6px;
     padding: 8px 12px;
-    background: rgba(139, 147, 255, 0.1);
+    background: rgba(125, 147, 200, 0.1);
     border-radius: 6px;
-    border: 1px solid rgba(139, 147, 255, 0.3);
+    border: 1px solid rgba(125, 147, 200, 0.3);
     transition: all 0.3s ease;
 }
 
 .file-download:hover {
-    background: rgba(139, 147, 255, 0.2);
-    color: #8b93ff;
+    background: rgba(125, 147, 200, 0.2);
+    color: var(--moon-bright);
     text-decoration: none;
 }
 
 .no-messages {
     text-align: center;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     padding: 40px;
 }
 
 .no-messages i {
     font-size: 3rem;
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 15px;
 }
 

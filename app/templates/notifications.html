@@ -1,16 +1,16 @@
 {% extends 'layout.html' %}
 
-{% block title %}Notifications - Blog{% endblock %}
+{% block title %}{{ t('misc.notifications.title') }} — depressedyoungmanblog{% endblock %}
 
 {% block content %}
 
         <div class="notifications-container">
             <div class="notifications-header">
-                <h2><span class="icon-bell"></span> Notifications</h2>
+                <h2><span class="icon-bell"></span> {{ t('misc.notifications.title') }}</h2>
                 <form method="POST" action="{{ url_for('mark_all_notifications_read') }}" style="display: inline;">
                     {{ form.hidden_tag() }}
                     <button type="submit" class="btn-mark-all-read">
-                        <span class="icon-check-double"></span> Mark all as read
+                        <span class="icon-check-double"></span> {{ t('misc.notifications.mark_all') }}
                     </button>
                 </form>
             </div>
@@ -37,7 +37,7 @@
                                 <h4>{{ notification.title }}</h4>
                                 <p>{{ notification.message }}</p>
                                 <span class="notification-time">
-                                    <span class="icon-clock"></span> {{ notification.created_at.strftime('%d/%m/%Y at %H:%M') }}
+                                    <span class="icon-clock"></span> {{ fmt_date(notification.created_at) }}
                                 </span>
                             </div>
                             
@@ -46,14 +46,14 @@
                                     <form method="POST" action="{{ url_for('mark_notification_read', notification_id=notification.id) }}" style="display: inline;">
                                         {{ form.hidden_tag() }}
                                         <button type="submit" class="btn-mark-read">
-                                            <span class="icon-check"></span>
+                                            <span class="icon-check"></span> {{ t('misc.notifications.mark_read') }}
                                         </button>
                                     </form>
                                 {% endif %}
                                 
                                 {% if notification.related_post_id %}
                                     <a href="{{ url_for('post_detail', post_id=notification.related_post_id) }}" class="btn-view">
-                                        <span class="icon-eye"></span>
+                                        <span class="icon-eye"></span> {{ t('misc.notifications.view') }}
                                     </a>
                                 {% endif %}
                             </div>
@@ -63,8 +63,8 @@
             {% else %}
                 <div class="no-notifications">
                     <span class="icon-bell-slash"></span>
-                    <h3>No notifications</h3>
-                    <p>You don't have any notifications yet.</p>
+                    <h3>{{ t('misc.notifications.empty_title') }}</h3>
+                    <p>{{ t('misc.notifications.empty_body') }}</p>
                 </div>
             {% endif %}
         </div>
@@ -72,194 +72,120 @@
 {% endblock %}
 
 {% block extra_css %}
-        .notifications-container {
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-        }
+{# Les balises <style> manquaient : le layout injecte ce bloc directement dans
+   <head>, donc le navigateur deplacait tout ce CSS dans le corps et l'affichait
+   comme du texte. La page n'a jamais ete stylee — ce qui suit est ecrit dans le
+   langage du site plutot que d'apres l'ancienne feuille (degrades, cercles,
+   ombres portees, soulevements au survol). #}
+<style>
+.notifications-container { padding: 8px 0 40px; }
 
-        .notifications-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-            border-radius: 15px;
-            border: 2px solid #8b93ff;
-        }
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding-bottom: 14px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--line);
+}
 
-        .notifications-header h2 {
-            color: #8b93ff;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+.notifications-header h2 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    color: var(--ash);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-        .btn-mark-all-read {
-            background: linear-gradient(135deg, #51cf66, #40c057);
-            border: none;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+.btn-mark-all-read {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.18s ease;
+}
+.btn-mark-all-read:hover { color: var(--moon-bright); }
 
-        .btn-mark-all-read:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4);
-        }
+.notifications-list { display: flex; flex-direction: column; }
 
-        .notifications-list {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
+/* Une notification est une ligne, comme une entree du blog : filet en bas,
+   pas de carte, pas d'ombre. Le seul marqueur est le filet de gauche. */
+.notification-item {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 16px;
+    padding: 20px 0 20px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    border-left: 2px solid transparent;
+}
+.notification-item.unread { border-left-color: var(--moon); }
 
-        .notification-item {
-            background: #1e1e1e;
-            border-radius: 12px;
-            padding: 20px;
-            display: flex;
-            align-items: flex-start;
-            gap: 15px;
-            transition: all 0.3s ease;
-            border-left: 4px solid #444;
-        }
+.notification-icon { color: var(--ash-dim); font-size: 1rem; padding-top: 2px; }
+.notification-item.unread .notification-icon { color: var(--moon-bright); }
 
-        .notification-item.unread {
-            background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-            border-left-color: #8b93ff;
-            box-shadow: 0 4px 15px rgba(139, 147, 255, 0.2);
-        }
+.notification-content h4 {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--ash-mid);
+    margin: 0 0 4px;
+}
+.notification-item.unread .notification-content h4 { color: var(--ash); }
 
-        .notification-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        }
+.notification-content p { color: var(--ash-mid); margin: 0 0 8px; line-height: 1.6; }
 
-        .notification-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            flex-shrink: 0;
-        }
+.notification-time {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--ash-dim);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
 
-        .notification-item.unread .notification-icon {
-            background: rgba(139, 147, 255, 0.2);
-            color: #8b93ff;
-        }
+.notification-actions { display: flex; gap: 6px; align-items: center; }
 
-        .notification-item:not(.unread) .notification-icon {
-            background: rgba(108, 117, 125, 0.2);
-            color: #6c757d;
-        }
+.btn-mark-read, .btn-view {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 10px;
+    gap: 6px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ash-dim);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.18s ease, border-color 0.18s ease;
+}
+.btn-mark-read:hover, .btn-view:hover { color: var(--moon-bright); border-color: var(--moon); }
 
-        .notification-content {
-            flex: 1;
-        }
+.no-notifications { padding: 60px 0; color: var(--ash-mid); }
+.no-notifications [class*="icon-"] { font-size: 1.6rem; color: var(--ash-dim); display: block; margin-bottom: 18px; }
+.no-notifications h3 { font-family: var(--font-display); color: var(--ash); margin: 0 0 10px; }
+.no-notifications p { margin: 0; color: var(--ash-dim); }
 
-        .notification-content h4 {
-            color: #e0e0e0;
-            margin: 0 0 8px 0;
-            font-size: 1.1rem;
-        }
-
-        .notification-content p {
-            color: #c3c4cb;
-            margin: 0 0 10px 0;
-            line-height: 1.5;
-        }
-
-        .notification-time {
-            color: #888;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .notification-actions {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .btn-mark-read, .btn-view {
-            width: 35px;
-            height: 35px;
-            border-radius: 50%;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-        }
-
-        .btn-mark-read {
-            background: #51cf66;
-            color: white;
-        }
-
-        .btn-mark-read:hover {
-            background: #40c057;
-            transform: scale(1.1);
-        }
-
-        .btn-view {
-            background: #8b93ff;
-            color: white;
-        }
-
-        .btn-view:hover {
-            background: #6f7ae6;
-            transform: scale(1.1);
-            color: white;
-        }
-
-        .no-notifications {
-            text-align: center;
-            padding: 60px 20px;
-            color: #c3c4cb;
-        }
-
-        .no-notifications i {
-            font-size: 4rem;
-            color: #8b93ff;
-            margin-bottom: 20px;
-        }
-
-        .no-notifications h3 {
-            color: #e0e0e0;
-            margin-bottom: 15px;
-        }
-
-        @media (max-width: 768px) {
-            .notifications-header {
-                flex-direction: column;
-                gap: 15px;
-                text-align: center;
-            }
-
-            .notification-item {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .notification-actions {
-                justify-content: center;
-            }
-        }
+@media (max-width: 640px) {
+    .notification-item { grid-template-columns: 26px minmax(0, 1fr); }
+    .notification-actions { grid-column: 2; margin-top: 6px; }
+}
+</style>
 {% endblock %}

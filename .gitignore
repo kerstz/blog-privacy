@@ -70,3 +70,6 @@ htmlcov/
 *.bak
 *.cache
 
+
+# Playwright screenshots
+.playwright-mcp/

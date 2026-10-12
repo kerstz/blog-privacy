@@ -2,28 +2,9 @@
 
 {% block content %}
 <div class="about-container">
-    <p class="eyebrow">About</p>
-    <h1 class="about-title">About this blog</h1>
+    <p class="eyebrow">{{ t('about.eyebrow') }}</p>
+    <h1 class="about-title">{{ t('about.title') }}</h1>
 
-    <p>Hi, welcome to MyBlog.</p>
-
-    <p>This is just a personal blog. I made it mostly to write things that are on my mind and sometimes share them with whoever ends up here. Writing helps me clear my head, and it's also a way to talk with people online. I'm a teenager from France, currently studying.</p>
-
-    <p>This blog doesn't really have one specific topic. It's mostly about whatever I feel like writing about. Sometimes it might be random thoughts, sometimes things about the internet, privacy, or just things I find interesting.</p>
-
-    <p>I'm not an expert in anything and I'm not trying to be one. This blog is simply a place to share ideas and thoughts.</p>
-
-    <p>I believe privacy is a fundamental right, and it's something people shouldn't have to give up just to use the internet.</p>
-
-    <h2>Why Tor for this blog?</h2>
-    <p>First, because I believe privacy is important.</p>
-    <p>Second, because Tor itself is both disturbing and fascinating at the same time, and I wanted to add my small contribution to this space.</p>
-
-    <h2>A quick note</h2>
-    <p>Misogyny, racism, or homophobia are not welcome here.</p>
-    <p>The values that matter most to me are respect and open-mindedness. Everyone has different opinions and perspectives, and that's part of what makes discussions interesting.</p>
-
-    <p>There isn't really a big goal behind this blog. It's just a place to write, think, and sometimes share.</p>
-    <p>If you're here reading this, thanks for stopping by.</p>
+    {{ t_rich('about.body') }}
 </div>
 {% endblock %}
