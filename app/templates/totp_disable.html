@@ -1,6 +1,6 @@
 {% extends 'layout.html' %}
 
-{% block title %}Disable Two-Factor Authentication — MyBlog{% endblock %}
+{% block title %}Disable Two-Factor Authentication — depressedyoungmanblog{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -10,7 +10,7 @@
 }
 .totp-card {
     background: var(--ink-850);
-    border: 1px solid rgba(177, 80, 63, 0.4);
+    border: 1px solid rgba(171, 115, 124, 0.4);
     border-radius: var(--radius-lg);
     padding: 2rem 2.2rem;
 }
@@ -24,14 +24,14 @@
 {% block content %}
 <div class="totp-container">
     <div class="totp-card">
-        <h2 class="totp-title">Disable two-factor authentication</h2>
+        <h2 class="totp-title">{{ t('totp.disable') }}</h2>
         <p class="totp-subtitle">Enter your current password and a valid code from your authenticator app to turn off 2FA.</p>
 
         <form method="POST">
             {{ form.hidden_tag() }}
             <div class="form-group">
                 {{ form.password.label }}
-                {{ form.password(class="form-control", placeholder="Current password") }}
+                {{ form.password(class="form-control", placeholder=t('totp.current_password')) }}
                 {% for error in form.password.errors %}
                     <span class="text-danger" style="font-size:.82rem;">{{ error }}</span>
                 {% endfor %}
@@ -47,7 +47,7 @@
         </form>
 
         <p style="margin-top:1.2rem;font-size:.82rem;opacity:.6;text-align:center;">
-            <a href="{{ url_for('edit_profile') }}">Cancel</a>
+            <a href="{{ url_for('edit_profile') }}">{{ t('misc.cancel') }}</a>
         </p>
     </div>
 </div>

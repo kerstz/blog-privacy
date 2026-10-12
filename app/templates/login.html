@@ -2,17 +2,17 @@
 
 {% block content %}
 <div class="auth-container">
-    <h2>Sign In</h2>
+    <h2>{{ t('auth.login.title') }}</h2>
     <form method="POST">
         {{ form.hidden_tag() }}
         <div class="input-group">
-            {{ form.username(class="form-control", placeholder="Username") }}
+            {{ form.username(class="form-control", placeholder=t('auth.username')) }}
         </div>
         <div class="input-group">
-            {{ form.password(class="form-control", placeholder="Password") }}
+            {{ form.password(class="form-control", placeholder=t('auth.password')) }}
         </div>
-        <button type="submit" class="btn btn-primary">Sign In</button>
+        <button type="submit" class="btn btn-primary">{{ t('auth.login.title') }}</button>
     </form>
-    <p class="mt-3">Don't have an account? <a href="{{ url_for('register') }}" class="link">Create one</a></p>
+    <p class="mt-3">{{ t('auth.login.no_account') }} <a href="{{ url_for('register') }}" class="link">{{ t('auth.login.create') }}</a></p>
 </div>
 {% endblock %}

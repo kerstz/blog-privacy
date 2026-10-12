@@ -112,36 +112,37 @@
 }
 
 .content-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 40px;
 }
 
 .content-header h2 {
-    color: #8b93ff;
-    font-size: 2.5rem;
+    font-family: var(--font-display);
+    color: var(--ash);
+    font-size: clamp(1.8rem, 3.6vw, 2.4rem);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 15px;
 }
 
 .content-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 1.1rem;
 }
 
 .section-card {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border: 2px solid #8b93ff;
-    border-radius: 20px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border: 1px solid var(--line);
+    border-radius: 6px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(125, 147, 200, 0.2);
 }
 
 .section-card h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 1.5rem;
     margin-bottom: 25px;
     display: flex;
@@ -162,7 +163,7 @@
 }
 
 .form-group label {
-    color: #e0e0e0;
+    color: var(--ash);
     font-weight: 600;
     font-size: 1rem;
 }
@@ -170,8 +171,8 @@
 .form-control {
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    color: #e0e0e0;
+    border-radius: 6px;
+    color: var(--ash);
     padding: 12px 15px;
     font-size: 1rem;
     transition: all 0.3s ease;
@@ -179,9 +180,9 @@
 
 .form-control:focus {
     outline: none;
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
     background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2);
 }
 
 .form-control::placeholder {
@@ -189,11 +190,11 @@
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #8b93ff, #6f7ae6);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
     color: white;
     border: none;
     padding: 12px 25px;
-    border-radius: 10px;
+    border-radius: 6px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -204,9 +205,9 @@
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, #6f7ae6, #5a67d8);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(139, 147, 255, 0.4);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.4);
 }
 
 .posts-grid {
@@ -218,7 +219,7 @@
 .post-card {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 20px;
     transition: all 0.3s ease;
 }
@@ -226,11 +227,11 @@
 .post-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
 }
 
 .post-header h4 {
-    color: #e0e0e0;
+    color: var(--ash);
     font-size: 1.3rem;
     margin-bottom: 10px;
     line-height: 1.4;
@@ -244,7 +245,7 @@
 }
 
 .post-meta span {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.9rem;
     display: flex;
     align-items: center;
@@ -252,7 +253,7 @@
 }
 
 .post-content p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     line-height: 1.6;
     margin-bottom: 15px;
 }
@@ -265,7 +266,7 @@
 }
 
 .stat {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 0.9rem;
     display: flex;
     align-items: center;
@@ -279,10 +280,10 @@
 }
 
 .btn-edit {
-    background: linear-gradient(135deg, #51cf66, #40c057);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     color: white;
     padding: 8px 15px;
-    border-radius: 8px;
+    border-radius: 6px;
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 600;
@@ -293,7 +294,7 @@
 }
 
 .btn-edit:hover {
-    background: linear-gradient(135deg, #40c057, #37b24d);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     transform: translateY(-1px);
     text-decoration: none;
     color: white;
@@ -304,11 +305,11 @@
 }
 
 .btn-delete {
-    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     color: white;
     border: none;
     padding: 8px 15px;
-    border-radius: 8px;
+    border-radius: 6px;
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
@@ -319,19 +320,19 @@
 }
 
 .btn-delete:hover {
-    background: linear-gradient(135deg, #e55353, #d63384);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     transform: translateY(-1px);
 }
 
 .no-posts {
     text-align: center;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     padding: 40px;
 }
 
 .no-posts i {
     font-size: 3rem;
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 15px;
 }
 
@@ -339,33 +340,33 @@
 .ck-editor__editable {
     background: rgba(255, 255, 255, 0.1) !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
-    border-radius: 10px !important;
-    color: #e0e0e0 !important;
+    border-radius: 6px !important;
+    color: var(--ash) !important;
     min-height: 400px !important;
 }
 
 .ck-editor__editable:focus {
-    border-color: #8b93ff !important;
-    box-shadow: 0 0 0 3px rgba(139, 147, 255, 0.2) !important;
+    border-color: var(--moon-bright) !important;
+    box-shadow: 0 0 0 3px rgba(125, 147, 200, 0.2) !important;
 }
 
 .ck-toolbar {
     background: rgba(255, 255, 255, 0.05) !important;
     border: 2px solid rgba(255, 255, 255, 0.2) !important;
     border-bottom: none !important;
-    border-radius: 10px 10px 0 0 !important;
+    border-radius: 6px 10px 0 0 !important;
 }
 
 .ck-toolbar .ck-button {
-    color: #e0e0e0 !important;
+    color: var(--ash) !important;
 }
 
 .ck-toolbar .ck-button:hover {
-    background: rgba(139, 147, 255, 0.2) !important;
+    background: rgba(125, 147, 200, 0.2) !important;
 }
 
 .ck-toolbar .ck-button.ck-on {
-    background: rgba(139, 147, 255, 0.3) !important;
+    background: rgba(125, 147, 200, 0.3) !important;
 }
 
 /* Responsive */
@@ -375,6 +376,7 @@
     }
     
     .content-header h2 {
+    font-family: var(--font-display);
         font-size: 2rem;
     }
     
@@ -417,7 +419,7 @@
 }
 
 .section-header h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin: 0;
     display: flex;
     align-items: center;
@@ -429,18 +431,18 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(139, 147, 255, 0.1);
-    color: #8b93ff;
+    background: rgba(125, 147, 200, 0.1);
+    color: var(--moon-bright);
     text-decoration: none;
     border-radius: 6px;
-    border: 1px solid rgba(139, 147, 255, 0.3);
+    border: 1px solid rgba(125, 147, 200, 0.3);
     transition: all 0.3s ease;
     font-size: 0.85rem;
 }
 
 .help-link:hover {
-    background: rgba(139, 147, 255, 0.2);
-    color: #8b93ff;
+    background: rgba(125, 147, 200, 0.2);
+    color: var(--moon-bright);
     text-decoration: none;
     transform: translateY(-1px);
 }
@@ -454,22 +456,22 @@
 
 /* Aide inline pour l'éditeur */
 .editor-help-inline {
-    background: rgba(139, 147, 255, 0.1);
-    border: 1px solid rgba(139, 147, 255, 0.3);
-    border-radius: 8px;
+    background: rgba(125, 147, 200, 0.1);
+    border: 1px solid rgba(125, 147, 200, 0.3);
+    border-radius: 6px;
     padding: 15px;
     margin-bottom: 15px;
 }
 
 .editor-help-inline p {
     margin: 0 0 10px 0;
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 0.9rem;
 }
 
 .editor-help-inline p:last-child {
     margin-bottom: 0;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.8rem;
 }
 
@@ -482,11 +484,11 @@
 
 .tags-examples code {
     background: rgba(0, 0, 0, 0.3);
-    color: #8b93ff;
+    color: var(--moon-bright);
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 0.8rem;
-    border: 1px solid rgba(139, 147, 255, 0.2);
+    border: 1px solid rgba(125, 147, 200, 0.2);
 }
 </style>
 {% endblock %}

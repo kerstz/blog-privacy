@@ -1,247 +1,83 @@
-# TechBlog
+# depressedyoungmanblog
 
-A modern, feature-rich blogging platform built with Flask. TechBlog offers a clean and responsive interface for sharing articles, engaging with readers, and building a community around technology and programming.
+A personal blog that keeps its readers anonymous. Flask, SQLite, no JavaScript
+required, no third-party requests, built to run as a Tor onion service.
 
-<img alt="Home page" src="docs/screenshots/home.png" />
-<img alt="Reading a post" src="docs/screenshots/post.png" />
-<img alt="About page" src="docs/screenshots/about.png" />
+## What it does
 
+- **Blog** — posts with a rich editor, drafts, scheduled publishing, revisions
+- **Comments** — nested, BBCode, parsed server-side so they work without JavaScript
+- **Encrypted chat** with the site owner — Fernet at rest, real-time over WebSocket
+- **Bilingual** — every fixed text in English and French, switchable, and editable
+  from the admin panel without touching code
+- **Moderation** — flag an image and it is fingerprinted, blocked for good, and its
+  sender banned; re-encoded copies are caught too
+- **2FA** — TOTP, per account
+- **Gamification** — XP, levels, badges
 
-## Features
+## What it deliberately does not do
 
-- **Night Desk UI**: Warm, lamplit dark theme — espresso base, parchment text, muted brass accent (fully customizable!)
-- **Easy Theme Customization**: Change colors and styling without coding knowledge - see [CUSTOMIZE_THEME.md](CUSTOMIZE_THEME.md)
-- **User Authentication**: Secure registration and login system
-- **Article Management**: Create, edit, and publish articles with rich text editor
-- **Comments System**: Nested comment threads with replies
-- **Like System**: Users can like posts and comments
-- **User Profiles**: Customizable user profiles with experience points and badges
-- **Admin Panel**: Comprehensive dashboard for managing content and users
-- **Notifications**: Real-time notification system for user interactions
-- **Chat System**: Built-in messaging between users
-- **Static Pages**: Create custom pages (About, Contact, etc.)
-- **Responsive Design**: Fully mobile-friendly interface
+- **No third-party requests.** No CDN, no web fonts, no analytics. A reader's IP
+  address never reaches anyone but you. The type falls back to system faces on
+  purpose.
+- **No IP addresses in the logs.** They are scrubbed before anything is written.
+  The rate limiter keys on a salted hash that is regenerated at every restart.
+- **No tracking of any kind.** No view counters tied to a person, no cookies
+  beyond the session.
 
-## Tech Stack
+## Honest limits
 
-- **Backend**: Flask (Python)
-- **Database**: SQLAlchemy with SQLite
-- **Authentication**: Flask-Login
-- **Forms**: Flask-WTF
-- **Real-time**: Flask-SocketIO
-- **Frontend**: HTML5, CSS3, JavaScript
-- **Typography**: Fraunces (display) + IBM Plex Sans (UI) + IBM Plex Mono (metadata)
-- **Icons**: Monochrome SVG mask icons — no JS, no web font (NoScript / Tor friendly)
+Messages are **encrypted at rest**, not end to end. The key lives on the server
+next to the database. That protects against the theft of `blog.db` alone — not
+against someone with access to the server, and not against a legal demand. Say
+"encrypted at rest" to your readers, not "encrypted".
 
-## Quick Start
+## Running it locally
 
-**New to this?** Check out our [5-Minute Setup Guide](SETUP_GUIDE.md) to quickly personalize your blog!
-
-## Installation
-
-### Prerequisites
-
-- Python 3.8 or higher
-- pip package manager
-
-### Setup
-
-1. **Clone the repository**
 ```bash
-git clone https://github.com/kerstz/blog-privacy.git
-cd blog-privacy
-```
-
-2. **Create a virtual environment**
-```bash
-python -m venv venv
-```
-
-3. **Activate the virtual environment**
-   - On Windows:
-   ```bash
-   venv\Scripts\activate
-   ```
-   - On macOS/Linux:
-   ```bash
-   source venv/bin/activate
-   ```
-
-4. **Install dependencies**
-```bash
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-5. **Set up environment variables** (optional)
-```bash
-export SECRET_KEY='your-secret-key-here'
-export DATABASE_URL='sqlite:///instance/blog.db'
-```
+cp .env.example .env          # then fill in the three required secrets
+python -c "import secrets; print(secrets.token_urlsafe(48))"   # ×3
 
-6. **Initialize the database**
-```bash
-flask db init
-flask db migrate -m "Initial migration"
 flask db upgrade
+python create_admin.py        # first time only
+python wsgi.py                # http://127.0.0.1:5000
 ```
 
-7. **Run the application**
-```bash
-python wsgi.py
-```
+For development, `SESSION_COOKIE_SECURE=false` and `TEMPLATE_AUTO_RELOAD=true`
+in your `.env` save a lot of restarts.
 
-The application will be available at `http://localhost:5000`
-
-## Configuration
-
-Edit `config.py` to customize:
-- Secret key
-- Database URI
-- Session configuration
-- Cookie settings
-
-## Project Structure
-
-```
-techblog/
-├── app/
-│   ├── __init__.py
-│   ├── models.py          # Database models
-│   ├── routes.py          # Application routes
-│   ├── forms.py           # Form definitions
-│   ├── utils.py           # Utility functions
-│   ├── encryption.py      # Encryption utilities
-│   ├── chat.py            # Chat functionality
-│   ├── static/
-│   │   └── css/
-│   │       ├── style.css  # Main stylesheet
-│   │       └── icons.css  # Icon fonts
-│   └── templates/         # HTML templates
-├── migrations/            # Database migrations
-├── instance/             # Instance-specific files
-├── config.py             # Configuration
-├── wsgi.py              # Application entry point
-├── requirements.txt      # Python dependencies
-└── README.md            # This file
-```
-
-## Usage
-
-### Creating an Admin User
-
-To create an admin user, you can use the Python shell:
+## Deploying it as an onion service
 
 ```bash
-flask shell
+bash deploy/package.sh 192.168.1.42           # clean archive + the scp commands
+# then, on the server:
+sudo bash deploy/deploy-onion.sh --dry-run    # see what it will do
+sudo bash deploy/deploy-onion.sh
 ```
 
-```python
-from app import db
-from app.models import User
-from flask_bcrypt import generate_password_hash
+The script installs what is missing, generates the secrets, creates the onion
+service, hardens the systemd unit, closes the firewall, and checks that nothing
+leaks to the clearnet. See [deploy/README.md](deploy/README.md) for what it
+covers and what it leaves to you.
 
-admin = User(
-    username='admin',
-    password=generate_password_hash('your_password').decode('utf-8'),
-    is_admin=True
-)
-db.session.add(admin)
-db.session.commit()
+## Layout
+
+```
+app/
+  routes.py        all routes (web, mobile admin API, SSE)
+  models.py        16 models
+  site_text.py     bilingual copy, admin-editable
+  image_safety.py  perceptual hashing + upload block list
+  encryption.py    Fernet message encryption
+  utils.py         BBCode, image pipeline, roles, rate limiting
+deploy/            onion deployment
+archive/telegram/  removed Telegram bridge, kept read-only
+docs/ANONYMAT.md   privacy audit: what was found, fixed, and still open
 ```
 
-### Admin Panel
+## Licence
 
-Access the admin panel at `/admin` with admin credentials. Features include:
-- Manage posts
-- Manage users
-- Manage comments
-- View statistics
-- Manage banners
-- Create static pages
-- Admin chat
-
-### Admin Mobile Chat API
-
-You can now access admin conversations from a phone app (or mobile web client) through dedicated endpoints:
-
-- `GET /api/admin/mobile/ping` - test admin authentication
-- `GET /api/admin/mobile/conversations` - list users and last message per conversation
-- `GET /api/admin/mobile/conversations/<user_id>/messages?limit=50` - fetch a conversation history
-- `POST /api/admin/mobile/conversations/<user_id>/messages` - send/reply to a user
-- `GET /api/admin/mobile/stream` - real-time event stream (SSE) for incoming messages/updates
-
-Authentication uses HTTP Basic Auth with your existing admin username/password.
-
-Example:
-```bash
-curl -u admin:your_password http://localhost:5000/api/admin/mobile/conversations
-```
-
-Send message:
-```bash
-curl -u admin:your_password \
-  -H "Content-Type: application/json" \
-  -X POST \
-  -d '{"content":"Hello from mobile admin"}' \
-  http://localhost:5000/api/admin/mobile/conversations/2/messages
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is open source and available under the MIT License.
-
-## Security
-
-- Passwords are hashed using bcrypt
-- CSRF protection enabled
-- Secure session cookies
-- SQL injection prevention through SQLAlchemy ORM
-- Message encryption for chat system
-
-## Theme Customization
-
-Want to change the look and feel of your blog? Check out our comprehensive [Theme Customization Guide](CUSTOMIZE_THEME.md) which includes:
-
-- Pre-made color schemes (Blue, Purple, Red, Monochrome, etc.)
-- Step-by-step instructions for beginners
-- AI prompt template for generating custom themes
-- Tips and tools for creating your perfect design
-
-**Quick Example:**
-```css
-/* Change these 3 colors in style.css to transform your entire blog! */
---primary-color: #YOUR_COLOR_1;
---secondary-color: #YOUR_COLOR_2;  
---accent-color: #YOUR_COLOR_3;
-```
-
-## Future Enhancements
- I don't really know if i have the time for this but why not add this in the future :)
-- [ ] Search functionality
-- [ ] Categories and tags
-- [ ] RSS feed
-- [ ] Email notifications
-- [ ] OAuth integration
-- [ ] Image upload and management
-- [ ] Markdown support
-- [ ] SEO optimization
-- [ ] Multi-language support
-
-## Support
-
-For issues, questions, or contributions, please open an issue on GitHub.
-
-## Acknowledgments
-
-Built with Flask and modern web technologies for a seamless blogging experience.
-
+See [LICENSE](LICENSE).

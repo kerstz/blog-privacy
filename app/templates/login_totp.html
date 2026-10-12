@@ -1,6 +1,6 @@
 {% extends 'layout.html' %}
 
-{% block title %}Two-Factor Authentication — MyBlog{% endblock %}
+{% block title %}Two-Factor Authentication — depressedyoungmanblog{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -56,12 +56,12 @@
 
 {% block content %}
 <div class="auth-container">
-    <h2 class="auth-title">Two-factor authentication</h2>
-    <p class="auth-subtitle">Open your authenticator app and enter the 6-digit code for <strong>MyBlog</strong>.</p>
+    <h2 class="auth-title">{{ t('auth.totp.title') }}</h2>
+    <p class="auth-subtitle">{{ t('auth.totp.body') }}</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
-            <div class="alert alert-{{ category }}" style="margin-bottom:1rem;padding:.7rem 1rem;border-radius:8px;">{{ message }}</div>
+            <div class="alert alert-{{ category }}" style="margin-bottom:1rem;padding:.7rem 1rem;border-radius: 6px;">{{ message }}</div>
         {% endfor %}
     {% endwith %}
 
@@ -71,7 +71,7 @@
             {{ form.code.label }}
             {{ form.code(class="form-control totp-input", placeholder="000000", autocomplete="one-time-code", inputmode="numeric", maxlength=6, autofocus=true) }}
             {% for error in form.code.errors %}
-                <span style="color:#ff6b6b;font-size:.82rem;display:block;margin-top:.3rem;">{{ error }}</span>
+                <span style="color:var(--ember-bright);font-size:.82rem;display:block;margin-top:.3rem;">{{ error }}</span>
             {% endfor %}
         </div>
         {{ form.submit(class="btn-submit btn-full") }}

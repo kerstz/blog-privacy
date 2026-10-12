@@ -1,29 +1,15 @@
 # app/chat.py
-
-from flask_socketio import emit
-from app import app, db, socketio
-from app.models import User, Message
-
-@socketio.on('message')
-def handleMessage(data):
-    msg_type = data.get('type', 'text')
-    sender_id = data['sender_id']
-    receiver_id = data['receiver_id']
-
-    if msg_type == 'text':
-        content = data['msg']
-    elif msg_type == 'image':
-        content = data['msg']  # The image data URL
-
-    # Save the message in the database
-    message = Message(sender_id=sender_id, receiver_id=receiver_id, content=content)
-    db.session.add(message)
-    db.session.commit()
-
-    # Send the message to the receiver
-    emit('message', {
-        'content': content,
-        'type': msg_type,
-        'sender_id': sender_id,
-        'receiver_id': receiver_id
-    }, to=receiver_id)
+#
+# L'ancien handler SocketIO `message` vivait ici. Il etait enregistre APRES
+# celui de `app/routes.py` (voir l'ordre des imports dans `app/__init__.py`),
+# donc c'est lui qui recevait reellement les evenements — et il :
+#   - n'exigeait aucune authentification,
+#   - faisait confiance a `data['sender_id']` fourni par le client, ce qui
+#     permettait a n'importe qui d'ecrire un message au nom de n'importe quel
+#     compte,
+#   - enregistrait le contenu en clair alors que `Message.is_encrypted` vaut
+#     True par defaut.
+#
+# Le handler authentifie de `app/routes.py` (`handle_message`) est desormais le
+# seul enregistre pour cet evenement. Ne pas reintroduire de handler `message`
+# ici sans verifier `current_user`.
