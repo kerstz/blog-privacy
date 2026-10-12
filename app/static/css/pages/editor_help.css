@@ -1,0 +1,106 @@
+.editor-help-container {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 30px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(125, 147, 200, 0.2);
+}
+
+.editor-help-container h2 {
+    color: var(--moon-bright);
+    text-align: center;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.help-section {
+    margin-bottom: 40px;
+}
+
+.help-section h3 {
+    color: var(--moon-bright);
+    border-bottom: 2px solid var(--moon-bright);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.help-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.help-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    padding: 20px;
+    border: 1px solid rgba(125, 147, 200, 0.3);
+}
+
+.help-item code {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--moon-bright);
+    padding: 8px 12px;
+    border-radius: 5px;
+    display: block;
+    margin-bottom: 10px;
+    font-family: 'Courier New', monospace;
+    border: 1px solid rgba(125, 147, 200, 0.2);
+}
+
+.help-item p {
+    color: var(--ash-mid);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.example-box {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    padding: 20px;
+    border: 1px solid rgba(125, 147, 200, 0.3);
+}
+
+.example-box pre {
+    color: var(--moon-bright);
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+}
+
+.help-footer {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(125, 147, 200, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(125, 147, 200, 0.3);
+}
+
+.help-footer p {
+    color: var(--ash-mid);
+    margin: 10px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.help-footer strong {
+    color: var(--moon-bright);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .help-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .editor-help-container {
+        margin: 10px;
+        padding: 20px;
+    }
+}

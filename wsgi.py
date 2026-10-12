@@ -5,13 +5,14 @@ import sys
 from app import app as application
 from app import socketio
 
-# (Optionnel) Pour les logs
-logging.basicConfig(stream=sys.stderr)
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
 
 if __name__ == '__main__':
-    # `python wsgi.py` est la commande de demarrage documentee dans le README,
-    # mais ce fichier ne faisait qu'exposer `application` : rien ne se lancait.
-    # socketio.run() est necessaire ici, app.run() ne servirait pas le WebSocket.
+    # Development server only (production: gunicorn wsgi:application behind
+    # HTTPS). `python wsgi.py` is the documented start command; socketio.run()
+    # is required here, app.run() would not serve the WebSocket. Never enable
+    # FLASK_DEBUG on a public host (the Werkzeug debugger allows remote code
+    # execution).
     socketio.run(
         application,
         host=os.environ.get('HOST', '127.0.0.1'),

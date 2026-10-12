@@ -1,5 +1,5 @@
 """
-Module de chiffrement pour les messages du chat
+Encryption of chat messages at rest (Fernet)
 """
 import base64
 import os
@@ -10,11 +10,11 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 class MessageEncryption:
     def __init__(self, password: str = None):
         """
-        Initialise le système de chiffrement.
+        Set up the cipher.
 
-        La clé (ENCRYPTION_KEY) et le sel (ENCRYPTION_SALT) sont obligatoires et
-        lus dans l'environnement. Aucune valeur par défaut : un défaut prévisible
-        rendrait tous les messages déchiffrables par quiconque lit le code source.
+        The key (ENCRYPTION_KEY) and salt (ENCRYPTION_SALT) are mandatory and
+        read from the environment. No default: a predictable default would let
+        anyone who reads the source code decrypt every message.
         """
         if password is None:
             password = os.environ.get('ENCRYPTION_KEY')
@@ -22,15 +22,20 @@ class MessageEncryption:
 
         if not password or not salt_str:
             raise RuntimeError(
-                "ENCRYPTION_KEY et ENCRYPTION_SALT sont obligatoires (voir .env.example). "
-                "Aucune valeur par défaut n'est fournie : les messages chiffrés en "
-                "dépendent."
+                "ENCRYPTION_KEY and ENCRYPTION_SALT are mandatory (see .env.example). "
+                "No default value is provided: encrypted messages depend on them."
+            )
+
+        if password.lower() in ('change_me', 'changeme') or salt_str.lower() in ('change_me', 'changeme') \
+                or len(password) < 16 or len(salt_str) < 16:
+            raise RuntimeError(
+                "ENCRYPTION_KEY / ENCRYPTION_SALT are too weak (example value or < 16 characters)."
             )
 
         salt = salt_str.encode()
-        # Nombre d'iterations PBKDF2. Reste a 100000 par defaut pour ne pas rendre
-        # illisibles les messages deja en base ; une nouvelle installation devrait
-        # positionner ENCRYPTION_ITERATIONS=600000 (recommandation OWASP).
+        # PBKDF2 iterations. Stays at 100000 by default so that messages already
+        # in the database remain readable; a fresh install should set
+        # ENCRYPTION_ITERATIONS=600000 (OWASP recommendation).
         iterations = int((os.environ.get('ENCRYPTION_ITERATIONS') or '100000').strip())
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
@@ -43,31 +48,59 @@ class MessageEncryption:
     
     def encrypt_message(self, message: str) -> str:
         """
-        Chiffre un message.
-
-        Echec = exception, jamais un repli en clair : ecrire du texte lisible
-        dans la colonne `content` reviendrait a stocker en clair une conversation
-        que l'utilisateur croit chiffree.
+        Encrypt a message
         """
-        encrypted_message = self.cipher_suite.encrypt(message.encode())
+        # SECURITY: never fall back to storing plaintext if encryption fails:
+        # an error raises, it never writes readable text in a column the user
+        # believes is encrypted.
+        encrypted_message = self.cipher_suite.encrypt((message or '').encode())
         return base64.urlsafe_b64encode(encrypted_message).decode()
     
     def decrypt_message(self, encrypted_message: str) -> str:
         """
-        Déchiffre un message.
-
-        On tente simplement le dechiffrement : l'ancien pre-filtre `_is_base64`
-        rejetait l'alphabet base64 *urlsafe* (`-` et `_`), donc renvoyait le
-        chiffre brut a l'affichage des que le jeton contenait un de ces
-        caracteres. En cas d'echec on retourne la valeur telle quelle : les
-        messages ecrits en clair avant l'activation du chiffrement restent
-        lisibles.
+        Decrypt a message
         """
         try:
+            # Legacy plaintext rows are not base64: return them as is
+            if not self._is_base64(encrypted_message):
+                return encrypted_message
+            
             encrypted_data = base64.urlsafe_b64decode(encrypted_message.encode())
-            return self.cipher_suite.decrypt(encrypted_data).decode()
+            decrypted_message = self.cipher_suite.decrypt(encrypted_data)
+            return decrypted_message.decode()
         except Exception:
+            # On error return the stored value (legacy plaintext message)
             return encrypted_message
+    
+    def is_ciphertext(self, value: str) -> bool:
+        """True only if *value* really is one of our encrypted messages."""
+        if not isinstance(value, str) or not self._is_base64(value):
+            return False
+        try:
+            self.cipher_suite.decrypt(base64.urlsafe_b64decode(value.encode()))
+            return True
+        except Exception:
+            return False
 
-# Instance globale pour le chiffrement
+    def encrypt_bytes(self, data: bytes) -> bytes:
+        """Encrypt file content (authenticated, Fernet)."""
+        return self.cipher_suite.encrypt(data)
+
+    def decrypt_bytes(self, token: bytes) -> bytes:
+        return self.cipher_suite.decrypt(token)
+
+    def _is_base64(self, s: str) -> bool:
+        """
+        Return True if the string looks like urlsafe base64
+        """
+        try:
+            if isinstance(s, str):
+                import re
+                # urlsafe alphabet (-_) : the old +/ check skipped real ciphertexts
+                return bool(re.match(r'^[A-Za-z0-9_\-]*={0,2}$', s)) and len(s) % 4 == 0
+            return False
+        except Exception:
+            return False
+
+# Shared instance
 message_encryption = MessageEncryption()

@@ -492,3 +492,7 @@
     .text-row > form { grid-column: 1; }
     .text-fields { grid-template-columns: 1fr; }
 }
+
+/* Sign-out is a POST form (CSRF-protected) that looks like the other rail links */
+.rail-logout { margin: 0; }
+.rail-button { width: 100%; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; }

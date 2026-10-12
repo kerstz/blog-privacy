@@ -2,6 +2,10 @@
 
 {% block title %}Manage Users - Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/manage_users.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
@@ -49,7 +53,7 @@
                                 </div>
                                 <div class="stat-item">
                                     <span class="icon-heart"></span>
-                                    <span>{{ user.likes|length }} likes donnés</span>
+                                    <span>{{ user.likes_given|length }} likes donnés</span>
                                 </div>
                             </div>
                             
@@ -82,28 +86,31 @@
                             
                             <div class="user-actions">
                                 {% if user.is_admin %}
-                                    <form method="POST" action="{{ url_for('demote_user', user_id=user.id) }}" class="action-form">
-                                        {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-warning" onclick="return confirm('Confirmer la rétrogradation de {{ user.username }} ?')">
-                                            <span class="icon-arrow-down"></span> Rétrograder
-                                        </button>
-                                    </form>
+                                    <details class="confirm-action">
+                                        <summary class="btn-warning"><span class="icon-arrow-down"></span> Rétrograder</summary>
+                                        <form method="POST" action="{{ url_for('demote_user', user_id=user.id) }}" class="action-form">
+                                            {{ form.hidden_tag() }}
+                                            <button type="submit" class="btn-warning confirm-yes">Confirmer la rétrogradation de {{ user.username }}</button>
+                                        </form>
+                                    </details>
                                 {% else %}
-                                    <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" class="action-form">
-                                        {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-success" onclick="return confirm('Confirmer la promotion de {{ user.username }} en admin ?')">
-                                            <span class="icon-arrow-up"></span> Promouvoir
-                                        </button>
-                                    </form>
+                                    <details class="confirm-action">
+                                        <summary class="btn-success"><span class="icon-arrow-up"></span> Promouvoir</summary>
+                                        <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" class="action-form">
+                                            {{ form.hidden_tag() }}
+                                            <button type="submit" class="btn-success confirm-yes">Confirmer la promotion de {{ user.username }} en admin</button>
+                                        </form>
+                                    </details>
                                 {% endif %}
 
-                                <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="action-form">
-                                    {{ form.hidden_tag() }}
-                                    <label class="purge-messages"><input type="checkbox" name="purge_messages" value="1"> Supprimer aussi ses messages</label>
-                                    <button type="submit" class="btn-danger" onclick="return confirm('Voulez-vous vraiment supprimer {{ user.username }} ? Cette action est irréversible.')">
-                                        <span class="icon-trash"></span> Supprimer
-                                    </button>
-                                </form>
+                                <details class="confirm-action">
+                                    <summary class="btn-danger"><span class="icon-trash"></span> Supprimer</summary>
+                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="action-form">
+                                        {{ form.hidden_tag() }}
+                                        <label class="purge-messages"><input type="checkbox" name="purge_messages" value="1"> Supprimer aussi ses messages</label>
+                                        <button type="submit" class="btn-danger confirm-yes">Supprimer {{ user.username }} (irréversible)</button>
+                                    </form>
+                                </details>
                             </div>
                         </div>
                     {% endfor %}
@@ -118,304 +125,4 @@
     </div>
 </div>
 
-<style>
-.admin-content {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.content-header {
-    text-align: left;
-    margin-bottom: 40px;
-}
-
-.content-header h2 {
-    font-family: var(--font-display);
-    color: var(--ash);
-    font-size: clamp(1.8rem, 3.6vw, 2.4rem);
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 15px;
-}
-
-.content-header p {
-    color: var(--ash-mid);
-    font-size: 1.1rem;
-}
-
-.section-card {
-    background: linear-gradient(135deg, var(--night-100), var(--line));
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 25px rgba(125, 147, 200, 0.2);
-}
-
-.section-card h3 {
-    color: var(--moon-bright);
-    font-size: 1.5rem;
-    margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.users-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px;
-}
-
-.user-card {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.user-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: var(--moon-bright);
-}
-
-.user-header {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.user-avatar {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.5rem;
-    overflow: hidden;
-}
-
-.avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.user-info h4 {
-    color: var(--ash);
-    font-size: 1.2rem;
-    margin-bottom: 5px;
-}
-
-.user-meta {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.user-meta span {
-    color: var(--ash-mid);
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.user-stats {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
-}
-
-.stat-item {
-    color: var(--moon-bright);
-    font-size: 0.9rem;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.user-badges {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.badge-item {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--night-100);
-    font-size: 0.9rem;
-    cursor: help;
-}
-
-.badge-more {
-    color: var(--ash-mid);
-    font-size: 0.8rem;
-    font-style: italic;
-}
-
-.no-badges {
-    color: #888;
-    font-size: 0.9rem;
-    font-style: italic;
-}
-
-.user-role {
-    margin-bottom: 15px;
-}
-
-.role-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-}
-
-.role-badge.admin {
-    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
-    color: var(--night-100);
-}
-
-.role-badge.user {
-    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
-    color: white;
-}
-
-.user-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.action-form {
-    display: inline;
-}
-
-.btn-warning {
-    background: linear-gradient(135deg, var(--ash-mid), var(--ash-mid));
-    color: var(--night-100);
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-warning:hover {
-    background: linear-gradient(135deg, var(--ash-mid), var(--ember-bright));
-    transform: translateY(-1px);
-}
-
-.btn-success {
-    background: linear-gradient(135deg, var(--moon), var(--moon));
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-success:hover {
-    background: linear-gradient(135deg, var(--moon), var(--moon));
-    transform: translateY(-1px);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 6px;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.btn-danger:hover {
-    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
-    transform: translateY(-1px);
-}
-
-.no-users {
-    text-align: center;
-    color: var(--ash-mid);
-    padding: 40px;
-}
-
-.no-users i {
-    font-size: 3rem;
-    color: var(--moon-bright);
-    margin-bottom: 15px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .admin-content {
-        padding: 15px;
-    }
-    
-    .content-header h2 {
-    font-family: var(--font-display);
-        font-size: 2rem;
-    }
-    
-    .section-card {
-        padding: 20px;
-    }
-    
-    .users-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .user-meta {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .user-stats {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .user-actions {
-        flex-direction: column;
-    }
-}
-</style>
 {% endblock %}

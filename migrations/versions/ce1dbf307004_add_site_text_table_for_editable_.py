@@ -1,7 +1,7 @@
 """Add site_text table for editable bilingual copy
 
 Revision ID: ce1dbf307004
-Revises: 618188b0f4dd
+Revises: b3c9e2f4a1d7
 Create Date: 2026-08-27 11:29:29.527970
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'ce1dbf307004'
-down_revision = '618188b0f4dd'
+down_revision = 'b3c9e2f4a1d7'
 branch_labels = None
 depends_on = None
 

@@ -1,0 +1,93 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ t('account.sec.title') }} — depressedyoungmanblog{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/account.css') }}">
+{% endblock %}
+
+{% macro field(f, placeholder='') %}
+<div class="form-group">
+    {{ f.label }}
+    {{ f(class="input-field", placeholder=placeholder, autocomplete="off") }}
+    {% for error in f.errors %}<span class="error">{{ error }}</span>{% endfor %}
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="account-wrap">
+    <p class="eyebrow">{{ t('account.eyebrow') }}</p>
+    <h1>{{ t('account.sec.title') }}</h1>
+    <p class="account-lead">{{ t('account.sec.lead') }}</p>
+
+    <section class="account-card">
+        <h2>{{ t('account.sec.password.title') }}</h2>
+        <p>{{ t('account.sec.password.note') }}</p>
+        <form method="POST" action="{{ url_for('change_password') }}">
+            {{ password_form.hidden_tag() }}
+            {{ field(password_form.current_password) }}
+            {{ field(password_form.new_password) }}
+            {{ field(password_form.confirm_password) }}
+            <button type="submit" class="account-btn">{{ t('account.sec.password.submit') }}</button>
+        </form>
+    </section>
+
+    <section class="account-card">
+        <h2>{{ t('account.sec.2fa.title') }}</h2>
+        {% if current_user.totp_enabled %}
+            <p>{{ t('account.sec.2fa.active') }} <span class="account-meta">{{ t('account.sec.2fa.left') }} {{ recovery_left }}</span></p>
+            <details>
+                <summary class="account-btn">{{ t('account.sec.2fa.recovery.open') }}</summary>
+                <form method="POST" action="{{ url_for('regenerate_recovery_codes') }}">
+                    {{ recovery_form.hidden_tag() }}
+                    {{ field(recovery_form.password) }}
+                    {{ field(recovery_form.code) }}
+                    <button type="submit" class="account-btn">{{ t('account.sec.2fa.recovery.submit') }}</button>
+                </form>
+            </details>
+            <p><a href="{{ url_for('totp_disable') }}" class="plain-link">{{ t('account.sec.2fa.disable') }}</a></p>
+        {% else %}
+            <p>{{ t('account.sec.2fa.inactive') }}</p>
+            <a class="account-btn" href="{{ url_for('totp_setup') }}">{{ t('account.sec.2fa.enable') }}</a>
+        {% endif %}
+    </section>
+
+    <section class="account-card">
+        <h2>{{ t('account.sec.sessions.title') }}</h2>
+        <p>{{ t('account.sec.sessions.body') }}</p>
+        <form method="POST" action="{{ url_for('logout_everywhere') }}">
+            {{ sessions_form.hidden_tag() }}
+            <button type="submit" class="account-btn">{{ t('account.sec.sessions.submit') }}</button>
+        </form>
+    </section>
+
+    <section class="account-card">
+        <h2>{{ t('account.sec.export.title') }}</h2>
+        <p>{{ t('account.sec.export.body') }}</p>
+        <details>
+            <summary class="account-btn">{{ t('account.sec.export.open') }}</summary>
+            <form method="POST" action="{{ url_for('export_account_data') }}">
+                {{ export_form.hidden_tag() }}
+                {{ field(export_form.password) }}
+                {% if current_user.totp_enabled %}{{ field(export_form.code) }}{% endif %}
+                <button type="submit" class="account-btn">{{ t('account.sec.export.submit') }}</button>
+            </form>
+        </details>
+    </section>
+
+    <section class="account-card danger">
+        <h2>{{ t('account.sec.delete.title') }}</h2>
+        <p>{{ t('account.sec.delete.body') }}</p>
+        <details>
+            <summary class="account-btn danger">{{ t('account.sec.delete.open') }}</summary>
+            <form method="POST" action="{{ url_for('delete_own_account') }}">
+                {{ delete_form.hidden_tag() }}
+                {{ field(delete_form.password) }}
+                {% if current_user.totp_enabled %}{{ field(delete_form.code) }}{% endif %}
+                {{ field(delete_form.confirm, 'DELETE') }}
+                <button type="submit" class="account-btn danger">{{ t('account.sec.delete.submit') }}</button>
+            </form>
+        </details>
+    </section>
+</div>
+{% endblock %}
