@@ -1,0 +1,67 @@
+{% extends 'admin_layout.html' %}
+{% block title %}Text history{% endblock %}
+
+{% block content %}
+<div class="texts-editor">
+    <header class="texts-head">
+        <p class="eyebrow">Site copy</p>
+        <h1>History</h1>
+        <p class="texts-intro"><code>{{ key }}</code></p>
+    </header>
+
+    <section class="texts-group">
+        <h2>Current</h2>
+        <div class="text-fields">
+            {% for code, name in languages.items() %}
+            <div class="text-field">
+                <span class="text-lang">{{ name }}</span>
+                <pre class="text-default">{{ ((row.text_en if code == 'en' else row.text_fr) if row else None) or '(built-in default)' }}</pre>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if default %}
+    <section class="texts-group">
+        <h2>Built-in default</h2>
+        <div class="text-fields">
+            {% for code, name in languages.items() %}
+            <div class="text-field">
+                <span class="text-lang">{{ name }}</span>
+                <pre class="text-default">{{ default[code] or '(empty)' }}</pre>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="texts-group">
+        <h2>Revisions</h2>
+        {% for rev in revisions %}
+        <div class="text-row">
+            <div class="text-key">
+                <span class="text-used">{{ fmt_date(rev.created_at, 'long') }}</span>
+                <span class="text-badge">{{ rev.action }}</span>
+                <span class="text-used">{{ rev.changed_by.username if rev.changed_by else 'deleted user' }}</span>
+            </div>
+            <div class="text-fields">
+                {% for code, name in languages.items() %}
+                <div class="text-field">
+                    <span class="text-lang">{{ name }}</span>
+                    <pre class="text-default">{{ (rev.text_en if code == 'en' else rev.text_fr) or '(built-in default)' }}</pre>
+                </div>
+                {% endfor %}
+            </div>
+            <form method="POST" action="{{ url_for('revert_site_text', rev_id=rev.id) }}">
+                {{ form.hidden_tag() }}
+                <button type="submit" class="plain-link">Restore this version</button>
+            </form>
+        </div>
+        {% else %}
+        <p class="texts-intro">No revision recorded yet.</p>
+        {% endfor %}
+    </section>
+
+    <p><a href="{{ url_for('manage_site_texts') }}" class="plain-link">Back to texts</a></p>
+</div>
+{% endblock %}

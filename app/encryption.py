@@ -28,54 +28,46 @@ class MessageEncryption:
             )
 
         salt = salt_str.encode()
+        # Nombre d'iterations PBKDF2. Reste a 100000 par defaut pour ne pas rendre
+        # illisibles les messages deja en base ; une nouvelle installation devrait
+        # positionner ENCRYPTION_ITERATIONS=600000 (recommandation OWASP).
+        iterations = int((os.environ.get('ENCRYPTION_ITERATIONS') or '100000').strip())
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
             salt=salt,
-            iterations=100000,
+            iterations=iterations,
         )
         key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
         self.cipher_suite = Fernet(key)
     
     def encrypt_message(self, message: str) -> str:
         """
-        Chiffre un message
+        Chiffre un message.
+
+        Echec = exception, jamais un repli en clair : ecrire du texte lisible
+        dans la colonne `content` reviendrait a stocker en clair une conversation
+        que l'utilisateur croit chiffree.
         """
-        try:
-            encrypted_message = self.cipher_suite.encrypt(message.encode())
-            return base64.urlsafe_b64encode(encrypted_message).decode()
-        except Exception as e:
-            print(f"Erreur de chiffrement: {e}")
-            return message  # Retourne le message non chiffré en cas d'erreur
+        encrypted_message = self.cipher_suite.encrypt(message.encode())
+        return base64.urlsafe_b64encode(encrypted_message).decode()
     
     def decrypt_message(self, encrypted_message: str) -> str:
         """
-        Déchiffre un message
+        Déchiffre un message.
+
+        On tente simplement le dechiffrement : l'ancien pre-filtre `_is_base64`
+        rejetait l'alphabet base64 *urlsafe* (`-` et `_`), donc renvoyait le
+        chiffre brut a l'affichage des que le jeton contenait un de ces
+        caracteres. En cas d'echec on retourne la valeur telle quelle : les
+        messages ecrits en clair avant l'activation du chiffrement restent
+        lisibles.
         """
         try:
-            # Vérifier si le message est déjà déchiffré (pas de base64)
-            if not self._is_base64(encrypted_message):
-                return encrypted_message
-            
             encrypted_data = base64.urlsafe_b64decode(encrypted_message.encode())
-            decrypted_message = self.cipher_suite.decrypt(encrypted_data)
-            return decrypted_message.decode()
-        except Exception as e:
-            # En cas d'erreur, retourner le message tel quel (probablement déjà déchiffré)
-            return encrypted_message
-    
-    def _is_base64(self, s: str) -> bool:
-        """
-        Vérifie si une chaîne est en base64
-        """
-        try:
-            if isinstance(s, str):
-                # Vérifier si la chaîne contient des caractères base64
-                import re
-                return bool(re.match(r'^[A-Za-z0-9+/]*={0,2}$', s)) and len(s) % 4 == 0
-            return False
+            return self.cipher_suite.decrypt(encrypted_data).decode()
         except Exception:
-            return False
+            return encrypted_message
 
 # Instance globale pour le chiffrement
 message_encryption = MessageEncryption()

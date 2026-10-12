@@ -3,19 +3,19 @@
 
 {% block content %}
 <div class="post-list-container">
-    <h1>All entries</h1>
+    <h1>{{ t('posts.all') }}</h1>
 
     {% if posts %}
         {% for post in posts %}
         <article class="post-card">
-            <p class="post-meta">{{ post.date_posted.strftime('%Y · %b %d') }}</p>
+            <p class="post-meta">{{ fmt_date(post.date_posted) }}</p>
             <h2><a href="{{ url_for('post_detail', post_id=post.id) }}">{{ post.title }}</a></h2>
             <p class="post-excerpt">{{ post.content[:180] }}…</p>
-            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">Read</a>
+            <a href="{{ url_for('post_detail', post_id=post.id) }}" class="read-more-btn">{{ t('posts.read') }}</a>
         </article>
         {% endfor %}
     {% else %}
-        <p class="no-posts">No posts available yet.</p>
+        <p class="no-posts">{{ t('posts.empty') }}</p>
     {% endif %}
 </div>
 {% endblock %}

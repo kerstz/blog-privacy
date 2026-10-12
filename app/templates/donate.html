@@ -4,20 +4,20 @@
 
 {% block content %}
 <div class="donate-page">
-    <p class="eyebrow">Support</p>
-    <h1 class="donate-title">Keep this space alive</h1>
+    <p class="eyebrow">{{ t('donate.eyebrow') }}</p>
+    <h1 class="donate-title">{{ t('donate.title') }}</h1>
     <p class="donate-message">This blog is more than a collection of posts — it's a safe place to share, to escape, and to feel a little less alone. If it has ever brought you comfort, inspiration, or even just a smile, consider helping to keep it running. Every bit is appreciated.</p>
 
     <!-- Top Donators Section -->
     <div class="top-donators">
-        <h2>Top supporters this month</h2>
-        <p class="no-donations">No donations yet this month. You could be the first.</p>
+        <h2>{{ t('donate.top') }}</h2>
+        <p class="no-donations">{{ t('donate.none') }}</p>
     </div>
 
     <!-- Anonymous Donation Section -->
     <div class="anonymous-donation">
         <h3>Donate anonymously with Trocador</h3>
-        <p>Trocador lets you swap any cryptocurrency for Monero (XMR) and send it directly — no account, no trace.</p>
+        {{ t_rich('donate.body') }}
 
         <div class="instructions">
             <ol>
@@ -27,16 +27,35 @@
             </ol>
         </div>
 
+        {# Chargement sur demande. Un iframe pose directement dans la page ferait
+           contacter trocador.app par le navigateur de *tout* lecteur ouvrant
+           cette page, meme sans intention de donner : Trocador y verrait son
+           adresse IP. Le lecteur decide. #}
         <div class="trocador-widget">
-            <iframe src="https://trocador.app/anonpay/?ticker_to=xmr&network_to=Mainnet&address=47wJbYtPB6SLd4P9PCwLcKfTgXCTnZGPwUuGSv3dPTGuG1RmhcB8LVQUVHATAAW1Q6ZVJQQ82EeC9Rzox7aWt6jgCtw54Pj&donation=True&amount=0.0001&name=Blog+Support&description=Thanks+for+supporting+the+blog&bgcolor=" 
-                    width="100%" height="600" frameborder="0"></iframe>
+        {% if embed_widget %}
+            <iframe src="{{ trocador_url }}" width="100%" height="600" frameborder="0"
+                    referrerpolicy="no-referrer"
+                    sandbox="allow-scripts allow-forms allow-same-origin allow-popups"></iframe>
+            <p class="plain-link"><a href="{{ url_for('donate') }}">{{ t('donate.widget.hide') }}</a></p>
+        {% else %}
+            <p>
+                The swap widget is hosted by <strong>trocador.app</strong>. Loading it
+                lets that third party see your IP address and browser. It stays
+                unloaded until you ask for it.
+            </p>
+            <p>
+                <a class="btn-primary" href="{{ url_for('donate', embed=1) }}">{{ t('donate.widget.load') }}</a>
+                &nbsp;
+                <a class="plain-link" href="{{ trocador_url }}" rel="noopener noreferrer" target="_blank">{{ t('donate.widget.newtab') }}</a>
+            </p>
+        {% endif %}
         </div>
     </div>
 
     <!-- Direct Cryptocurrency Donation Section -->
     <div class="direct-crypto">
-        <h3>Donate with crypto</h3>
-        <p>Choose your preferred cryptocurrency and scan the QR code, or tap an address to copy it.</p>
+        <h3>{{ t('donate.crypto.title') }}</h3>
+        <p>{{ t('donate.crypto.body') }}</p>
         
         <div class="crypto-grid">
             <!-- Bitcoin -->
@@ -162,7 +181,7 @@
 .anonymous-donation {
     background: var(--ink-850);
     border: 1px solid var(--line);
-    border-radius: 20px;
+    border-radius: 6px;
     padding: 30px;
     margin: 30px 0;
 }
@@ -198,7 +217,7 @@
 
 .trocador-widget {
     margin-top: 30px;
-    border-radius: 15px;
+    border-radius: 6px;
     overflow: hidden;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
@@ -230,14 +249,14 @@
 .crypto-card {
     background: var(--ink-850);
     border: 1px solid var(--line);
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 20px;
     text-align: center;
     transition: all 0.3s ease;
 }
 
 .crypto-card:hover {
-        box-shadow: 0 8px 25px rgba(255, 212, 59, 0.2);
+        box-shadow: 0 8px 25px rgba(139, 147, 163, 0.2);
     border-color: var(--brass-bright);
 }
 
@@ -258,7 +277,7 @@
     height: 120px;
     background: var(--ink-900);
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 6px;
     margin: 0 auto 20px;
     display: flex;
     align-items: center;
@@ -278,7 +297,7 @@
     word-break: break-all;
     background: rgba(255, 255, 255, 0.05);
     padding: 10px;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     line-height: 1.4;
 }
@@ -362,13 +381,13 @@ function copyToClipboard(text) {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: linear-gradient(135deg, #51cf66, #40c057);
+            background: linear-gradient(135deg, var(--moon), var(--moon));
             color: white;
             padding: 12px 20px;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 600;
             z-index: 1000;
-            box-shadow: 0 4px 15px rgba(81, 207, 102, 0.3);
+            box-shadow: 0 4px 15px rgba(125, 147, 200, 0.3);
             animation: slideIn 0.3s ease;
         `;
         notification.innerHTML = '<span class="icon-check"></span> Address copied!';

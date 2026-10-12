@@ -1,9 +1,17 @@
 from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms import StringField, PasswordField, SubmitField, TextAreaField, BooleanField, DateTimeField, SelectField
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError, URL, Optional, NumberRange, Email
 from app.models import User
 from flask_ckeditor import CKEditorField
+
+# Refus des mots de passe les plus evidents. Liste volontairement courte : elle
+# bloque les choix reflexes sans donner l'illusion d'un vrai controle de force.
+_COMMON_PASSWORDS = {
+    'password', 'password123', 'motdepasse', 'azertyuiop', 'qwertyuiop',
+    '123456789012', 'administrator', 'letmein12345', 'iloveyou1234',
+    'welcome12345', 'changeme1234', 'passwordpassword',
+}
 
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
@@ -13,9 +21,18 @@ class LoginForm(FlaskForm):
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
-    password = PasswordField('Password', validators=[DataRequired()])
+    # 12 caracteres minimum : un compte de ce blog protege une conversation
+    # privee avec l'administration, pas seulement des commentaires.
+    password = PasswordField('Password', validators=[DataRequired(), Length(min=12, max=256)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Sign Up')
+
+    def validate_password(self, password):
+        value = password.data or ''
+        if value.lower() in _COMMON_PASSWORDS:
+            raise ValidationError('This password is too common. Choose another one.')
+        if self.username.data and self.username.data.lower() in value.lower():
+            raise ValidationError('The password must not contain your username.')
 
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
@@ -39,6 +56,10 @@ class ReplyForm(FlaskForm):
 
 class EmptyForm(FlaskForm):
     submit = SubmitField('Submit')
+
+class SiteTextImportForm(FlaskForm):
+    file = FileField('JSON file', validators=[FileRequired(), FileAllowed(['json'])])
+    submit = SubmitField('Import')
 
 class BannerForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired(), Length(min=2, max=100)])
@@ -80,6 +101,25 @@ class ProfileEditForm(FlaskForm):
             user = User.query.filter_by(username=self.username.data).first()
             if user:
                 raise ValidationError('That username is already taken. Please choose a different one.')
+
+
+class ChangePasswordForm(FlaskForm):
+    """Changement de mot de passe : l'actuel est exige pour eviter qu'une
+    session laissee ouverte suffise a verrouiller le compte."""
+    current_password = PasswordField('Current password', validators=[DataRequired()])
+    new_password = PasswordField(
+        'New password', validators=[DataRequired(), Length(min=12, max=256)])
+    confirm_password = PasswordField(
+        'Confirm new password',
+        validators=[DataRequired(), EqualTo('new_password', message='The two entries differ.')])
+    submit = SubmitField('Change password')
+
+    def validate_new_password(self, new_password):
+        value = new_password.data or ''
+        if value.lower() in _COMMON_PASSWORDS:
+            raise ValidationError('This password is too common. Choose another one.')
+        if value == (self.current_password.data or ''):
+            raise ValidationError('The new password must be different from the current one.')
 
 
 class TOTPSetupForm(FlaskForm):
