@@ -34,6 +34,64 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Pages statiques, bannières, contact, dons en crypto** (QR codes générés côté serveur)
 - **Mises à jour sûres** : `./update.sh` (sauvegarde, mise à jour, vérification, retour arrière automatique), mises à jour automatiques optionnelles à la fréquence de votre choix, sauvegardes chiffrées
 
+## Captures d'écran
+
+Pages réelles de l'application en fonctionnement, capturées sur une base jetable remplie de fausses données de démonstration (aucun vrai utilisateur ni article).
+
+**Page d'accueil : introduction et derniers articles**
+
+![Page d'accueil : introduction et derniers articles](docs/screenshots/home.png)
+
+**Article avec commentaires imbriqués, likes, catégorie et tags**
+
+![Article avec commentaires imbriqués, likes, catégorie et tags](docs/screenshots/post.png)
+
+**Page « À propos »**
+
+![Page « À propos »](docs/screenshots/about.png)
+
+**Page de dons : liste des soutiens et instructions de swap anonyme**
+
+![Page de dons : liste des soutiens et instructions de swap anonyme](docs/screenshots/donate.png)
+
+**Formulaire de connexion**
+
+![Formulaire de connexion](docs/screenshots/login.png)
+
+**Création de compte (nom d'utilisateur et mot de passe uniquement)**
+
+![Création de compte (nom d'utilisateur et mot de passe uniquement)](docs/screenshots/register.png)
+
+**Sécurité du compte : mot de passe, 2FA, codes de secours, sessions, export des données**
+
+![Sécurité du compte : mot de passe, 2FA, codes de secours, sessions, export des données](docs/screenshots/account-security.png)
+
+**Codes de secours 2FA à usage unique, affichés une seule fois (valeurs de démonstration)**
+
+![Codes de secours 2FA à usage unique, affichés une seule fois (valeurs de démonstration)](docs/screenshots/recovery-codes.png)
+
+**Côté admin du chat chiffré : liste des lecteurs et conversation**
+
+![Côté admin du chat chiffré : liste des lecteurs et conversation](docs/screenshots/chat.png)
+
+**Tableau de bord admin : éléments en attente, raccourcis, chiffres du site**
+
+![Tableau de bord admin : éléments en attente, raccourcis, chiffres du site](docs/screenshots/admin-dashboard.png)
+
+**Éditeur des textes du site : chaque texte fixe en anglais et en français**
+
+![Éditeur des textes du site : chaque texte fixe en anglais et en français](docs/screenshots/admin-texts.png)
+
+**Modération : liste de blocage, téléversements refusés, comptes bannis**
+
+![Modération : liste de blocage, téléversements refusés, comptes bannis](docs/screenshots/moderation.png)
+
+**Page d'accueil sur téléphone (390 px de large)**
+
+![Page d'accueil sur téléphone (390 px de large)](docs/screenshots/mobile-home.png)
+
+
+
 ## Démarrage rapide
 
 ```bash

@@ -34,6 +34,64 @@ required, no third-party requests, built to run as a Tor onion service.
 - **Safe updates** — `./update.sh` (backup, update, health check, automatic
   rollback), optional scheduled updates, encrypted backups
 
+## Screenshots
+
+Real pages of the running app, captured on a throwaway database filled with fake demo data (no real users or posts).
+
+**Home page: intro and latest posts**
+
+![Home page: intro and latest posts](docs/screenshots/home.png)
+
+**Post with nested comments, likes, categories and tags**
+
+![Post with nested comments, likes, categories and tags](docs/screenshots/post.png)
+
+**About page**
+
+![About page](docs/screenshots/about.png)
+
+**Donation page: supporter list and anonymous swap instructions**
+
+![Donation page: supporter list and anonymous swap instructions](docs/screenshots/donate.png)
+
+**Sign in form**
+
+![Sign in form](docs/screenshots/login.png)
+
+**Account creation form (username and password only)**
+
+![Account creation form (username and password only)](docs/screenshots/register.png)
+
+**Account security: password, 2FA, recovery codes, sessions, data export**
+
+![Account security: password, 2FA, recovery codes, sessions, data export](docs/screenshots/account-security.png)
+
+**One-time 2FA recovery codes, shown once (demo values)**
+
+![One-time 2FA recovery codes, shown once (demo values)](docs/screenshots/recovery-codes.png)
+
+**Admin side of the encrypted chat: reader list and conversation**
+
+![Admin side of the encrypted chat: reader list and conversation](docs/screenshots/chat.png)
+
+**Admin overview: what is waiting, shortcuts, site numbers**
+
+![Admin overview: what is waiting, shortcuts, site numbers](docs/screenshots/admin-dashboard.png)
+
+**Site-text editor: every fixed text in English and French**
+
+![Site-text editor: every fixed text in English and French](docs/screenshots/admin-texts.png)
+
+**Moderation: block list, refused uploads, banned accounts**
+
+![Moderation: block list, refused uploads, banned accounts](docs/screenshots/moderation.png)
+
+**Home page on a phone (390 px wide)**
+
+![Home page on a phone (390 px wide)](docs/screenshots/mobile-home.png)
+
+
+
 ## What it deliberately does not do
 
 - **No JavaScript.** Every page works with JavaScript disabled (the CSP sets
