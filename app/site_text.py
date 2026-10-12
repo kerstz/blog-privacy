@@ -296,8 +296,8 @@ DEFAULTS = {
                            'fr': 'Charger le widget Trocador'},
     'donate.widget.hide': {'en': 'Hide the widget',
                            'fr': 'Masquer le widget'},
-    'donate.widget.newtab': {'en': 'Open it in a new tab instead',
-                             'fr': 'L\'ouvrir plutôt dans un nouvel onglet'},
+    'donate.widget.newtab': {'en': 'Open Trocador (external site)',
+                             'fr': 'Ouvrir Trocador (site externe)'},
     'donate.widget.note': {'en': 'The swap page is hosted by trocador.app, a third party. It is '
                                  'only contacted if you click the link below; it then sees your '
                                  'IP address and browser.',
