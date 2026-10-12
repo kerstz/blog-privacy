@@ -68,19 +68,10 @@ if [ -z "$VENV" ]; then
 fi
 if [ -n "$VENV" ]; then PY="$VENV/bin/python"; else PY="$(command -v python3)"; fi
 
-# Optional Telegram notification (uses the bot configured in .env, if any).
+# Status messages only go to the log (logs/update.log). Nothing is sent to a
+# third party: the former Telegram notification was removed on purpose.
 notify() {
-    "$PY" - "$1" <<'PYEOF' >/dev/null 2>&1 || true
-import os, sys
-from dotenv import load_dotenv
-import requests
-load_dotenv()
-token = os.environ.get('TELEGRAM_BOT_TOKEN', '').strip()
-chat = (os.environ.get('TELEGRAM_AUDIT_CHAT_ID') or os.environ.get('TELEGRAM_ADMIN_CHAT_ID') or '').strip()
-if token and chat:
-    requests.post(f'https://api.telegram.org/bot{token}/sendMessage',
-                  data={'chat_id': chat, 'text': sys.argv[1], 'disable_notification': True}, timeout=10)
-PYEOF
+    log "$1" || true
 }
 
 # Only one update at a time (cron + manual run).
@@ -101,7 +92,7 @@ fi
 
 encrypt_legacy() {
     # Idempotent: encrypts chat messages / uploads still stored in plaintext.
-    FLASK_APP=app TELEGRAM_BOT_TOKEN="" "$PY" -m flask encrypt-legacy \
+    FLASK_APP=app "$PY" -m flask encrypt-legacy \
         || log "!! flask encrypt-legacy failed (data untouched); run it again by hand."
 }
 
@@ -186,16 +177,15 @@ log "Upgrading dependencies"
 # 4. Database schema migrations (Alembic only ADDS/ALTERS schema, data is kept)
 if [ -d migrations ]; then
     log "Applying database migrations"
-    FLASK_APP=app TELEGRAM_BOT_TOKEN="" "$PY" -m flask db upgrade || rollback "database migration failed"
+    FLASK_APP=app "$PY" -m flask db upgrade || rollback "database migration failed"
 fi
 
-# 5. Health check: the new version must at least start (Telegram disabled so
-#    the check does not consume bot updates).
+# 5. Health check: the new version must at least start.
 log "Checking that the app starts"
-TELEGRAM_BOT_TOKEN="" "$PY" -c "import app" || rollback "the new version does not start"
+"$PY" -c "import app" || rollback "the new version does not start"
 if "$PY" -c "import pytest" >/dev/null 2>&1 && [ -d tests ]; then
     log "Running the test suite"
-    TELEGRAM_BOT_TOKEN="" "$PY" -m pytest -q -p no:cacheprovider tests/ || rollback "tests failed"
+    "$PY" -m pytest -q -p no:cacheprovider tests/ || rollback "tests failed"
 fi
 
 # 6. Encrypt legacy plaintext messages / uploads (idempotent). Done only once

@@ -1,0 +1,498 @@
+/* =====================================================================
+   The desk — back room of the same building.
+
+   Le site public est une piece ou l'on lit : une colonne, du serif, du
+   silence. Ici on travaille. Meme palette, meme typographie, meme retenue,
+   mais organise pour agir : un rail de destinations a gauche, une surface de
+   travail a droite, et des lignes plutot que des cartes.
+
+   Tous les jetons viennent de style.css, qui doit etre charge avant.
+   Aucune couleur n'est definie ici.
+   ===================================================================== */
+
+.admin-body {
+    display: block;
+    background: var(--night-000);
+    color: var(--ash);
+    font-family: var(--font-body);
+    min-height: 100vh;
+}
+
+.desk {
+    display: grid;
+    grid-template-columns: 244px minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+/* ------------------------------------------------------------------ Rail */
+
+.rail {
+    border-right: 1px solid var(--line);
+    background: var(--night-050);
+    padding: 26px 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    /* Pleine hauteur de colonne, sans `position: sticky` : avec sticky le rail
+       etait plafonne a 100vh et son fond s'arretait net au milieu d'une page
+       longue. Les pages d'admin sont courtes, un rail qui defile avec elles ne
+       coute rien. */
+    align-self: stretch;
+}
+
+.rail-brand {
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    letter-spacing: -0.01em;
+    color: var(--ash);
+    text-decoration: none;
+    padding: 0 22px;
+    display: block;
+    line-height: 1.5;
+}
+.rail-brand:hover { color: var(--ash); }
+.rail-brand:hover .brand-suffix { color: var(--moon); }
+
+.rail-tag {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--moon);
+}
+
+.rail-group { display: flex; flex-direction: column; gap: 1px; }
+
+.rail-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    margin: 0 0 8px;
+    padding: 0 22px;
+}
+
+.rail-link {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 8px 22px;
+    font-size: 0.93rem;
+    color: var(--ash-mid);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+.rail-link:hover { color: var(--ash); background: var(--moon-glow); }
+
+/* La page courante est marquee par un filet, pas par un bloc colore :
+   le rail doit rester calme. */
+.rail-link.is-here {
+    color: var(--ash);
+    border-left-color: var(--moon);
+    background: var(--moon-glow);
+}
+.rail-link [class*="icon-"] { flex: 0 0 auto; width: 17px; font-size: 0.95rem; color: inherit; }
+
+.rail-foot {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.rail-quiet { color: var(--ash-dim); font-size: 0.88rem; }
+
+/* --------------------------------------------------------------- Surface */
+
+.surface {
+    padding: 46px 46px 90px;
+    max-width: 1000px;
+    width: 100%;
+}
+
+.flashes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+
+.flash {
+    margin: 0;
+    padding: 11px 15px;
+    border: 1px solid var(--line);
+    border-left-width: 2px;
+    border-radius: var(--radius);
+    background: var(--night-100);
+    font-size: 0.93rem;
+    color: var(--ash-mid);
+}
+.flash-success { border-left-color: var(--moon); color: var(--moon-bright); }
+.flash-danger  { border-left-color: var(--ember); color: var(--ember-bright); }
+.flash-info    { border-left-color: var(--ash-dim); }
+
+/* ------------------------------------------------------------- Page head */
+
+.desk-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--moon);
+    margin: 0 0 18px;
+}
+
+.surface h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.9rem, 4vw, 2.7rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    color: var(--ash);
+    margin: 0 0 16px;
+    text-wrap: balance;
+}
+
+.desk-lede {
+    color: var(--ash-mid);
+    max-width: 62ch;
+    margin: 0 0 8px;
+    line-height: 1.65;
+}
+.desk-note { color: var(--ash-dim); font-size: 0.92rem; max-width: 66ch; }
+
+/* Titre de section : la meme voix mono que sur le blog public. */
+.desk-section {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    margin: 52px 0 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+
+/* ---------------------------------------------------------------- Ledger */
+/* Des lignes, pas des cartes. Le compte vit dans la marge de gauche, en
+   chiffres tabulaires, pour que l'oeil descende la colonne. */
+
+.ledger { display: flex; flex-direction: column; }
+
+.ledger-row {
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr) auto;
+    align-items: baseline;
+    gap: 18px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line-soft);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.16s ease;
+}
+.ledger-row:last-child { border-bottom: none; }
+.ledger-row:hover { border-bottom-color: var(--moon); }
+
+.ledger-count {
+    font-family: var(--font-display);
+    font-size: 1.7rem;
+    font-weight: 600;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    color: var(--ash-dim);
+    text-align: right;
+}
+.ledger-row.is-urgent .ledger-count { color: var(--moon-bright); }
+
+.ledger-what { color: var(--ash); font-size: 1.02rem; }
+.ledger-row:hover .ledger-what { color: var(--moon-bright); }
+
+.ledger-go {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    white-space: nowrap;
+}
+.ledger-row:hover .ledger-go { color: var(--moon-bright); }
+.ledger-go::after { content: " →"; }
+
+.ledger-empty {
+    color: var(--ash-dim);
+    padding: 22px 0;
+    font-size: 0.98rem;
+}
+
+/* Totaux : une ligne, pas quatre cartes. Ils ne demandent aucune action. */
+.tally-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    padding: 20px 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    color: var(--ash-dim);
+}
+.tally-line b {
+    color: var(--ash-mid);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------- Table */
+
+.scroller {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-top: 18px;
+}
+
+.surface table { width: 100%; border-collapse: collapse; background: var(--night-100); font-size: 0.9rem; }
+.surface th, .surface td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+.surface thead th {
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    background: var(--night-050);
+    white-space: nowrap;
+}
+.surface tbody tr:last-child td { border-bottom: none; }
+.surface .mono { font-family: var(--font-mono); font-size: 0.78rem; }
+.surface .trunc { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- Mobile */
+
+@media (max-width: 880px) {
+    .desk { grid-template-columns: 1fr; }
+    .rail {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 14px;
+        padding: 16px 18px;
+    }
+    .rail-brand { flex: 1 0 100%; padding: 0 0 6px; }
+    .rail-tag { display: inline; margin-left: 8px; }
+    .rail-group { flex-direction: row; flex-wrap: wrap; gap: 2px; }
+    .rail-label { display: none; }
+    .rail-link { border-left: 0; border-bottom: 2px solid transparent; padding: 6px 10px; }
+    .rail-link.is-here { border-left: 0; border-bottom-color: var(--moon); }
+    .rail-foot { margin-top: 0; border-top: 0; flex-direction: row; }
+    .surface { padding: 30px 18px 70px; }
+    .ledger-row { grid-template-columns: 46px minmax(0, 1fr); }
+    .ledger-go { grid-column: 2; }
+}
+
+.ledger-when {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--ash-dim);
+}
+.ledger-count [class*="icon-"] { font-size: 1.05rem; color: var(--ash-dim); }
+.ledger-row:hover .ledger-count [class*="icon-"] { color: var(--moon); }
+
+
+/* ------------------------------------------------------- Site texts editor */
+
+.texts-editor { padding-bottom: 80px; }
+
+.texts-head { margin-bottom: 34px; }
+.texts-head h1 {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    margin: 0 0 14px;
+}
+.texts-intro {
+    color: var(--ash-mid);
+    max-width: 62ch;
+    margin: 0 0 8px;
+}
+.texts-note { color: var(--ash-dim); font-size: 0.92rem; }
+.texts-counts {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--ash-dim);
+    margin: 14px 0 0;
+}
+
+.texts-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    margin-bottom: 22px;
+}
+.texts-filter label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+}
+
+.texts-toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-bottom: 34px;
+    font-size: 0.9rem;
+}
+
+.texts-group { margin-bottom: 44px; }
+.texts-group h2 {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    margin: 0 0 4px;
+}
+
+.text-row {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 12px 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: start;
+}
+.text-row > .text-help,
+.text-row > .text-error,
+.text-row > .text-conflict,
+.text-row > .text-reset,
+.text-row > form { grid-column: 2; margin: 0; }
+.text-row.is-custom { border-left: 2px solid var(--moon); padding-left: 16px; }
+.text-row.has-problem { border-left: 2px solid var(--ember); padding-left: 16px; }
+
+.text-key code {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--ash-mid);
+    background: none;
+    border: 0;
+    padding: 0;
+    word-break: break-all;
+}
+.text-badge {
+    display: inline-block;
+    margin: 6px 8px 0 0;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--moon);
+}
+.text-badge.warn { color: var(--ember-bright); }
+.text-used {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--ash-dim);
+}
+.text-history { display: inline-block; margin-top: 6px; font-size: 0.8rem; }
+
+.text-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.text-field { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.text-lang {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ash-dim);
+}
+.text-field textarea {
+    font-family: var(--font-body);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    min-height: 0;
+}
+
+.text-default-box summary {
+    cursor: pointer;
+    font-size: 0.78rem;
+    color: var(--ash-dim);
+}
+.text-default {
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    font-family: var(--font-body);
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: var(--ash-mid);
+    background: none;
+    border: 1px solid var(--line-soft);
+}
+.text-preview {
+    padding: 10px 12px;
+    border-left: 2px solid var(--moon);
+    background: var(--moon-glow);
+}
+.text-preview p { margin: 0 0 0.8em; }
+.text-help { font-size: 0.8rem; color: var(--ash-dim); }
+.text-error { color: var(--ember-bright); font-size: 0.88rem; margin: 0; }
+.text-conflict { border-left: 2px solid var(--ember); padding-left: 12px; }
+.text-reset { font-size: 0.85rem; color: var(--ash-mid); }
+
+.texts-actions {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 0;
+    background: var(--night-000);
+    border-top: 1px solid var(--line);
+}
+.texts-actions button.plain-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+}
+.texts-import {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 0.88rem;
+    color: var(--ash-mid);
+}
+
+@media (max-width: 900px) {
+    .text-row { grid-template-columns: 1fr; gap: 10px; }
+    .text-row > .text-help,
+    .text-row > .text-error,
+    .text-row > .text-conflict,
+    .text-row > .text-reset,
+    .text-row > form { grid-column: 1; }
+    .text-fields { grid-template-columns: 1fr; }
+}
+
+/* Sign-out is a POST form (CSRF-protected) that looks like the other rail links */
+.rail-logout { margin: 0; }
+.rail-button { width: 100%; background: none; border: 0; text-align: left; font: inherit; cursor: pointer; }

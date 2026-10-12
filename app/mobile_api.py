@@ -1,21 +1,30 @@
 """Mobile admin REST API (HTTP Basic Auth + TOTP header, SSE event stream)."""
-from flask import request, jsonify, Response, stream_with_context
-from app import app, db, csrf
+from flask import request, jsonify, Response, stream_with_context, abort
+from app import app, db, csrf, bcrypt
 from app.models import User, Message
-from app.utils import hit_rate_limit
+from app.utils import (anonymous_client_key, hashed_key, record_failure,
+                       too_many_failures, clear_failures)
 from functools import wraps
 from datetime import datetime
 import json
 import base64
+import os
 import queue
 from app.services import (
-    _check_user_password,
+    _DUMMY_PASSWORD_HASH,
     _verify_totp_once,
     mobile_event_lock,
     mobile_event_subscribers,
     publish_mobile_event,
     serialize_chat_message,
 )
+
+# Lockout of the mobile API: per username (strict) and per client (wide).
+# Behind an onion service every client shares the same address: the per-client
+# limit is therefore global, hence a higher threshold than per username.
+ADMIN_API_USER_MAX_FAILURES = 10
+ADMIN_API_CLIENT_MAX_FAILURES = 30
+ADMIN_API_LOCKOUT_SECONDS = 900
 
 
 def parse_basic_auth():
@@ -32,41 +41,80 @@ def parse_basic_auth():
         return None, None
 
 
+def _mobile_api_enabled():
+    return os.environ.get('MOBILE_API_ENABLED', 'true').strip().lower() \
+        not in ('0', 'false', 'no', 'off')
+
+
+def _admin_api_error(message, status, **headers):
+    return jsonify({'error': message}), status, headers
+
+
 def authenticate_admin_api():
+    """Authenticate the Basic Auth call. Returns (user, None) or (None, response).
+
+    - a bcrypt check is always made, even for an unknown username (otherwise the
+      timing reveals which usernames are admins);
+    - lockout after repeated failures, per username and per client (429 +
+      Retry-After);
+    - banned accounts and accounts that must change their password are refused;
+    - accounts with 2FA must send the current code in `X-TOTP-Code`.
+    """
     username, password = parse_basic_auth()
     if not username or not password:
-        return None
+        return None, _admin_api_error(
+            'Authentication required for admin mobile API.', 401,
+            **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
 
-    # Brute-force protection (per IP and per account), failures only.
-    ip_key = f"api_fail_ip:{request.remote_addr}"
-    user_key = f"api_fail_user:{username.lower()}"
-    if hit_rate_limit(ip_key, 10, 900, record=False) or hit_rate_limit(user_key, 10, 900, record=False):
-        return None
+    user_key = 'admin_api:user:' + hashed_key(username.lower())
+    client_key = 'admin_api:client:' + anonymous_client_key()
+    if (too_many_failures(user_key, ADMIN_API_USER_MAX_FAILURES, ADMIN_API_LOCKOUT_SECONDS)
+            or too_many_failures(client_key, ADMIN_API_CLIENT_MAX_FAILURES,
+                                 ADMIN_API_LOCKOUT_SECONDS)):
+        return None, _admin_api_error(
+            'Too many failed attempts. Try again later.', 429,
+            **{'Retry-After': str(ADMIN_API_LOCKOUT_SECONDS)})
 
     user = User.query.filter_by(username=username, is_admin=True).first()
-    ok = _check_user_password(user, password)
-    # 2FA is enforced on the API too: accounts with TOTP must send the current
-    # code in the X-TOTP-Code header (Basic Auth alone bypassed 2FA before).
-    if ok and user.totp_enabled:
-        ok = _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''), allow_reuse=True)
-    if not ok:
-        hit_rate_limit(ip_key, 10, 900)
-        hit_rate_limit(user_key, 10, 900)
-        return None
+    try:
+        password_ok = bcrypt.check_password_hash(
+            user.password if user else _DUMMY_PASSWORD_HASH, password)
+    except ValueError:
+        password_ok = False
+    if not user or not password_ok:
+        record_failure(user_key)
+        record_failure(client_key)
+        return None, _admin_api_error(
+            'Authentication required for admin mobile API.', 401,
+            **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
 
-    return user
+    if user.is_banned:
+        return None, _admin_api_error('This account has been suspended.', 403)
+    if user.must_change_password:
+        return None, _admin_api_error(
+            'Password change required: sign in on the website first.', 403)
+    if user.totp_enabled:
+        # The code is sent on every stateless call: allow_reuse (about 90 s).
+        if not _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''),
+                                 allow_reuse=True):
+            record_failure(user_key)
+            record_failure(client_key)
+            return None, _admin_api_error(
+                'A valid two-factor code is required in the X-TOTP-Code header.', 401,
+                **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
+
+    clear_failures(user_key)
+    return user, None
 
 
 def admin_api_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        admin_user = authenticate_admin_api()
-        if not admin_user:
-            return (
-                jsonify({'error': 'Authentication required for admin mobile API.'}),
-                401,
-                {'WWW-Authenticate': 'Basic realm="Admin Mobile API"'}
-            )
+        if not _mobile_api_enabled():
+            abort(404)
+        admin_user, error = authenticate_admin_api()
+        if error is not None:
+            return error
 
         request.admin_api_user = admin_user
         return f(*args, **kwargs)

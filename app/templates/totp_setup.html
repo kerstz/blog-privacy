@@ -1,26 +1,26 @@
 {% extends 'layout.html' %}
 
-{% block title %}Enable Two-Factor Authentication — MyBlog{% endblock %}
+{% block title %}{{ t('totp.enable') }} — depressedyoungmanblog{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/totp_setup.css') }}">
+<link rel="stylesheet" href="{{ static_v('css/pages/totp_setup.css') }}">
 {% endblock %}
 
 {% block content %}
 <div class="totp-container">
     <div class="totp-card">
-        <h2 class="totp-title">Enable two-factor authentication</h2>
-        <p class="totp-subtitle">Scan the QR code with an authenticator app (Google Authenticator, Aegis, etc.) then enter the 6-digit code to confirm.</p>
+        <h2 class="totp-title">{{ t('totp.enable') }}</h2>
+        <p class="totp-subtitle">{{ t('totp.setup_sub') }}</p>
 
-        <img src="{{ qr_uri }}" alt="TOTP QR code" class="totp-qr">
+        <img src="{{ qr_uri }}" alt="{{ t('totp.qr_alt') }}" class="totp-qr">
 
-        <p style="text-align:center;font-size:.8rem;opacity:.6;margin-bottom:.3rem;">Or enter this key manually:</p>
+        <p style="text-align:center;font-size:.8rem;opacity:.6;margin-bottom:.3rem;">{{ t('totp.manual') }}</p>
         <div class="totp-secret-box">{{ totp_secret }}</div>
 
         <ol class="totp-steps">
-            <li>Open your authenticator app.</li>
-            <li>Scan the QR code or enter the key above.</li>
-            <li>Type the 6-digit code shown in the app below.</li>
+            <li>{{ t('totp.step_open') }}</li>
+            <li>{{ t('totp.step_scan') }}</li>
+            <li>{{ t('totp.step_type') }}</li>
         </ol>
 
         <form method="POST">
@@ -36,7 +36,7 @@
         </form>
 
         <p style="margin-top:1.2rem;font-size:.82rem;opacity:.6;text-align:center;">
-            <a href="{{ url_for('edit_profile') }}">Cancel</a>
+            <a href="{{ url_for('edit_profile') }}">{{ t('misc.cancel') }}</a>
         </p>
     </div>
 </div>

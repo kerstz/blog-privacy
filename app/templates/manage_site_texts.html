@@ -1,0 +1,176 @@
+{% extends 'admin_layout.html' %}
+{% block title %}Site texts{% endblock %}
+
+{% macro lang_field(key, code, name, row, rich) %}
+    {% set sub = submitted.get(key) %}
+    {% set stored = (row.text_en if code == 'en' else row.text_fr) if row else '' %}
+    {% set value = sub[code] if sub else (stored or '') %}
+    <div class="text-field">
+        <label class="text-field-label" for="f-{{ key }}-{{ code }}"><span class="text-lang">{{ name }}</span></label>
+        <textarea id="f-{{ key }}-{{ code }}" name="{{ key }}::{{ code }}" rows="{{ 8 if rich else 2 }}"
+                  placeholder="{{ defaults[key][code] }}">{{ value }}</textarea>
+        <details class="text-default-box">
+            <summary>Default</summary>
+            <pre class="text-default">{{ defaults[key][code] or '(empty)' }}</pre>
+        </details>
+        {% if previews.get(key) and previews[key].get(code) %}
+            <div class="text-preview">{{ previews[key][code] }}</div>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block content %}
+<div class="texts-editor">
+
+    <header class="texts-head">
+        <p class="eyebrow">Site copy</p>
+        <h1>Fixed texts</h1>
+        <p class="texts-intro">
+            Every fixed text on the public site, in both languages. Leave a field empty to
+            fall back to the built-in wording — that is how you undo a change without having
+            to remember the original. A text identical to the built-in one is not stored.
+        </p>
+        <p class="texts-intro texts-note">
+            Article titles and article bodies are not here: those are the posts themselves,
+            edited from <a href="{{ url_for('manage_posts') }}">Manage posts</a>.
+        </p>
+        <p class="texts-counts">
+            {{ counts.total }} texts · {{ counts.edited }} edited · {{ counts.partial }} in one language only
+            · {{ counts.unused }} not shown on any page · {{ counts.orphan }} obsolete
+        </p>
+    </header>
+
+    <form method="GET" action="{{ url_for('manage_site_texts') }}" class="texts-filter">
+        <label>Search
+            <input type="search" name="q" value="{{ q }}" maxlength="100">
+        </label>
+        <label>Page
+            <select name="group">
+                <option value="">All</option>
+                {% for prefix, label in group_options %}
+                <option value="{{ prefix }}"{% if group == prefix %} selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Status
+            <select name="status">
+                {% for s in status_options %}
+                <option value="{{ s }}"{% if status == s %} selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <button type="submit" class="btn-submit">Filter</button>
+        <a href="{{ url_for('manage_site_texts') }}" class="plain-link">Clear</a>
+    </form>
+
+    {% if groups or orphans %}
+    <nav class="texts-toc" aria-label="Sections">
+        {% for prefix, label, keys in groups %}<a href="#g-{{ prefix }}">{{ label }} ({{ keys|length }})</a>{% endfor %}
+        {% if orphans %}<a href="#g-obsolete">Obsolete overrides ({{ orphans|length }})</a>{% endif %}
+    </nav>
+    {% else %}
+    <p class="texts-intro">No text matches this filter.</p>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('manage_site_texts') }}">
+        {{ form.hidden_tag() }}
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="group" value="{{ group }}">
+        <input type="hidden" name="status" value="{{ status }}">
+
+        {% for prefix, label, keys in groups %}
+        <section class="texts-group" id="g-{{ prefix }}">
+            <h2>{{ label }}</h2>
+
+            {% for key in keys %}
+            {% set row = overrides.get(key) %}
+            {% set rich = key in rich_keys %}
+            <div class="text-row{% if row %} is-custom{% endif %}{% if key in errors or key in conflicts %} has-problem{% endif %}">
+                <div class="text-key">
+                    <code>{{ key }}</code>
+                    <input type="hidden" name="{{ key }}::fp" value="{{ fps.get(key, '-') }}">
+                    {% if row %}<span class="text-badge">edited</span>{% endif %}
+                    {% if row and row.text_en is none and row.text_fr is not none %}<span class="text-badge warn">FR only</span>{% endif %}
+                    {% if row and row.text_fr is none and row.text_en is not none %}<span class="text-badge warn">EN only</span>{% endif %}
+                    {% if key not in usage %}<span class="text-badge warn">not shown on any page</span>{% endif %}
+                    {% if rich %}<span class="text-badge">rich (BBCode)</span>{% endif %}
+                    {% if usage.get(key) %}<span class="text-used">Used in: {{ usage[key]|join(', ') }}</span>{% endif %}
+                    <a class="text-history" href="{{ url_for('manage_site_text_history', key=key) }}">History</a>
+                </div>
+
+                <div class="text-fields">
+                    {% for code, name in languages.items() %}
+                        {{ lang_field(key, code, name, row, rich) }}
+                    {% endfor %}
+                </div>
+
+                {% if rich %}
+                <p class="text-help">
+                    BBCode: [b] [i] [u] [s] [quote] [url=https://…]…[/url] [list][*]…[/list].
+                    A blank line starts a new paragraph.
+                </p>
+                {% endif %}
+                {% for message in errors.get(key, []) %}
+                    <p class="text-error">{{ message }}</p>
+                {% endfor %}
+                {% if key in conflicts %}
+                    <div class="text-conflict">
+                        <p class="text-error">Changed by someone else since you opened this page. Nothing was written for this text.</p>
+                        {% for code, name in languages.items() %}
+                        <p class="text-lang">Current {{ name }}</p>
+                        <pre class="text-default">{{ ((row.text_en if code == 'en' else row.text_fr) if row else None) or '(default)' }}</pre>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% if row %}
+                <label class="text-reset">
+                    <input type="checkbox" name="{{ key }}::reset" value="1"> Reset to default
+                </label>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </section>
+        {% endfor %}
+
+        {% if orphans %}
+        <section class="texts-group" id="g-obsolete">
+            <h2>Obsolete overrides</h2>
+            <p class="texts-intro texts-note">These texts no longer exist in the code. They have no effect and can be removed.</p>
+            {% for key in orphans %}
+            {% set row = overrides.get(key) %}
+            <div class="text-row is-custom">
+                <div class="text-key">
+                    <code>{{ key }}</code>
+                    <input type="hidden" name="{{ key }}::fp" value="{{ fps.get(key, '-') }}">
+                    <span class="text-badge warn">obsolete</span>
+                    <a class="text-history" href="{{ url_for('manage_site_text_history', key=key) }}">History</a>
+                </div>
+                <div class="text-fields">
+                    <pre class="text-default">EN: {{ row.text_en or '(none)' }}</pre>
+                    <pre class="text-default">FR: {{ row.text_fr or '(none)' }}</pre>
+                </div>
+                <label class="text-reset">
+                    <input type="checkbox" name="{{ key }}::reset" value="1"> Remove
+                </label>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <div class="texts-actions">
+            <button type="submit" name="action" value="preview" class="plain-link">Preview</button>
+            <button type="submit" name="action" value="save" class="btn-submit">Save</button>
+            <a href="{{ url_for('export_site_texts') }}" class="plain-link">Export JSON</a>
+            <a href="{{ url_for('admin_dashboard') }}" class="plain-link">Back to dashboard</a>
+        </div>
+    </form>
+
+    <form method="POST" action="{{ url_for('import_site_texts') }}" enctype="multipart/form-data" class="texts-import">
+        {{ import_form.hidden_tag() }}
+        <label>Import a JSON export (overrides only, 256 KB maximum)
+            {{ import_form.file(accept=".json,application/json") }}
+        </label>
+        <button type="submit" class="btn-submit">Import</button>
+    </form>
+</div>
+{% endblock %}

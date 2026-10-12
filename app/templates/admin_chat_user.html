@@ -7,14 +7,15 @@
 {% endif %}
 {% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/admin_chat_user.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-chat-container">
     <div class="chat-header">
         <h2><span class="icon-comments"></span> Chat with {{ target_user.username }}</h2>
         <p>Level {{ target_user.level }} • {{ target_user.experience_points }} XP</p>
-        {% if telegram_bridge_enabled %}
-            <p class="telegram-bridge-note">Telegram bridge active. Reply from Telegram with: <code>/reply {{ target_user.id }} your message</code></p>
-        {% endif %}
     </div>
 
     <div class="chat-layout">
@@ -61,21 +62,32 @@
                             {% if message.file_path %}
                                 {% if message.file_type == 'image' %}
                                     <div class="message-file">
-                                        <img src="{{ url_for('static', filename=message.file_path) }}" alt="Image" class="message-image">
+                                        <img src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" alt="Image" class="message-image">
                                     </div>
                                 {% elif message.file_type == 'video' %}
                                     <div class="message-file">
                                         <video controls class="message-video">
-                                            <source src="{{ url_for('static', filename=message.file_path) }}" type="video/mp4">
+                                            <source src="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" type="video/mp4">
                                             Your browser does not support video playback.
                                         </video>
                                     </div>
                                 {% else %}
                                     <div class="message-file">
-                                        <a href="{{ url_for('static', filename=message.file_path) }}" download class="file-download">
+                                        <a href="{{ url_for('uploaded_file', filename=message.file_path.split('/')[-1]) }}" download class="file-download">
                                             <span class="icon-download"></span> Download file
                                         </a>
                                     </div>
+                                {% endif %}
+                                {# Signaler : bannit l'auteur et retient l'empreinte de
+                                   l'image, qui sera refusee a tout televersement futur. #}
+                                {% if not message.sender.is_admin %}
+                                <form method="POST" class="flag-form"
+                                      action="{{ url_for('flag_message_image', message_id=message.id) }}">
+                                    {{ form.hidden_tag() }}
+                                    <button type="submit" class="btn-flag">
+                                        <span class="icon-flag"></span> Flag &amp; ban
+                                    </button>
+                                </form>
                                 {% endif %}
                             {% endif %}
                             {% if message.get_decrypted_content() %}
@@ -115,5 +127,5 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/admin_chat_user.css') }}">
+
 {% endblock %}

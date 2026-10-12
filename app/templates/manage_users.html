@@ -2,16 +2,20 @@
 
 {% block title %}Manage Users - Admin{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/manage_users.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-users"></span> Manage Users</h2>
-        <p>Manage user accounts, roles and permissions</p>
+        <h2><span class="icon-users"></span> Gérer les Utilisateurs</h2>
+        <p>Gérez les comptes utilisateurs, leurs rôles et permissions</p>
     </div>
 
     <div class="users-section">
         <div class="section-card">
-            <h3><span class="icon-list"></span> Registered Users ({{ users|length }})</h3>
+            <h3><span class="icon-list"></span> Utilisateurs Inscrits ({{ users|length }})</h3>
             
             {% if users %}
                 <div class="users-grid">
@@ -29,7 +33,7 @@
                                     <h4>{{ user.username }}</h4>
                                     <div class="user-meta">
                                         <span class="user-level">
-                                            <span class="icon-star"></span> Level {{ user.level }}
+                                            <span class="icon-star"></span> Niveau {{ user.level }}
                                         </span>
                                         <span class="user-xp">
                                             <span class="icon-bolt"></span> {{ user.experience_points }} XP
@@ -41,15 +45,15 @@
                             <div class="user-stats">
                                 <div class="stat-item">
                                     <span class="icon-newspaper"></span>
-                                    <span>{{ user.posts|length }} posts</span>
+                                    <span>{{ user.posts|length }} articles</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="icon-comments"></span>
-                                    <span>{{ user.comments|length }} comments</span>
+                                    <span>{{ user.comments|length }} commentaires</span>
                                 </div>
                                 <div class="stat-item">
                                     <span class="icon-heart"></span>
-                                    <span>{{ user.likes_given|length }} likes given</span>
+                                    <span>{{ user.likes_given|length }} likes donnés</span>
                                 </div>
                             </div>
                             
@@ -64,18 +68,18 @@
                                         <span class="badge-more">+{{ user.get_badges()|length - 3 }}</span>
                                     {% endif %}
                                 {% else %}
-                                    <span class="no-badges">No badges</span>
+                                    <span class="no-badges">Aucun badge</span>
                                 {% endif %}
                             </div>
                             
                             <div class="user-role">
                                 {% if user.is_admin %}
                                     <span class="role-badge admin">
-                                        <span class="icon-crown"></span> Admin
+                                        <span class="icon-crown"></span> Administrateur
                                     </span>
                                 {% else %}
                                     <span class="role-badge user">
-                                        <span class="icon-user"></span> User
+                                        <span class="icon-user"></span> Utilisateur
                                     </span>
                                 {% endif %}
                             </div>
@@ -83,28 +87,29 @@
                             <div class="user-actions">
                                 {% if user.is_admin %}
                                     <details class="confirm-action">
-                                        <summary class="btn-warning"><span class="icon-arrow-down"></span> Demote</summary>
+                                        <summary class="btn-warning"><span class="icon-arrow-down"></span> Rétrograder</summary>
                                         <form method="POST" action="{{ url_for('demote_user', user_id=user.id) }}" class="action-form">
-                                        {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-warning confirm-yes">Confirm</button>
-                                    </form>
+                                            {{ form.hidden_tag() }}
+                                            <button type="submit" class="btn-warning confirm-yes">Confirmer la rétrogradation de {{ user.username }}</button>
+                                        </form>
                                     </details>
                                 {% else %}
                                     <details class="confirm-action">
-                                        <summary class="btn-success"><span class="icon-arrow-up"></span> Promote</summary>
+                                        <summary class="btn-success"><span class="icon-arrow-up"></span> Promouvoir</summary>
                                         <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" class="action-form">
-                                        {{ form.hidden_tag() }}
-                                        <button type="submit" class="btn-success confirm-yes">Confirm</button>
-                                    </form>
+                                            {{ form.hidden_tag() }}
+                                            <button type="submit" class="btn-success confirm-yes">Confirmer la promotion de {{ user.username }} en admin</button>
+                                        </form>
                                     </details>
                                 {% endif %}
 
                                 <details class="confirm-action">
-                                    <summary class="btn-danger"><span class="icon-trash"></span> Delete</summary>
+                                    <summary class="btn-danger"><span class="icon-trash"></span> Supprimer</summary>
                                     <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" class="action-form">
-                                    {{ form.hidden_tag() }}
-                                    <button type="submit" class="btn-danger confirm-yes">Confirm</button>
-                                </form>
+                                        {{ form.hidden_tag() }}
+                                        <label class="purge-messages"><input type="checkbox" name="purge_messages" value="1"> Supprimer aussi ses messages</label>
+                                        <button type="submit" class="btn-danger confirm-yes">Supprimer {{ user.username }} (irréversible)</button>
+                                    </form>
                                 </details>
                             </div>
                         </div>
@@ -113,12 +118,11 @@
             {% else %}
                 <div class="no-users">
                     <span class="icon-users"></span>
-                    <p>No registered users</p>
+                    <p>Aucun utilisateur inscrit</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/manage_users.css') }}">
 {% endblock %}

@@ -81,7 +81,10 @@ def test_reply_cannot_inject_html():
     a.post('/post/1', data={'content': 'parent'})
     a.post('/reply_to_comment/1/1', data={'content': '<svg onload=alert(1)><img src=x onerror=alert(2)>'})
     html = login('bob').get('/post/1').data
-    assert b'onload=alert' not in html and b'onerror' not in html
+    # Merged behaviour: comment text is escaped and shown as text. The markup
+    # must never be live (no raw tag), but its escaped source stays readable.
+    assert b'<svg' not in html and b'<img src=x' not in html
+    assert b'&lt;svg onload=alert(1)&gt;' in html
 
 
 def test_bbcode_still_renders():
@@ -254,7 +257,8 @@ def test_mobile_api_bruteforce_limited():
     c = app.test_client()
     for _ in range(10):
         c.get('/api/admin/mobile/ping', headers=bad)
-    assert c.get('/api/admin/mobile/ping', headers=good).status_code == 401
+    # 429 (locked out, Retry-After) is the stricter, merged behaviour; 401 was the old one
+    assert c.get('/api/admin/mobile/ping', headers=good).status_code in (401, 429)
 
 
 def test_socketio_rejects_anonymous_and_does_not_broadcast():
@@ -283,7 +287,11 @@ def test_delete_user_with_content_works():
     a = login('alice')
     a.post('/post/1', data={'content': 'hi'})
     a.post('/chat', data={'message': 'hello'})
-    r = login('admin').post(f"/delete_user/{uid('alice')}")
+    # erasing chat messages is permanent: it needs the explicit confirmation
+    assert login('admin').post(f"/delete_user/{uid('alice')}").status_code == 302
+    with app.app_context():
+        assert User.query.filter_by(username='alice').first()
+    r = login('admin').post(f"/delete_user/{uid('alice')}", data={'purge_messages': '1'})
     assert r.status_code == 302
     with app.app_context():
         assert not User.query.filter_by(username='alice').first()

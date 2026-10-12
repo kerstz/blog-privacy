@@ -1,13 +1,12 @@
-/* Extracted from templates/login_totp.html (no inline <style>: strict CSP) */
 .auth-container {
     max-width: 400px;
     margin: 4rem auto;
     padding: 2.2rem 2rem;
-    background: var(--ink-850);
+    background: var(--night-050);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
 }
-.totp-input { color: var(--brass-bright); }
+.totp-input { color: var(--moon-bright); }
 .auth-title {
     font-size: 1.35rem;
     text-align: center;

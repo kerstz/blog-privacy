@@ -10,6 +10,10 @@ import threading
 import secrets
 import sqlite3
 import re
+import hashlib
+import hmac
+import html as _html
+from html.parser import HTMLParser
 from PIL import Image
 import os
 import nh3
@@ -31,12 +35,16 @@ _BB_TAGS = [
     (re.compile(r"\[code\](.*?)\[/code\]", re.IGNORECASE | re.DOTALL), r"<pre><code>\1</code></pre>"),
 ]
 
-def _sanitize_url(url: str) -> str:
-    """Allow only absolute http(s) URLs. Input is already HTML-escaped."""
+def _sanitize_url(url: str, allow_data: bool = False) -> str:
+    """Allow only absolute http(s) URLs. Input is already HTML-escaped.
+    `data:image/...` is accepted only when allow_data is set (legacy <img>),
+    never for links."""
     url = (url or '').strip()
-    if not re.match(r'^https?://[^\s"\'<>]+$', url, re.IGNORECASE):
-        return '#'
-    return url
+    if re.match(r'^https?://[^\s"\'<>]+$', url, re.IGNORECASE):
+        return url
+    if allow_data and re.match(r'^data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$', url, re.IGNORECASE):
+        return url
+    return '#'
 
 def _image_markup(url: str, extra_style: str) -> str:
     """Local images (/static/..., /uploads/...) are embedded. External images
@@ -187,6 +195,111 @@ def render_comment_html(text: str) -> str:
 _LEGACY_HTML_RE = re.compile(r'</?(?:strong|em|u|s|blockquote|pre|code|a|img|ul|li|span|br|p)\b', re.IGNORECASE)
 
 
+# -----------------------------
+# Anciens commentaires : HTML stocke tel quel
+# -----------------------------
+# Avant le correctif, `reply_to_comment` et `edit_comment` stockaient le texte
+# brut du formulaire et le gabarit l'affichait avec `| safe` (XSS stockee).
+# Les anciennes lignes ne sont PAS reecrites : elles sont assainies a
+# l'affichage par cette liste blanche, calquee sur ce que produit parse_bbcode.
+
+_LEGACY_ALLOWED_TAGS = {'strong', 'em', 'u', 's', 'blockquote', 'pre', 'code',
+                        'ul', 'li', 'a', 'img', 'span', 'br', 'p'}
+_LEGACY_VOID_TAGS = {'br', 'img'}
+# Contenu supprime avec la balise (et non simplement affiche en texte).
+_LEGACY_DROP_CONTENT = {'script', 'style', 'iframe', 'object', 'embed', 'noscript',
+                        'template', 'svg', 'math', 'head', 'title', 'textarea'}
+_LEGACY_STYLE_RE = re.compile(
+    r'^(?:\s*(?:max-width:\d{1,4}px|max-height:\d{1,4}px|height:auto|'
+    r'color:(?:#[0-9a-fA-F]{3,6}|[a-zA-Z]+)|font-size:\d{1,3}px)\s*(?:;|$))+$')
+
+
+class _LegacyHTMLSanitizer(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out = []
+        self.open_tags = []
+        self.drop_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in _LEGACY_DROP_CONTENT:
+            self.drop_depth += 1
+            return
+        if self.drop_depth or tag not in _LEGACY_ALLOWED_TAGS:
+            return
+        clean = ''
+        if tag == 'a':
+            href = _sanitize_url(dict(attrs).get('href') or '')
+            clean = f' href="{escape(href)}" rel="nofollow noopener noreferrer"'
+        elif tag == 'img':
+            src = _sanitize_url(dict(attrs).get('src') or '', allow_data=True)
+            clean = f' src="{escape(src)}" alt="image"'
+        if tag in ('img', 'span'):
+            style = (dict(attrs).get('style') or '').strip()
+            if style and _LEGACY_STYLE_RE.match(style):
+                clean += f' style="{escape(style)}"'
+        self.out.append(f'<{tag}{clean}>')
+        if tag not in _LEGACY_VOID_TAGS:
+            self.open_tags.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        if tag in _LEGACY_DROP_CONTENT:
+            return
+        self.handle_starttag(tag, attrs)
+        if tag not in _LEGACY_VOID_TAGS and self.open_tags and not self.drop_depth \
+                and tag in _LEGACY_ALLOWED_TAGS:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag):
+        if tag in _LEGACY_DROP_CONTENT:
+            if self.drop_depth:
+                self.drop_depth -= 1
+            return
+        if self.drop_depth or tag not in self.open_tags:
+            return
+        # Ferme jusqu'a la balise ouvrante correspondante : HTML toujours bien forme.
+        while self.open_tags:
+            top = self.open_tags.pop()
+            self.out.append(f'</{top}>')
+            if top == tag:
+                break
+
+    def handle_data(self, data):
+        if not self.drop_depth:
+            self.out.append(str(escape(data)))
+
+    def result(self):
+        while self.open_tags:
+            self.out.append(f'</{self.open_tags.pop()}>')
+        return ''.join(self.out)
+
+
+def sanitize_legacy_html(raw: str) -> str:
+    """Assainit le HTML d'un ancien commentaire (liste blanche, sans script)."""
+    if not raw:
+        return ''
+    parser = _LegacyHTMLSanitizer()
+    try:
+        parser.feed(raw)
+        parser.close()
+    except Exception:
+        return str(escape(raw))
+    return parser.result()
+
+
+def html_to_text(raw: str) -> str:
+    """Texte brut d'un ancien commentaire HTML (pre-remplissage de l'edition).
+
+    Uniquement en memoire : la ligne en base n'est pas modifiee.
+    """
+    if not raw:
+        return ''
+    text = re.sub(r'<(script|style)\b.*?</\1\s*>', '', raw, flags=re.I | re.S)
+    text = re.sub(r'<[^>]*>', '', text)
+    return _html.unescape(text)
+
+
+
 def is_safe_redirect_url(target: str) -> bool:
     if not target:
         return False
@@ -291,52 +404,93 @@ def role_required(allowed_roles):
 
 
 # -----------------------------
-# Rate limiter + 2FA replay guard, persisted in SQLite
+# Rate limiter + failure counters, persisted in SQLite
 # (survives restarts, shared by every worker process)
 # -----------------------------
+# PRIVACY: every key is turned into a keyed hash (HMAC-SHA256, salt derived from
+# SECRET_KEY, stable across restarts so limits persist) BEFORE it is written to
+# disk: no IP address or username ever lands in clear text in this file.
 _STATE_DB_PATH = os.environ.get('SECURITY_STATE_DB') or os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'instance', 'security_state.db')
 _state_local = threading.local()
 _STATE_LOCK = threading.Lock()
 
+# Past this age a hit is useless for every window used in the code.
+_STATE_MAX_AGE = 86400
+_FAILURE_MAX_WINDOW = 3600
+
+# Same cap as the former in-memory store: never let one key grow unbounded.
+_STORE_MAX_KEYS = 10_000
+_STORE_MAX_AGE = 3600
+
+
+def _state_salt() -> bytes:
+    from app import app as _app   # no app context needed (tests, CLI)
+    secret = _app.config.get('SECRET_KEY') or ''
+    return hashlib.sha256(b'security-state-salt:' + str(secret).encode()).digest()
+
+
+def hashed_key(value: str) -> str:
+    """Keyed, salted fingerprint of a value (username, IP...) used as a key."""
+    return hmac.new(_state_salt(), (value or '').encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def _storage_key(key: str) -> str:
+    return hmac.new(_state_salt(), (key or '').encode(), hashlib.sha256).hexdigest()
+
 
 def _state_db():
     conn = getattr(_state_local, 'conn', None)
     if conn is None:
-        os.makedirs(os.path.dirname(_STATE_DB_PATH), exist_ok=True)
+        os.makedirs(os.path.dirname(_STATE_DB_PATH) or '.', exist_ok=True)
         conn = sqlite3.connect(_STATE_DB_PATH, timeout=10, isolation_level=None)
         conn.execute('PRAGMA journal_mode=WAL')
         conn.execute('CREATE TABLE IF NOT EXISTS hits (key TEXT NOT NULL, ts REAL NOT NULL)')
         conn.execute('CREATE INDEX IF NOT EXISTS hits_key_ts ON hits (key, ts)')
-        conn.execute('CREATE TABLE IF NOT EXISTS totp_used (user_id INTEGER PRIMARY KEY, step INTEGER NOT NULL)')
+        # Table of the previous version (2FA replay guard): replay protection is
+        # now the persistent counter User.totp_last_counter.
+        conn.execute('DROP TABLE IF EXISTS totp_used')
         _state_local.conn = conn
     return conn
 
 
-def _client_id():
+def anonymous_client_key() -> str:
+    """Client identifier for rate limiting, without keeping an IP address.
+
+    Logged-in users are keyed by account; others by a keyed hash of their IP.
+    """
     try:
         if current_user.is_authenticated:
             return f"user:{current_user.id}"
     # bandit B110: outside a request/login context: fall back to the IP
     except Exception:  # nosec B110
         pass
-    return f"ip:{request.remote_addr}"
+    return 'anon:' + hashed_key(request.remote_addr or 'unknown')
+
+
+def _client_id():
+    return anonymous_client_key()
+
+
+def _cleanup(conn, now):
+    if secrets.randbelow(100) == 0:  # occasional cleanup of old entries
+        conn.execute('DELETE FROM hits WHERE ts < ?', (now - _STATE_MAX_AGE,))
 
 
 def hit_rate_limit(key: str, max_calls: int, window_seconds: int, record: bool = True) -> bool:
     """Return True if *key* exceeded max_calls in the window (and optionally record a hit)."""
     now = time.time()
+    skey = _storage_key(key)
     with _STATE_LOCK:
         conn = _state_db()
         conn.execute('BEGIN IMMEDIATE')
         try:
-            if secrets.randbelow(100) == 0:  # occasional cleanup of old entries
-                conn.execute('DELETE FROM hits WHERE ts < ?', (now - 86400,))
+            _cleanup(conn, now)
             count = conn.execute('SELECT COUNT(*) FROM hits WHERE key = ? AND ts > ?',
-                                 (key, now - window_seconds)).fetchone()[0]
+                                 (skey, now - window_seconds)).fetchone()[0]
             limited = count >= max_calls
             if record and not limited:
-                conn.execute('INSERT INTO hits (key, ts) VALUES (?, ?)', (key, now))
+                conn.execute('INSERT INTO hits (key, ts) VALUES (?, ?)', (skey, now))
             conn.execute('COMMIT')
         except Exception:
             conn.execute('ROLLBACK')
@@ -344,35 +498,63 @@ def hit_rate_limit(key: str, max_calls: int, window_seconds: int, record: bool =
     return limited
 
 
-def mark_totp_step_used(user_id: int, step: int) -> bool:
-    """Record a used TOTP time-step. False if this (or a later) step was already used."""
+def record_failure(key: str) -> None:
+    """Count one failure (failed login...) for *key*."""
+    now = time.time()
     with _STATE_LOCK:
         conn = _state_db()
-        conn.execute('BEGIN IMMEDIATE')
-        try:
-            row = conn.execute('SELECT step FROM totp_used WHERE user_id = ?', (user_id,)).fetchone()
-            if row and row[0] >= step:
-                conn.execute('COMMIT')
-                return False
-            conn.execute('INSERT INTO totp_used (user_id, step) VALUES (?, ?) '
-                         'ON CONFLICT(user_id) DO UPDATE SET step = excluded.step', (user_id, step))
-            conn.execute('COMMIT')
-        except Exception:
-            conn.execute('ROLLBACK')
-            raise
-    return True
+        conn.execute('INSERT INTO hits (key, ts) VALUES (?, ?)', ('f:' + _storage_key(key), now))
+        _cleanup(conn, now)
+
+
+def too_many_failures(key: str, max_calls: int, window_seconds: int) -> bool:
+    now = time.time()
+    window = min(window_seconds, _FAILURE_MAX_WINDOW)
+    with _STATE_LOCK:
+        conn = _state_db()
+        count = conn.execute('SELECT COUNT(*) FROM hits WHERE key = ? AND ts > ?',
+                             ('f:' + _storage_key(key), now - window)).fetchone()[0]
+    return count >= max_calls
+
+
+def clear_failures(key: str) -> None:
+    with _STATE_LOCK:
+        _state_db().execute('DELETE FROM hits WHERE key = ?', ('f:' + _storage_key(key),))
+
+
+def purge_store(store: dict, now: float = None, max_keys: int = None, max_age: int = None):
+    """Drop inactive keys of a {key: [timestamps]} dict when it grows too big.
+
+    Pure helper (the caller holds its lock). No effect under the size limit.
+    """
+    max_keys = max_keys or _STORE_MAX_KEYS
+    if len(store) <= max_keys:
+        return
+    now = now or time.time()
+    cutoff = now - (max_age or _STORE_MAX_AGE)
+    for key in [k for k, stamps in store.items() if not stamps or max(stamps) < cutoff]:
+        store.pop(key, None)
 
 
 def reset_security_state():
-    """Clear rate limits and 2FA replay state (tests / admin maintenance)."""
+    """Clear rate limits and failure counters (tests / admin maintenance)."""
     with _STATE_LOCK:
-        conn = _state_db()
-        conn.execute('DELETE FROM hits')
-        conn.execute('DELETE FROM totp_used')
+        _state_db().execute('DELETE FROM hits')
+
+
+class _StateStoreShim:
+    """Backward-compatible handle: `.clear()` resets the persistent state
+    (older code and tests used in-memory dicts with this name)."""
+    def clear(self):
+        reset_security_state()
+
+
+_RATE_LIMIT_STORE = _StateStoreShim()
+_FAILURE_STORE = _StateStoreShim()
 
 
 def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('POST',)):
-    """Simple rate limit decorator using in-memory store per IP/user.
+    """Rate limit decorator (persistent store, keyed per user/IP fingerprint).
     Only the given HTTP methods are counted (GET page views are free)."""
     def decorator(func):
         @wraps(func)
@@ -380,7 +562,7 @@ def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('P
             if request.method in methods:
                 key = f"{key_prefix}:{_client_id()}"
                 # Also limit per IP so switching accounts does not bypass it.
-                ip_key = f"{key_prefix}:ip:{request.remote_addr}"
+                ip_key = f"{key_prefix}:ip:{hashed_key(request.remote_addr or 'unknown')}"
                 if hit_rate_limit(key, max_calls, window_seconds) or \
                         (ip_key != key and hit_rate_limit(ip_key, max_calls * 3, window_seconds)):
                     flash('Too many requests. Please slow down.', 'danger')
@@ -402,11 +584,17 @@ def admin_required(f):
 
 
 def publish_scheduled_posts():
-    """Publish posts explicitly scheduled (not drafts) whose date has passed."""
+    """Publie les articles programmes dont la date est passee.
+
+    Un article sans date (brouillon) n'est jamais publie automatiquement.
+    """
     now = datetime.utcnow()
-    scheduled_posts = Post.query.filter_by(is_published=False, is_draft=False)\
-        .filter(Post.scheduled_date.isnot(None), Post.scheduled_date <= now).all()
-    for post in scheduled_posts:
+    due = (Post.query.filter(Post.is_published.is_(False),
+                             Post.scheduled_date.isnot(None),
+                             Post.scheduled_date <= now).all())
+    if not due:
+        return
+    for post in due:
         post.is_published = True
-    if scheduled_posts:
-        db.session.commit()
+        post.is_draft = False
+    db.session.commit()

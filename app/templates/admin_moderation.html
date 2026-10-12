@@ -1,0 +1,123 @@
+{% extends 'admin_layout.html' %}
+{% block title %}Moderation{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/admin_moderation.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="mod">
+
+    <header class="mod-head">
+        <p class="eyebrow">Moderation</p>
+        <h1>Blocked images</h1>
+        <p class="mod-intro">
+            The block list is built from your own decisions. When you flag an image in a
+            conversation, its fingerprint is recorded here and the person who sent it is
+            banned. Any later attempt to upload the same image is refused — including a
+            re-encoded, resized or recompressed copy.
+        </p>
+        <p class="mod-intro mod-note">
+            Flagged files are moved to <code>instance/quarantine/</code>, outside the web
+            root, and no route serves them. They are not deleted: a report to the
+            authorities assumes the evidence still exists. Do not open them.
+        </p>
+    </header>
+
+    <section class="mod-group">
+        <h2>Block list — {{ blocked|length }}</h2>
+        {% if blocked %}
+        <div class="scroller">
+            <table>
+                <thead>
+                    <tr><th>Added</th><th>SHA-256</th><th>Perceptual</th><th>Origin</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for entry in blocked %}
+                    <tr>
+                        <td class="mono">{{ entry.added_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="mono trunc">{{ entry.sha256 or '—' }}</td>
+                        <td class="mono">{{ entry.dhash or '—' }}</td>
+                        <td>{{ entry.label or '—' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_unblock_hash', hash_id=entry.id) }}">
+                                {{ form.hidden_tag() }}
+                                <button type="submit" class="btn-danger">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="mod-empty">
+            Nothing blocked yet. The list fills up as you flag images from the
+            <a href="{{ url_for('admin_chat') }}">admin chat</a>.
+        </p>
+        {% endif %}
+    </section>
+
+    <section class="mod-group">
+        <h2>Refused uploads — {{ events|length }}</h2>
+        {% if events %}
+        <div class="scroller">
+            <table>
+                <thead>
+                    <tr><th>When</th><th>Account</th><th>Distance</th><th>Quarantine file</th></tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                    <tr>
+                        <td class="mono">{{ event.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ event.user.username if event.user else 'deleted account' }}</td>
+                        <td class="mono">{{ event.distance if event.distance is not none else '—' }}</td>
+                        <td class="mono trunc">{{ event.quarantine_name or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="mod-empty">No upload has been refused.</p>
+        {% endif %}
+    </section>
+
+    <section class="mod-group">
+        <h2>Banned accounts — {{ banned|length }}</h2>
+        {% if banned %}
+        <div class="scroller">
+            <table>
+                <thead>
+                    <tr><th>Account</th><th>Banned</th><th>Reason</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for user in banned %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td class="mono">{{ user.banned_at.strftime('%Y-%m-%d %H:%M') if user.banned_at else '—' }}</td>
+                        <td>{{ user.ban_reason or '—' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('admin_unban_user', user_id=user.id) }}">
+                                {{ form.hidden_tag() }}
+                                <button type="submit" class="btn-edit">Lift ban</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="mod-empty">No account is banned.</p>
+        {% endif %}
+    </section>
+
+    <p class="mod-legal">
+        In France, child sexual abuse material is reported to PHAROS at
+        <code>internet-signalement.gouv.fr</code>. Reporting is a separate step from
+        blocking — this page does not do it for you.
+    </p>
+</div>
+
+{% endblock %}

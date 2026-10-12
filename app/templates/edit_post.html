@@ -1,12 +1,16 @@
 {% extends 'admin_layout.html' %}
 
-{% block title %}Edit Post - Admin{% endblock %}
+{% block title %}Modifier l'Article - Admin{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/edit_post.css') }}">
+{% endblock %}
 
 {% block content %}
 <div class="admin-content">
     <div class="content-header">
-        <h2><span class="icon-edit"></span> Edit Post</h2>
-        <p>Edit the content of your post</p>
+        <h2><span class="icon-edit"></span> Modifier l'Article</h2>
+        <p>Modifiez le contenu de votre article</p>
     </div>
 
     <div class="edit-post-section">
@@ -15,8 +19,8 @@
                 {{ form.hidden_tag() }}
 
                 <div class="form-group">
-                    <label for="title">Post title</label>
-                    {{ form.title(class="form-control", id="title", placeholder="Post title") }}
+                    <label for="title">Titre de l'article</label>
+                    {{ form.title(class="form-control", id="title", placeholder="Entrez le titre de l'article") }}
                     {% if form.title.errors %}
                         <div class="error-messages">
                             {% for error in form.title.errors %}
@@ -27,9 +31,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="content">Content</label>
-                    <textarea name="content" id="content" class="form-control ckeditor-textarea" rows="18" required>{{ post.content }}</textarea>
-                    <small class="form-hint">BBCode (<a href="{{ url_for('editor_help') }}">help</a>) or basic HTML. Everything is sanitized on display; external images are shown as links (privacy).</small>
+                    <label for="content">Contenu</label>
+                    <textarea name="content" id="content" class="form-control" rows="18" required>{{ post.content }}</textarea>
+                    <small class="form-hint">BBCode (<a href="{{ url_for('editor_help') }}">aide</a>) ou HTML simple. Tout est assaini à l'affichage ; les images externes sont affichées comme liens (vie privée).</small>
                     {% if form.content.errors %}
                         <div class="error-messages">
                             {% for error in form.content.errors %}
@@ -40,17 +44,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="category">Category</label>
-                    {{ form.category(class="form-control", id="category", placeholder="e.g. Privacy") }}
+                    <label for="category">Catégorie</label>
+                    {{ form.category(class="form-control", id="category", placeholder="ex. Vie privée") }}
                 </div>
 
                 <div class="form-group">
-                    <label for="tags">Tags (comma separated)</label>
-                    {{ form.tags(class="form-control", id="tags", placeholder="e.g. tor, linux") }}
+                    <label for="tags">Étiquettes (séparées par des virgules)</label>
+                    {{ form.tags(class="form-control", id="tags", placeholder="ex. tor, linux") }}
                 </div>
 
                 <div class="form-group">
-                    <label for="scheduled_date">Scheduled publication date (UTC, YYYY-MM-DD HH:MM:SS)</label>
+                    <label for="scheduled_date">Date de publication programmée</label>
                     {{ form.scheduled_date(class="form-control", id="scheduled_date") }}
                     {% if form.scheduled_date.errors %}
                         <div class="error-messages">
@@ -65,7 +69,7 @@
                     <div class="checkbox-wrapper">
                         {{ form.is_published(class="form-check-input", id="is_published") }}
                         <label for="is_published" class="checkbox-label">
-                            <span class="icon-check"></span> Publish now
+                            <span class="icon-check"></span> Publier immédiatement
                         </label>
                     </div>
                     {% if form.is_published.errors %}
@@ -82,7 +86,7 @@
                         <span class="icon-save"></span> {{ form.submit.label.text }}
                     </button>
                     <a href="{{ url_for('manage_posts') }}" class="btn-secondary">
-                        <span class="icon-arrow-left"></span> Back
+                        <span class="icon-arrow-left"></span> Retour
                     </a>
                 </div>
             </form>
@@ -90,5 +94,5 @@
     </div>
 </div>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/edit_post.css') }}">
+
 {% endblock %}

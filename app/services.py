@@ -1,10 +1,11 @@
-"""Shared helpers used by the web routes, the Telegram bot and the mobile API
+"""Shared helpers used by the web routes and the mobile API
 (auth helpers, uploads, chat, deletion cascades, notifications)."""
 from flask import url_for, flash, redirect, request, session, has_request_context
 from flask_login import current_user
 from app import app, db, bcrypt, socketio
 from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge, Tag
-from app.utils import process_image_file, hit_rate_limit, mark_totp_step_used
+from app.utils import process_image_file, hit_rate_limit, anonymous_client_key
+from app.encryption import message_encryption
 from functools import wraps
 from datetime import datetime
 import re
@@ -13,14 +14,15 @@ import json
 import os
 import queue
 import time
-from threading import Lock, Thread
+from threading import Lock
 from PIL import Image
+from sqlalchemy.exc import IntegrityError
 import pyotp
 import hmac
 import secrets
 
 
-# 🔹 Admin-only Route Decorator
+# Admin-only route decorator
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -38,7 +40,7 @@ def _get_admin_user_id() -> int:
     return 1
 
 
-# 🔹 Mobile admin API helpers (Basic Auth + SSE stream)
+# Mobile admin API helpers (Basic Auth + SSE stream)
 mobile_event_subscribers = []
 mobile_event_lock = Lock()
 
@@ -51,10 +53,15 @@ def _to_positive_int(text):
         return None
 
 
-def _action_rate_limited(action_key, max_calls, window_seconds):
-    actor_key = f"ip:{request.remote_addr or 'unknown'}"
-    if current_user.is_authenticated:
-        actor_key = f"user:{current_user.id}"
+def _action_rate_limited(action_key, max_calls, window_seconds, actor_key=None):
+    """True if the actor exceeded `max_calls` in `window_seconds`.
+
+    `actor_key` replaces the client key: useful when the limit must apply to a
+    target account (pending 2FA) and not to the current visitor. Keys are
+    hashed before they are stored (see utils.hit_rate_limit).
+    """
+    if actor_key is None:
+        actor_key = anonymous_client_key()
     return hit_rate_limit(f"{action_key}:{actor_key}", max_calls, window_seconds)
 
 
@@ -103,29 +110,31 @@ def _project_root():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 
 
-def _absolute_upload_path(stored_path):
+def _uploads_root():
+    return os.path.abspath(os.path.join(_project_root(), UPLOAD_FOLDER))
+
+
+def _absolute_upload_path(stored_path, root=None):
+    """Absolute path of an upload, bounded to the uploads folder.
+
+    `stored_path` is "uploads/<name>" (current) or a bare file name (older
+    rows); anything that would leave the uploads folder is rejected (None).
+    """
     if not stored_path:
         return None
+    root = os.path.abspath(root) if root else _uploads_root()
     if os.path.isabs(stored_path):
-        return stored_path
-    return os.path.join(_project_root(), stored_path)
+        candidate = stored_path
+    else:
+        candidate = os.path.join(root, os.path.basename(stored_path))
+    candidate = os.path.abspath(candidate)
+    if os.path.commonpath([candidate, root]) != root:
+        return None
+    return candidate
 
 
 def _first_admin_user():
     return User.query.filter_by(is_admin=True).order_by(User.id.asc()).first()
-
-
-def _bridge_admin_user():
-    """Return sender account used by Telegram bridge replies."""
-    admin_user = _first_admin_user()
-    if admin_user:
-        return admin_user
-
-    fallback_user = User.query.filter_by(id=1).first()
-    if fallback_user:
-        return fallback_user
-
-    return User.query.order_by(User.id.asc()).first()
 
 
 def _conversation_latest_message_id(admin_id, user_id):
@@ -136,17 +145,38 @@ def _conversation_latest_message_id(admin_id, user_id):
     return latest.id if latest else 0
 
 def _delete_post_and_children(post):
+    """Delete a post and every row that points to it or to its comments.
+
+    Rows that reference the post or its comments (NOT NULL or foreign key) must
+    go before it, otherwise IntegrityError -> 500. Notifications are kept but
+    detached. Raises IntegrityError (after a rollback) if it still cannot be
+    deleted.
+    """
     comment_ids = [c.id for c in Comment.query.filter_by(post_id=post.id).all()]
-    if comment_ids:
-        Like.query.filter(Like.comment_id.in_(comment_ids)).delete(synchronize_session=False)
-        Notification.query.filter(Notification.related_comment_id.in_(comment_ids)).delete(synchronize_session=False)
-        Comment.query.filter(Comment.id.in_(comment_ids)).delete(synchronize_session=False)
-    Like.query.filter_by(post_id=post.id).delete(synchronize_session=False)
-    Notification.query.filter_by(related_post_id=post.id).delete(synchronize_session=False)
-    Revision.query.filter_by(post_id=post.id).delete(synchronize_session=False)
-    post.tags = []
-    db.session.delete(post)
-    db.session.commit()
+    post_id = post.id
+    try:
+        Like.query.filter_by(post_id=post_id).delete(synchronize_session=False)
+        if comment_ids:
+            Like.query.filter(Like.comment_id.in_(comment_ids)) \
+                .delete(synchronize_session=False)
+            Notification.query.filter(Notification.related_comment_id.in_(comment_ids)) \
+                .update({'related_comment_id': None}, synchronize_session=False)
+            Comment.query.filter(Comment.id.in_(comment_ids)) \
+                .update({'parent_id': None}, synchronize_session=False)
+        Notification.query.filter_by(related_post_id=post_id) \
+            .update({'related_post_id': None}, synchronize_session=False)
+        if comment_ids:
+            Comment.query.filter(Comment.id.in_(comment_ids)) \
+                .delete(synchronize_session=False)
+        Revision.query.filter_by(post_id=post_id).delete(synchronize_session=False)
+        db.session.expire_all()
+        target = db.session.get(Post, post_id)
+        target.tags = []
+        db.session.delete(target)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise
 
 
 def slugify(text, max_len=50):
@@ -173,7 +203,6 @@ def apply_post_taxonomy(post, category_text, tags_text):
     post.tags = tags
 
 
-# 🔹 Home Page
 def _visible_posts_query():
     """Drafts / unpublished posts are only visible to admins."""
     query = Post.query
@@ -193,7 +222,7 @@ def _notify_user(user_id, payload):
         socketio.emit('notification', payload, to=_user_room(user_id))
 
 
-# 🔹 Login a User
+# Login
 # Constant-time-ish login: always run one bcrypt check, even for unknown users,
 # so response timing does not reveal which usernames exist.
 _DUMMY_PASSWORD_HASH = bcrypt.generate_password_hash(secrets.token_hex(16)).decode('utf-8')
@@ -218,28 +247,55 @@ def _start_fresh_session():
     session.permanent = True
 
 
-def _verify_totp_once(user, code, allow_reuse=False):
-    """Verify a TOTP code (+/-1 step) and reject replays of an already used code
-    (allow_reuse=True for stateless API calls that send the code on every request)."""
-    if not user or not user.totp_secret or not code:
+# TOTP: a code is valid for one 30 s step, with a tolerance of one step on
+# each side. The accepted step is stored (User.totp_last_counter): a code
+# that was already used cannot be replayed.
+TOTP_STEP_SECONDS = 30
+
+
+def _totp_secret(user):
+    """Plain TOTP secret. An old unencrypted value is returned as is."""
+    if not user or not user.totp_secret:
+        return None
+    return message_encryption.decrypt_message(user.totp_secret)
+
+
+def _store_totp_secret(user, secret):
+    user.totp_secret = message_encryption.encrypt_message(secret)
+
+
+def _verify_totp_once(user, code, allow_reuse=False, secret=None):
+    """Verify a TOTP code (+/-1 step) and reject replays of an already used code.
+
+    allow_reuse=True is for stateless API calls that send the code on every
+    request. On success the user's counter is updated; the caller commits.
+    """
+    secret = secret or _totp_secret(user)
+    code = re.sub(r'\s+', '', code or '')
+    if not user or not secret or not re.fullmatch(r'\d{6}', code):
         return False
-    code = code.strip()
-    if not re.fullmatch(r'\d{6}', code):
+    last = user.totp_last_counter if user.totp_last_counter is not None else -1
+    # Unix timestamp (not a naive datetime: pyotp would read it as local time)
+    current = int(time.time()) // TOTP_STEP_SECONDS
+    try:
+        generator = pyotp.TOTP(secret)
+        for counter in (current - 1, current, current + 1):
+            if hmac.compare_digest(generator.generate_otp(counter), code):
+                if allow_reuse:
+                    return True
+                if counter > last:
+                    user.totp_last_counter = counter
+                    # Old plaintext secret: encrypt it now that it is proven valid.
+                    if user.totp_secret and user.totp_secret == secret:
+                        _store_totp_secret(user, secret)
+                    return True
+                return False
+    except Exception:
         return False
-    totp = pyotp.TOTP(user.totp_secret)
-    # Unix timestamps (not naive datetimes: pyotp would read those as local time)
-    now = int(time.time())
-    for offset in (-1, 0, 1):
-        at = now + offset * totp.interval
-        if hmac.compare_digest(totp.at(at), code):
-            step = at // totp.interval
-            if allow_reuse:
-                return True
-            return mark_totp_step_used(user.id, step)
     return False
 
 
-# 🔹 2FA recovery codes
+# 2FA recovery codes
 RECOVERY_CODE_COUNT = 10
 
 
@@ -290,11 +346,14 @@ def verify_second_factor(user, code):
     """TOTP code (one-time) or recovery code."""
     code = (code or '').strip()
     if re.fullmatch(r'\d{6}', code):
-        return _verify_totp_once(user, code)
+        if _verify_totp_once(user, code):
+            db.session.commit()   # persists the replay counter
+            return True
+        return False
     return use_recovery_code(user, code)
 
 
-# 🔹 Sessions
+# Sessions
 def invalidate_other_sessions(user):
     """Log the user out everywhere (sessions + remember-me cookies) by bumping
     session_version; the caller logs the current browser back in."""
@@ -302,22 +361,17 @@ def invalidate_other_sessions(user):
     db.session.commit()
 
 
-# 🔹 Security alerts (Telegram, optional)
+# Security alerts: written to the application log only (nothing leaves the
+# server; the former Telegram bridge was removed on purpose).
 def security_alert(text):
-    """Send a security event to the admin over Telegram (if configured),
-    without blocking the web request. Never raises."""
-    app.logger.warning("SECURITY %s", text)
+    """Record a security event in the log. Never raises."""
     try:
-        from app import telegram_bot
-        if not telegram_bot.telegram_is_enabled():
-            return
-        Thread(target=telegram_bot.telegram_send_message,
-               args=(f"🔐 Security: {text}",), daemon=True).start()
-    except Exception:
-        app.logger.exception("security alert failed")
+        app.logger.warning("SECURITY %s", text)
+    except Exception:  # nosec B110
+        pass
 
 
-# 🔹 Personal data export
+# Personal data export
 def export_user_data(user):
     """Everything the blog stores about a user, readable (messages decrypted)."""
     def iso(dt):
@@ -378,6 +432,12 @@ CHAT_ALLOWED_EXTENSIONS = {
 }
 PROFILE_ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+# Guard rails against decompression bombs. 40 megapixels lets every consumer
+# camera through; beyond that the image is forged. Same limit everywhere,
+# including the code paths that do not call _validate_uploaded_file.
+MAX_IMAGE_PIXELS = 40_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+MAX_IMAGE_SIDE = 12_000
 ALLOWED_MIME_EXACT = {
     'application/pdf', 'application/zip', 'application/json', 'application/xml',
     'application/msword', 'application/octet-stream',
@@ -436,6 +496,14 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
         try:
             stream.seek(0)
             with Image.open(stream) as img:
+                # Decompression bomb: a PNG of a few kilobytes can declare
+                # 50000x50000 pixels. Refuse on the declared size BEFORE
+                # decoding anything.
+                width, height = img.size
+                if width * height > MAX_IMAGE_PIXELS or \
+                        width > MAX_IMAGE_SIDE or height > MAX_IMAGE_SIDE:
+                    stream.seek(0)
+                    return False, "Image dimensions are too large."
                 img.verify()
             stream.seek(0)
         except Exception:
@@ -472,6 +540,8 @@ def encrypt_upload_in_place(absolute_path):
 def read_upload_bytes(stored_path):
     """Plaintext content of an upload (decrypted when stored encrypted)."""
     absolute = _absolute_upload_path(stored_path)
+    if not absolute:
+        raise FileNotFoundError(stored_path)
     with open(absolute, 'rb') as f:
         data = f.read()
     if absolute.endswith(ENCRYPTED_SUFFIX):
@@ -486,14 +556,108 @@ def upload_display_name(stored_path):
     return name[:-len(ENCRYPTED_SUFFIX)] if name.endswith(ENCRYPTED_SUFFIX) else name
 
 
-def _store_upload(file_obj, prefix):
+class UploadRefused(Exception):
+    """The upload matched the block list: the file is quarantined and the
+    author banned. `str(exc)` is the message to show."""
+
+
+def screen_uploaded_image(file_path, user):
+    """Refuse an image that is on the blocked-hash list.
+
+    Returns None if the image passes. Otherwise: quarantines the file, bans the
+    author, logs the event and returns an error message.
+
+    To be called BEFORE the image is re-encoded: re-encoding changes its
+    SHA-256 (the perceptual dHash survives both).
+    """
+    from app.image_safety import check_image, quarantine_file, sha256_of_file
+    from app.models import BlockedUploadEvent
+
+    try:
+        match, distance = check_image(path=file_path)
+    except Exception:
+        # A failing check must neither let the image through silently nor block
+        # a legitimate upload: log it and let it pass.
+        app.logger.exception('Image screening failed; upload allowed unchecked.')
+        return None
+
+    if match is None:
+        return None
+
+    digest = sha256_of_file(file_path)
+    quarantined = quarantine_file(
+        file_path,
+        reason=f'hash match id={match.id} label={match.label or "-"} distance={distance}'
+    )
+    db.session.add(BlockedUploadEvent(
+        user_id=getattr(user, 'id', None),
+        matched_hash_id=match.id,
+        distance=distance,
+        sha256=digest,
+        quarantine_name=quarantined,
+    ))
+
+    # Immediate ban of the author.
+    if getattr(user, 'is_authenticated', False) and not user.is_admin:
+        user.is_banned = True
+        user.banned_at = datetime.utcnow()
+        user.ban_reason = 'Blocked image upload'
+        user.rotate_session_token()
+
+    db.session.commit()
+    app.logger.warning(
+        'Blocked image upload: user_id=%s hash_id=%s distance=%s quarantine=%s',
+        getattr(user, 'id', None), match.id, distance, quarantined
+    )
+    return 'This file cannot be uploaded.'
+
+
+def strip_image_metadata(file_path):
+    """Really remove the metadata of an image in place (EXIF, GPS, XMP, ICC),
+    keeping its original format.
+
+    The image is rebuilt from its pixels only: no metadata block survives.
+    `copy()` works on the C buffer (no Python object per pixel). On failure the
+    file is deleted rather than served with its GPS coordinates intact.
+
+    The upload pipeline itself re-encodes images to WebP (process_image_file);
+    this helper is kept for callers that need to keep the original format.
+    """
+    try:
+        with Image.open(file_path) as image:
+            fmt = image.format or 'PNG'
+            image.load()
+            keep = {k: image.info[k] for k in ('transparency',) if k in image.info}
+            clean = image.copy()
+            clean.info = dict(keep)
+            if fmt.upper() in ('JPEG', 'JPG'):
+                clean.convert('RGB').save(file_path, 'JPEG', quality=88)
+            elif fmt.upper() == 'WEBP':
+                clean.save(file_path, 'WEBP', quality=88, method=6)
+            elif fmt.upper() == 'GIF':
+                clean.save(file_path, fmt, **keep)
+            else:
+                clean.save(file_path, fmt)
+    except Exception:
+        app.logger.warning('Metadata stripping failed; upload discarded.')
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        raise
+
+
+def _store_upload(file_obj, prefix, user=None):
     """Save an already-validated upload under a random, unguessable name.
 
-    Images are re-encoded (all metadata stripped, WebP), then every file is
-    encrypted at rest (Fernet, ENCRYPTION_KEY). Returns
-    (relative_path, file_type) or (None, None) if processing failed.
-    The original filename is never used on disk (no overwrite of other
-    users' files, no information leak, no guessable URL).
+    Pipeline (order matters):
+      1. image: checked against the block list on the original bytes
+         (quarantine + ban on a match -> UploadRefused);
+      2. image: re-encoded to WebP, ALL metadata stripped (EXIF, GPS, XMP...);
+      3. every file is encrypted at rest (Fernet, ENCRYPTION_KEY).
+    Returns (relative_path, file_type) or (None, None) if processing failed.
+    The original filename is never used on disk (no overwrite of other users'
+    files, no information leak, no guessable URL).
     """
     ext = _file_ext(file_obj.filename)
     filename = f"{prefix}_{secrets.token_urlsafe(18)}.{ext}"
@@ -504,6 +668,9 @@ def _store_upload(file_obj, prefix):
     file_obj.save(absolute_path)
     file_type = get_file_type(file_obj.filename)
     if ext in IMAGE_EXTENSIONS:
+        refusal = screen_uploaded_image(absolute_path, user or current_user)
+        if refusal:
+            raise UploadRefused(refusal)
         processed = process_image_file(absolute_path)
         if not processed:
             try:
@@ -541,7 +708,7 @@ def get_file_type(filename):
     
     ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
     
-    if ext in ['png', 'jpg', 'jpeg', 'gif']:
+    if ext in ['png', 'jpg', 'jpeg', 'gif', 'webp']:
         return 'image'
     elif ext in ['mp4', 'avi', 'mov', 'wmv']:
         return 'video'
@@ -552,8 +719,11 @@ def get_file_type(filename):
 def _remove_upload_file(stored_path):
     if not stored_path:
         return
-    uploads_root = os.path.realpath(_absolute_upload_path(UPLOAD_FOLDER))
-    real = os.path.realpath(_absolute_upload_path(stored_path))
+    uploads_root = os.path.realpath(_uploads_root())
+    path = _absolute_upload_path(stored_path)
+    if not path:
+        return
+    real = os.path.realpath(path)
     if real.startswith(uploads_root + os.sep) and os.path.exists(real):
         try:
             os.remove(real)
@@ -561,26 +731,53 @@ def _remove_upload_file(stored_path):
             pass
 
 
-def _delete_user_and_data(user, new_post_owner_id):
-    """Delete a user without leaving broken rows (the plain delete crashed
-    with an IntegrityError / left orphans). Private data (messages,
-    attachments, notifications, likes) is erased; posts are handed to an
-    admin; comments are anonymized to keep threads readable."""
-    for message in Message.query.filter((Message.sender_id == user.id) | (Message.receiver_id == user.id)).all():
-        _remove_upload_file(message.file_path)
-        db.session.delete(message)
-    _remove_upload_file(user.profile_picture)
-    Notification.query.filter_by(user_id=user.id).delete()
-    for like in Like.query.filter_by(user_id=user.id).all():
-        if like.post_id and like.post:
-            like.post.likes_count = max(0, (like.post.likes_count or 0) - 1)
-        if like.comment_id and like.comment:
-            like.comment.likes_count = max(0, (like.comment.likes_count or 0) - 1)
-        db.session.delete(like)
-    Comment.query.filter_by(author_id=user.id).update({'author_id': None})
-    Post.query.filter_by(author_id=user.id).update({'author_id': new_post_owner_id})
-    db.session.delete(user)
-    db.session.commit()
+def _delete_user_and_data(user, new_post_owner_id, uploads_root=None):
+    """Delete a user without leaving broken rows. Private data (messages,
+    attachments, notifications, likes) is erased; posts are handed to
+    `new_post_owner_id`; comments are anonymized to keep threads readable.
+    Files only go once the database change is committed. Raises IntegrityError
+    (after a rollback) if the account cannot be deleted."""
+    from app.models import BlockedUploadEvent, SiteText, SiteTextRevision
+
+    messages = Message.query.filter(
+        (Message.sender_id == user.id) | (Message.receiver_id == user.id)).all()
+    files = [m.file_path for m in messages if m.file_path]
+    if user.profile_picture:
+        files.append(user.profile_picture)
+    try:
+        Comment.query.filter_by(author_id=user.id).update({'author_id': None},
+                                                          synchronize_session=False)
+        for like in Like.query.filter_by(user_id=user.id).all():
+            target = db.session.get(Post, like.post_id) if like.post_id \
+                else db.session.get(Comment, like.comment_id)
+            if target is not None:
+                target.likes_count = max(0, (target.likes_count or 0) - 1)
+            db.session.delete(like)
+        for message in messages:
+            db.session.delete(message)
+        Notification.query.filter_by(user_id=user.id).delete(synchronize_session=False)
+        BlockedUploadEvent.query.filter_by(user_id=user.id) \
+            .update({'user_id': None}, synchronize_session=False)
+        SiteText.query.filter_by(updated_by_id=user.id) \
+            .update({'updated_by_id': None}, synchronize_session=False)
+        SiteTextRevision.query.filter_by(changed_by_id=user.id) \
+            .update({'changed_by_id': None}, synchronize_session=False)
+        Post.query.filter_by(author_id=user.id).update({'author_id': new_post_owner_id},
+                                                       synchronize_session=False)
+        db.session.flush()
+        db.session.delete(user)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        raise
+
+    for stored in files:
+        path = _absolute_upload_path(stored, root=uploads_root)
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
 
 
 # Function to create default badges

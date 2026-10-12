@@ -14,8 +14,7 @@
 # (rolls back if not) and restarts it with UPDATE_RESTART_CMD from .env, e.g.
 #   UPDATE_RESTART_CMD=sudo systemctl restart blog
 # (the cron user then needs a sudoers rule for exactly that command, see
-# SECURITY.md). Output goes to logs/update.log. If the Telegram bot is
-# configured, the admin gets a message after each update or failure.
+# SECURITY.md). Output goes to logs/update.log.
 #
 # Automatic updates are OFF by default: you decide.
 # ---------------------------------------------------------------------------

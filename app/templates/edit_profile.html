@@ -1,12 +1,13 @@
 {% extends 'layout.html' %}
 
-{% block title %}Edit Profile - Blog{% endblock %}
+{% block title %}{{ t('edit.title') }} — depressedyoungmanblog{% endblock %}
 
 {% block content %}
 <div class="edit-profile-container">
     <div class="edit-profile-header">
-        <h2><span class="icon-user-edit"></span> Edit Profile</h2>
-        <p>Update your account information</p>
+        <h2><span class="icon-user-edit"></span> {{ t('edit.title') }}</h2>
+        <p class="edit-links"><a href="{{ url_for('change_password') }}" class="plain-link">{{ t('account.password.link') }}</a></p>
+        <p>{{ t('edit.sub') }}</p>
     </div>
 
     <div class="edit-profile-form">
@@ -14,8 +15,8 @@
             {{ form.hidden_tag() }}
             
             <div class="form-group">
-                <label for="username">Username (for login only)</label>
-                {{ form.username(class="form-control", placeholder="Your username") }}
+                <label for="username">{{ t('edit.username') }}</label>
+                {{ form.username(class="form-control", placeholder=t('edit.username_ph')) }}
                 {% if form.username.errors %}
                     <div class="error-messages">
                         {% for error in form.username.errors %}
@@ -29,11 +30,11 @@
             </div>
 
             <div class="form-group">
-                <label for="profile_picture">Profile picture</label>
+                <label for="profile_picture">{{ t('edit.picture') }}</label>
                 {% if current_user.profile_picture %}
                     <div class="current-avatar">
-                        <img src="{{ url_for('uploaded_file', filename=current_user.profile_picture.split('/')[-1]) }}" alt="Current profile picture" class="current-avatar-img">
-                        <small>Current picture</small>
+                        <img src="{{ url_for('uploaded_file', filename=current_user.profile_picture.split('/')[-1]) }}" alt="{{ t('edit.picture_current') }}" class="current-avatar-img">
+                        <small>{{ t('edit.picture_current') }}</small>
                     </div>
                 {% endif %}
                 {{ form.profile_picture(class="form-control") }}
@@ -45,39 +46,39 @@
                     </div>
                 {% endif %}
                 <div class="file-info">
-                    <small>Allowed formats: JPG, JPEG, PNG, GIF</small>
+                    <small>{{ t('edit.formats') }}</small>
                 </div>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn-save">
-                    <span class="icon-save"></span> Save
+                    <span class="icon-save"></span> {{ t('misc.save') }}
                 </button>
                 <a href="{{ url_for('user_profile', user_id=current_user.id) }}" class="btn-cancel">
-                    <span class="icon-times"></span> Cancel
+                    <span class="icon-times"></span> {{ t('misc.cancel') }}
                 </a>
             </div>
         </form>
     </div>
 
-    <p class="account-link"><a href="{{ url_for('account_security') }}"><span class="icon-shield-alt"></span> Account security: password, 2FA, sessions, export, delete account</a></p>
+    <p class="account-link"><a href="{{ url_for('account_security') }}" class="plain-link"><span class="icon-shield-alt"></span> {{ t('account.sec.link') }}</a></p>
 
     <!-- 2FA / TOTP Security Section -->
     <div class="edit-profile-form" style="margin-top:1.5rem;">
-        <h3 style="margin-bottom:1rem;font-size:1.1rem;">Two-factor authentication</h3>
+        <h3 style="margin-bottom:1rem;font-size:1.1rem;">{{ t('totp.section') }}</h3>
         {% if current_user.totp_enabled %}
-            <p style="color:var(--brass-bright);margin-bottom:1rem;font-size:.9rem;">
+            <p style="color:var(--moon-bright);margin-bottom:1rem;font-size:.9rem;">
                 <span class="icon-check"></span> 2FA is currently <strong>active</strong> on your account.
             </p>
-            <a href="{{ url_for('totp_disable') }}" class="btn-cancel" style="display:inline-flex;border-radius:10px;padding:.6rem 1.4rem;text-decoration:none;">
+            <a href="{{ url_for('totp_disable') }}" class="btn-cancel" style="display:inline-flex;border-radius: 6px;padding:.6rem 1.4rem;text-decoration:none;">
                 Disable 2FA
             </a>
         {% else %}
-            <p style="color:#c3c4cb;margin-bottom:1rem;font-size:.9rem;">
+            <p style="color:var(--ash-mid);margin-bottom:1rem;font-size:.9rem;">
                 2FA is not enabled. Add an extra layer of security using an authenticator app.
             </p>
-            <a href="{{ url_for('totp_setup') }}" class="btn-save" style="display:inline-flex;border-radius:10px;padding:.6rem 1.4rem;text-decoration:none;">
-                Enable 2FA
+            <a href="{{ url_for('totp_setup') }}" class="btn-save" style="display:inline-flex;border-radius: 6px;padding:.6rem 1.4rem;text-decoration:none;">
+                {{ t('totp.enable_short') }}
             </a>
         {% endif %}
     </div>
@@ -85,5 +86,5 @@
 {% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pages/edit_profile.css') }}">
+<link rel="stylesheet" href="{{ static_v('css/pages/edit_profile.css') }}">
 {% endblock %}

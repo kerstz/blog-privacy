@@ -1,10 +1,9 @@
-/* Extracted from templates/totp_setup.html (no inline <style>: strict CSP) */
 .totp-container {
     max-width: 480px;
     margin: 2.5rem auto;
 }
 .totp-card {
-    background: var(--ink-850);
+    background: var(--night-050);
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
     padding: 2rem 2.2rem;
@@ -21,19 +20,19 @@
 .totp-qr {
     display: block;
     margin: 1.2rem auto;
-    border-radius: 12px;
+    border-radius: 6px;
     background: #fff;
     padding: 10px;
     width: 200px;
     height: 200px;
 }
 .totp-secret-box {
-    background: var(--ink-900);
+    background: var(--night-000);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: .6rem 1rem;
     font-family: var(--font-mono);
-    color: var(--brass-bright);
+    color: var(--moon-bright);
     font-size: .85rem;
     letter-spacing: .08em;
     text-align: center;

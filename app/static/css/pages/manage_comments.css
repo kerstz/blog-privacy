@@ -1,4 +1,3 @@
-/* Extracted from templates/manage_comments.html (no inline <style>: strict CSP) */
 .admin-content {
     max-width: 1200px;
     margin: 0 auto;
@@ -6,31 +5,32 @@
 }
 
 .content-header {
-    text-align: center;
+    text-align: left;
     margin-bottom: 40px;
 }
 
 .content-header h2 {
-    color: #8b93ff;
-    font-size: 2.5rem;
+    font-family: var(--font-display);
+    color: var(--ash);
+    font-size: clamp(1.8rem, 3.6vw, 2.4rem);
     margin-bottom: 10px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 15px;
 }
 
 .content-header p {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 1.1rem;
 }
 
 .section-card {
-    background: linear-gradient(135deg, #1a1a2e, #2a2b3d);
-    border: 2px solid #8b93ff;
-    border-radius: 20px;
+    background: linear-gradient(135deg, var(--night-100), var(--line));
+    border: 1px solid var(--line);
+    border-radius: 6px;
     padding: 30px;
-    box-shadow: 0 8px 25px rgba(139, 147, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(125, 147, 200, 0.2);
 }
 
 .section-header {
@@ -43,7 +43,7 @@
 }
 
 .section-header h3 {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 1.5rem;
     display: flex;
     align-items: center;
@@ -59,8 +59,8 @@
 .filter-select {
     background: rgba(255, 255, 255, 0.1);
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    color: #e0e0e0;
+    border-radius: 6px;
+    color: var(--ash);
     padding: 8px 12px;
     font-size: 0.9rem;
     cursor: pointer;
@@ -69,7 +69,7 @@
 
 .filter-select:focus {
     outline: none;
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
     background: rgba(255, 255, 255, 0.15);
 }
 
@@ -82,7 +82,7 @@
 .comment-card {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
+    border-radius: 6px;
     padding: 20px;
     transition: all 0.3s ease;
 }
@@ -90,7 +90,7 @@
 .comment-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: #8b93ff;
+    border-color: var(--moon-bright);
 }
 
 .comment-header {
@@ -112,7 +112,7 @@
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: rgba(139, 147, 255, 0.2);
+    background: rgba(125, 147, 200, 0.2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -126,7 +126,7 @@
 }
 
 .author-avatar i {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 1.2rem;
 }
 
@@ -137,13 +137,13 @@
 }
 
 .author-name {
-    color: #e0e0e0;
+    color: var(--ash);
     font-weight: 600;
     font-size: 0.95rem;
 }
 
 .comment-date {
-    color: #a0a0a0;
+    color: var(--ash-dim);
     font-size: 0.8rem;
     display: flex;
     align-items: center;
@@ -157,14 +157,14 @@
 }
 
 .stat {
-    color: #8b93ff;
+    color: var(--moon-bright);
     font-size: 0.8rem;
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(139, 147, 255, 0.1);
+    background: rgba(125, 147, 200, 0.1);
     padding: 4px 8px;
-    border-radius: 12px;
+    border-radius: 6px;
 }
 
 .comment-content {
@@ -172,7 +172,7 @@
 }
 
 .post-context {
-    color: #c3c4cb;
+    color: var(--ash-mid);
     font-size: 0.85rem;
     margin-bottom: 10px;
     display: flex;
@@ -181,7 +181,7 @@
 }
 
 .post-link {
-    color: #8b93ff;
+    color: var(--moon-bright);
     text-decoration: none;
     font-weight: 500;
 }
@@ -191,13 +191,13 @@
 }
 
 .comment-text {
-    color: #e0e0e0;
+    color: var(--ash);
     line-height: 1.5;
     font-size: 0.95rem;
     background: rgba(255, 255, 255, 0.03);
     padding: 12px;
-    border-radius: 8px;
-    border-left: 3px solid #8b93ff;
+    border-radius: 6px;
+    border-left: 3px solid var(--moon-bright);
 }
 
 .comment-actions {
@@ -207,7 +207,7 @@
 }
 
 .btn-edit, .btn-view {
-    background: linear-gradient(135deg, #51cf66, #40c057);
+    background: linear-gradient(135deg, var(--moon), var(--moon));
     color: white;
     padding: 6px 12px;
     border-radius: 6px;
@@ -221,7 +221,7 @@
 }
 
 .btn-view {
-    background: linear-gradient(135deg, #74c0fc, #339af0);
+    background: linear-gradient(135deg, var(--moon-bright), var(--moon));
 }
 
 .btn-edit:hover, .btn-view:hover {
@@ -235,7 +235,7 @@
 }
 
 .btn-delete {
-    background: linear-gradient(135deg, #ff6b6b, #e55353);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     color: white;
     border: none;
     padding: 6px 12px;
@@ -250,19 +250,19 @@
 }
 
 .btn-delete:hover {
-    background: linear-gradient(135deg, #e55353, #d63384);
+    background: linear-gradient(135deg, var(--ember-bright), var(--ember-bright));
     transform: translateY(-1px);
 }
 
 .no-comments {
     text-align: center;
-    color: #c3c4cb;
+    color: var(--ash-mid);
     padding: 60px 20px;
 }
 
 .no-comments i {
     font-size: 4rem;
-    color: #8b93ff;
+    color: var(--moon-bright);
     margin-bottom: 20px;
 }
 
@@ -277,6 +277,7 @@
     }
     
     .content-header h2 {
+    font-family: var(--font-display);
         font-size: 2rem;
     }
     
@@ -311,9 +312,19 @@
         justify-content: center;
     }
 }
-/* No-JS confirmation: the real submit button only appears after opening */
+
+/* Confirmation without JavaScript: a <details> that opens a one-button form */
 .confirm-action { display: inline-block; }
-.confirm-action > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; }
+.confirm-action > summary { list-style: none; cursor: pointer; }
 .confirm-action > summary::-webkit-details-marker { display: none; }
-.confirm-action[open] > summary { opacity: .6; }
-.confirm-action form { display: inline; margin-left: .4rem; }
+.confirm-action[open] > summary { opacity: .75; }
+.confirm-action form { margin: .5rem 0 0; display: block; }
+.confirm-yes { cursor: pointer; }
+.form-hint { margin: .3rem 0 0; font-size: .85rem; color: var(--ash-dim); }
+
+.filter-form { display: flex; gap: .5rem; align-items: center; margin: 0; }
+.filter-apply {
+    padding: .35rem .9rem; border: 1px solid var(--moon); border-radius: var(--radius);
+    background: transparent; color: var(--moon-bright); font: inherit; cursor: pointer;
+}
+.filter-apply:hover { background: var(--moon-glow); }
