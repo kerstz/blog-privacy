@@ -1,258 +1,434 @@
 # depressedyoungmanblog
 
-🇬🇧 English · [🇫🇷 Français](README.fr.md)
+English · [Français](README.fr.md)
 
-A personal blog that keeps its readers anonymous. Flask, SQLite, no JavaScript
-required, no third-party requests, built to run as a Tor onion service.
+A small, self-hosted personal blog that tries hard not to know who its readers
+are. It is a Flask + SQLite application with posts, nested comments, a private
+chat between each reader and the site owner, and an admin panel, and it works
+entirely without JavaScript and without loading anything from a third party.
+It is designed to be served as a Tor onion service, but runs just as well
+behind an ordinary HTTPS reverse proxy.
 
 > **Vibe coded.** This project was built with heavy help from AI coding tools.
 > It has been reviewed and is covered by security regression tests, but read the
 > code before trusting it with anything sensitive, and report anything odd.
 
-> **Security updates:** dependencies are pinned past their known CVEs and the
-> site runs with **zero JavaScript and zero third-party requests**. Update with
-> `./update.sh`, or turn on automatic updates (`./auto-update.sh enable weekly`).
-> Details in [SECURITY.md](SECURITY.md).
+> **Security updates:** dependencies are pinned past their known CVEs. Update
+> with `./update.sh`, or turn on automatic updates
+> (`./auto-update.sh enable weekly`). Changelog in [SECURITY.md](SECURITY.md).
 
-## What it does
+## Contents
 
-- **Blog** — posts in BBCode (or basic HTML), drafts, scheduled publishing,
-  revisions, categories and tags, search, RSS feed (`/feed.xml`)
-- **Comments** — nested, BBCode, parsed server-side so they work without JavaScript
-- **Encrypted chat** with the site owner — Fernet at rest (messages **and**
-  attachments), real-time over WebSocket
-- **Bilingual** — every fixed text in English and French, switchable, and editable
-  from the admin panel without touching code
-- **Moderation** — flag an image and it is fingerprinted, blocked for good, and its
-  sender banned; re-encoded copies are caught too
-- **2FA** — TOTP per account, with one-time recovery codes
-- **Account security page** — change password, log out everywhere, download my
-  data, delete my account
-- **Mobile admin API** — Basic Auth + `X-TOTP-Code`, SSE event stream
-- **No-JS anti-spam** — honeypot + minimum form time, no captcha
-- **Gamification** — XP, levels, badges
-- **Safe updates** — `./update.sh` (backup, update, health check, automatic
-  rollback), optional scheduled updates, encrypted backups
+- [Privacy model](#privacy-model)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [Deployment](#deployment)
+- [Updates and backups](#updates-and-backups)
+- [Mobile admin API](#mobile-admin-api)
+- [Security notes](#security-notes)
+- [Tests and CI](#tests-and-ci)
+- [Project layout](#project-layout)
+- [Licence](#licence)
+
+## Privacy model
+
+**Who it is for.** A single owner who writes, and readers who may want to stay
+anonymous, including towards the owner's hosting provider and any site the
+blog links to.
+
+### What it protects
+
+- **No JavaScript.** Every page is plain HTML and CSS. The Content Security
+  Policy sets `script-src 'none'` and `style-src 'self'`, so the site works in
+  Tor Browser at the "Safest" level and an injected script would not run.
+- **No third-party requests.** No CDN, no web fonts (system font stack), no
+  analytics, no embedded widgets. External images in posts and comments are
+  shown as links and never loaded (`img-src 'self' data:`). Outgoing links
+  carry `rel="noreferrer"` and the site sends `Referrer-Policy: no-referrer`.
+  The donation page links to an external swap service; it is labelled as a
+  third party and only contacted if the reader clicks.
+- **No IP addresses in the logs by default.** A logging filter replaces client
+  addresses with `[ip]` in the Werkzeug and application logs (loopback is
+  kept). `LOG_CLIENT_IP=true` turns this off for debugging.
+- **The rate limiter stores no addresses or usernames.** Its SQLite state file
+  only holds HMAC-SHA256 hashes of its keys, keyed from `SECRET_KEY`.
+- **Encryption at rest** (Fernet, key derived with PBKDF2-SHA256 from
+  `ENCRYPTION_KEY` + `ENCRYPTION_SALT`) for: chat messages, every uploaded
+  file (chat attachments and profile pictures, stored as `.enc` under random
+  names), and TOTP secrets.
+- **Image metadata removed.** Uploaded images are re-encoded to WebP (longest
+  side at most 1600 px), which drops EXIF, GPS, XMP and similar blocks.
+- **Accounts need only a username and a password.** No e-mail address is asked
+  at registration.
+- **Strong authentication.** bcrypt password hashes; optional TOTP 2FA per
+  account with 10 one-time recovery codes (only their SHA-256 is stored);
+  TOTP codes cannot be replayed.
+- **Brute-force limits.** Login failures are counted per username (10 per 15
+  min) and per client (5 per 5 min); 2FA codes are limited to 5 attempts per 5
+  min per account; forms, comments, chat, search and uploads are rate limited.
+  A failed login always costs one bcrypt check, so timing does not reveal which
+  usernames exist.
+- **Session control.** Changing the password, changing a role or using "log out
+  everywhere" invalidates every other session and "remember me" cookie. Session
+  cookies are `HttpOnly`, `SameSite=Strict`, `Secure` by default and named
+  `__Host-sid` (sessions last 4 hours, "remember me" 7 days).
+- **Reader control over their data.** From `/account/security` a reader can
+  download a JSON export of their data or delete their account (messages,
+  attachments, likes and notifications are erased, comments anonymised).
+
+### What it does not protect
+
+- **Encryption is at rest, not end to end.** The key lives on the server next
+  to the database. It protects a stolen copy of the database file alone; it
+  does not protect against someone who controls the running server, or a legal
+  demand made to its operator. Tell readers "encrypted at rest".
+- **Not everything is encrypted.** Posts, comments, usernames, profiles and
+  contact-form messages (name, e-mail, text) are stored in clear text in the
+  database.
+- **Non-image attachments are not cleaned.** PDF, office files, archives and
+  media are encrypted at rest but their own metadata is left as is.
+- **The host machine.** The app does not encrypt the disk or the swap; see
+  [deploy/README.md](deploy/README.md) for what the onion deployment does and
+  does not cover.
+- **Readers' own setup.** A reader who does not use Tor is still visible to
+  their network and to the server's reverse proxy.
+
+[docs/ANONYMAT.md](docs/ANONYMAT.md) (French) is the detailed privacy audit:
+what was found, what was fixed and what is still open.
 
 ## Screenshots
 
-Real pages of the running app, captured on a throwaway database filled with fake demo data (no real users or posts).
+Real pages of the running app, captured on a throwaway database filled with
+fake demo data (no real users or posts).
+
+### Public site
 
 **Home page: intro and latest posts**
 
 ![Home page: intro and latest posts](docs/screenshots/home.png)
 
-**Post with nested comments, likes, categories and tags**
+**Post with category, tags, likes and nested comments**
 
-![Post with nested comments, likes, categories and tags](docs/screenshots/post.png)
+![Post with category, tags, likes and nested comments](docs/screenshots/post.png)
 
-**About page**
+**About page (default text)**
 
-![About page](docs/screenshots/about.png)
+![About page (default text)](docs/screenshots/about.png)
 
-**Donation page: supporter list and anonymous swap instructions**
+**Donation page: supporter list (empty here) and anonymous swap instructions**
 
-![Donation page: supporter list and anonymous swap instructions](docs/screenshots/donate.png)
-
-**Sign in form**
-
-![Sign in form](docs/screenshots/login.png)
-
-**Account creation form (username and password only)**
-
-![Account creation form (username and password only)](docs/screenshots/register.png)
-
-**Account security: password, 2FA, recovery codes, sessions, data export**
-
-![Account security: password, 2FA, recovery codes, sessions, data export](docs/screenshots/account-security.png)
-
-**One-time 2FA recovery codes, shown once (demo values)**
-
-![One-time 2FA recovery codes, shown once (demo values)](docs/screenshots/recovery-codes.png)
-
-**Admin side of the encrypted chat: reader list and conversation**
-
-![Admin side of the encrypted chat: reader list and conversation](docs/screenshots/chat.png)
-
-**Admin overview: what is waiting, shortcuts, site numbers**
-
-![Admin overview: what is waiting, shortcuts, site numbers](docs/screenshots/admin-dashboard.png)
-
-**Site-text editor: every fixed text in English and French**
-
-![Site-text editor: every fixed text in English and French](docs/screenshots/admin-texts.png)
-
-**Moderation: block list, refused uploads, banned accounts**
-
-![Moderation: block list, refused uploads, banned accounts](docs/screenshots/moderation.png)
+![Donation page: supporter list (empty here) and anonymous swap instructions](docs/screenshots/donate.png)
 
 **Home page on a phone (390 px wide)**
 
 ![Home page on a phone (390 px wide)](docs/screenshots/mobile-home.png)
 
+### Accounts and security
 
+**Sign-in form**
 
-## What it deliberately does not do
+![Sign-in form](docs/screenshots/login.png)
 
-- **No JavaScript.** Every page works with JavaScript disabled (the CSP sets
-  `script-src 'none'`), so it works in Tor Browser at the "Safest" level.
-- **No third-party requests.** No CDN, no web fonts, no analytics, no embedded
-  widgets; external images are shown as links, never loaded. A reader's IP
-  address never reaches anyone but you. The type falls back to system faces on
-  purpose.
-- **No Telegram bridge.** It used to forward the *decrypted* content of users'
-  messages to Telegram's servers. It was removed and archived read-only in
-  `archive/telegram/`; security alerts go to the application log only.
-- **No IP addresses in the logs.** They are scrubbed before anything is written.
-  The persistent rate limiter stores only keyed hashes (HMAC of the address,
-  never the address itself).
-- **No tracking of any kind.** No view counters tied to a person, no cookies
-  beyond the session.
+**Account creation: username and password only**
 
-## Honest limits
+![Account creation: username and password only](docs/screenshots/register.png)
 
-Messages are **encrypted at rest**, not end to end. The key lives on the server
-next to the database. That protects against the theft of `blog.db` alone — not
-against someone with access to the server, and not against a legal demand. Say
-"encrypted at rest" to your readers, not "encrypted".
+**Account security page (top): change password, 2FA status and recovery codes**
 
-## Running it locally
+![Account security page (top): change password, 2FA status and recovery codes](docs/screenshots/account-security.png)
+
+**One-time 2FA recovery codes, shown once (demo values)**
+
+![One-time 2FA recovery codes, shown once (demo values)](docs/screenshots/recovery-codes.png)
+
+### Admin
+
+**Admin overview: what is waiting, shortcuts, site numbers**
+
+![Admin overview: what is waiting, shortcuts, site numbers](docs/screenshots/admin-dashboard.png)
+
+**Admin side of the encrypted chat: reader list and conversation**
+
+![Admin side of the encrypted chat: reader list and conversation](docs/screenshots/chat.png)
+
+**Site-text editor: every fixed text in English and French**
+
+![Site-text editor: every fixed text in English and French](docs/screenshots/admin-texts.png)
+
+**Moderation: block list, refused uploads, banned accounts (demo entries)**
+
+![Moderation: block list, refused uploads, banned accounts (demo entries)](docs/screenshots/moderation.png)
+
+## Features
+
+- **Posts** written in BBCode (or basic HTML, sanitised with `nh3`), drafts,
+  scheduled publishing, a saved revision on every edit, categories (`/category/<slug>`) and tags
+  (`/tag/<slug>`), search (`/search?q=`), RSS feed (`/feed.xml`). BBCode help
+  is at `/editor_help`.
+- **Comments**: nested replies, BBCode rendered server-side, likes on posts and
+  comments, notifications.
+- **Private chat** between each reader and the admins, with attachments; both
+  are encrypted at rest. In the browser it is a plain form; the admin
+  conversation page reloads itself (meta refresh with a short server-side wait)
+  so new messages appear without JavaScript. Socket.IO events and the mobile
+  API stream are available to clients that use them.
+- **Bilingual interface** (English / French, `?lang=`), with every fixed text
+  editable from the admin panel, with history, revert, and JSON export/import.
+- **Image moderation**: flagging an attachment bans its sender, moves the file
+  to `instance/quarantine/` and records its SHA-256 and perceptual hash; later
+  uploads of the same image, including re-encoded or resized copies, are
+  refused.
+- **Account security page**: change password, 2FA setup and removal, recovery
+  codes, log out everywhere, data export, account deletion. Sensitive actions
+  ask for the password again (and the 2FA code when enabled).
+- **No-JS anti-spam** on registration, comments and contact: honeypot field
+  and a signed minimum form age, no captcha.
+- **Gamification**: XP, levels and badges awarded automatically.
+- **Admin panel**: overview of what is waiting, posts, static pages, banners,
+  users (promote, demote, delete), comments, moderation, site texts,
+  statistics.
+- **Contact form and donation page.** Contact messages are stored in the
+  database (the overview shows the unread count; there is no page to read them
+  in this version). On the donation page a visitor can declare an amount,
+  recorded as "Anonymous"; the five largest are listed.
+- **Mobile admin API** (HTTP Basic Auth + TOTP header, SSE stream), can be
+  switched off.
+- **Operations scripts**: safe updater with rollback, optional scheduled
+  updates, encrypted backups.
+
+## Quick start
+
+Requires Python 3 (CI uses 3.12).
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+git clone https://github.com/kerstz/blog-privacy.git
+cd blog-privacy
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env          # then fill in the three required secrets
-python -c "import secrets; print(secrets.token_urlsafe(48))"   # ×3
+cp .env.example .env
+# Fill SECRET_KEY, ENCRYPTION_KEY and ENCRYPTION_SALT, one value each:
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+# For local development over plain HTTP, also set SESSION_COOKIE_SECURE=false
 
-flask db upgrade
-python create_admin.py        # first time only
-python wsgi.py                # http://127.0.0.1:5000
+flask db upgrade              # create / migrate the database
+python create_admin.py        # first time: create an admin account
+python wsgi.py                # development server on http://127.0.0.1:5000
 ```
 
-The app refuses to start with missing or example secrets. **Back up
-`ENCRYPTION_KEY` and `ENCRYPTION_SALT`**: without them the chat history can never
-be decrypted again.
+The app refuses to start if a required secret is missing, still set to
+`change_me`, or too short (`SECRET_KEY` under 32 characters, the encryption
+values under 16). On a fresh install, also set `ENCRYPTION_ITERATIONS=600000`.
 
-`SESSION_COOKIE_SECURE` defaults to **true**. For development over plain HTTP,
-and for an `.onion` served over plain HTTP, set `SESSION_COOKIE_SECURE=false` in
-your `.env` (otherwise you cannot log in). `TEMPLATE_AUTO_RELOAD=true` saves
-restarts.
+**Back up `ENCRYPTION_KEY`, `ENCRYPTION_SALT` and `ENCRYPTION_ITERATIONS`.**
+Without the exact same values, chat messages, uploads and TOTP secrets can
+never be decrypted again.
 
-## Deploying it
+## Configuration
 
-As an onion service (installs what is missing, generates the secrets, creates
-the onion service, hardens the systemd unit, closes the firewall, checks that
-nothing leaks to the clearnet):
+All settings are environment variables, usually read from `.env` (see
+[.env.example](.env.example)).
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `SECRET_KEY` | none (required) | Flask secret: signs sessions and CSRF tokens, salts the rate-limiter hashes. At least 32 characters. |
+| `ENCRYPTION_KEY` | none (required) | Passphrase from which the Fernet key is derived. At least 16 characters. Never change it on an existing database. |
+| `ENCRYPTION_SALT` | none (required) | PBKDF2 salt for the key above. At least 16 characters. Never change it on an existing database. |
+| `ENCRYPTION_ITERATIONS` | `100000` | PBKDF2 iterations. The default keeps old data readable; use `600000` on a new, empty database. Changing it later makes existing encrypted data unreadable. |
+| `DATABASE_URL` | `sqlite:///blog.db` | SQLAlchemy database URI (relative SQLite paths land in `instance/`). |
+| `SESSION_COOKIE_SECURE` | `true` | Send cookies only over secure connections. Set `false` for local development over plain HTTP, otherwise you cannot log in. |
+| `SESSION_COOKIE_NAME` | `__Host-sid` (or `sid` when not secure) | Session cookie name. |
+| `MAX_CONTENT_LENGTH` | `12582912` (12 MiB) | Maximum size of a request body. |
+| `MAX_UPLOAD_BYTES` | `10485760` (10 MiB) | Maximum size of one uploaded file. |
+| `SECURITY_STATE_DB` | `instance/security_state.db` | SQLite file of the persistent rate limiter (hashed keys only). |
+| `ONION_ADDRESS` | empty | v3 onion address (`<56 chars>.onion`). When set, clearnet responses carry an `Onion-Location` header. An invalid value stops the app. |
+| `TRUSTED_PROXY_COUNT` | `0` | Number of trusted reverse proxies in front of the app (enables `X-Forwarded-*` handling). Leave `0` when the app is exposed directly, or clients could spoof their address and bypass rate limits. |
+| `TRUST_PROXY` | unset | Older syntax: `true` means `TRUSTED_PROXY_COUNT=1`. |
+| `FORCE_HSTS` | `false` | Send HSTS even when Flask does not see HTTPS (TLS terminated upstream). Do not use on an onion service. |
+| `LOG_CLIENT_IP` | `false` | Keep client IP addresses in the logs. Debugging only. |
+| `MOBILE_API_ENABLED` | `true` | `false` disables `/api/admin/mobile/*` (all routes return 404). |
+| `TEMPLATE_AUTO_RELOAD` | `false` | Development: reload templates without restarting. |
+| `HOST` / `PORT` | `127.0.0.1` / `5000` | Address of the development server started by `python wsgi.py`. |
+| `FLASK_DEBUG` | `false` | Development server debug mode. Never on a reachable host: the Werkzeug debugger allows code execution. |
+
+Read by the scripts, from the same `.env`:
+
+| Variable | Default | Used by | Meaning |
+|----------|---------|---------|---------|
+| `UPDATE_RESTART_CMD` | empty | `update.sh`, `auto-update.sh` | Command run after a successful update, e.g. `sudo systemctl restart blog`. |
+| `BACKUP_PASSPHRASE` | none (required for backups) | `backup.sh` | Backup encryption passphrase, at least 16 characters. Keep a copy off the server. |
+| `BACKUP_KEEP` | `14` | `backup.sh` | Number of local backups kept. |
+| `BACKUP_REMOTE` | empty | `backup.sh` | Optional `rsync` target (`user@host:/path/`) for an off-site copy. |
+
+The former Telegram bridge was removed; `TELEGRAM_*` variables are ignored.
+
+## Deployment
+
+The development server (`python wsgi.py`) is not for production. In
+production the app runs under gunicorn, bound to `127.0.0.1`, behind a reverse
+proxy and/or Tor.
+
+### As a Tor onion service (scripted)
+
+For Debian/Ubuntu, `deploy/deploy-onion.sh` installs what is missing (Python,
+Tor, ufw, fail2ban, unattended-upgrades), creates a dedicated system user,
+generates the secrets, sets up the onion service and a hardened systemd unit
+listening on `127.0.0.1` only, closes inbound traffic in the firewall, creates
+an admin account with a random password, and runs leak checks at the end.
 
 ```bash
-bash deploy/package.sh 192.168.1.42           # clean archive + the scp commands
+bash deploy/package.sh                        # clean archive of the code only
+bash deploy/package.sh 192.168.1.42           # ... and print the scp commands
 # then, on the server:
-sudo bash deploy/deploy-onion.sh --dry-run    # see what it will do
+sudo bash deploy/deploy-onion.sh --dry-run    # print every action, change nothing
 sudo bash deploy/deploy-onion.sh
+sudo bash deploy/harden-tor.sh --status       # optional: obfs4 bridges, vanguards
 ```
 
-See [deploy/README.md](deploy/README.md). Ready-to-use files for a classic
-setup are also in `deploy/`:
+Details, the list of checks, and what the script does not do (disk and swap
+encryption, onion key backup) are in [deploy/README.md](deploy/README.md).
+
+### Classic setup (HTTPS, optional onion mirror)
+
+Ready-to-adapt files in `deploy/`:
 
 | File | Purpose |
 |------|---------|
-| `blog.service` | systemd unit: dedicated unprivileged user, sandboxing, gunicorn on 127.0.0.1 |
-| `Caddyfile` | reverse proxy with automatic HTTPS, no access logs |
-| `nginx.conf` | alternative reverse proxy (with certbot) |
-| `torrc.example` | onion service (then set `ONION_ADDRESS` in `.env`) |
+| `blog.service` | systemd unit: dedicated unprivileged user, sandboxing, `gunicorn --workers 1 --threads 32` on `127.0.0.1:8000` |
+| `Caddyfile` | reverse proxy with automatic HTTPS and access logs discarded, plus a local `127.0.0.1:8080` entry point for Tor |
+| `nginx.conf` | alternative reverse proxy (certbot certificates, `access_log off`, WebSocket location) |
+| `torrc.example` | onion service pointing at the reverse proxy on `127.0.0.1:8080`; put the generated hostname in `ONION_ADDRESS` |
 
-In `.env`: `SESSION_COOKIE_SECURE=true` (HTTPS) and `TRUSTED_PROXY_COUNT=1`
-(behind the reverse proxy). Enable 2FA on every admin account.
+Production `.env`: keep `SESSION_COOKIE_SECURE=true`, set
+`TRUSTED_PROXY_COUNT=1` behind the reverse proxy, set
+`ENCRYPTION_ITERATIONS=600000` on a new install, and enable 2FA on every admin
+account. Keep a single gunicorn worker: SSE streams and Socket.IO rooms live
+in the process.
 
 ## Updates and backups
 
 ```bash
-./update.sh                          # update now
-./auto-update.sh enable weekly       # automatic updates: daily | weekly | monthly | "<cron>"
+./update.sh                          # update now (interactive)
+./auto-update.sh enable weekly       # daily | weekly | monthly | "<cron expression>"
 ./auto-update.sh status
-./backup.sh run                      # encrypted backup of databases + uploads + .env
-./backup.sh restore <file> <dir>     # decrypt into a NEW folder (never overwrites live data)
+./auto-update.sh disable
+./backup.sh run                      # encrypted backup: databases + uploads + .env
+./backup.sh enable daily             # daily | weekly | "<cron expression>"
+./backup.sh restore <file> <dir>     # decrypt into a NEW, empty folder
 ```
 
-`update.sh` backs up the database and uploads, pulls the code (fast-forward
-only), upgrades the dependencies, applies migrations, checks the app starts (and
-runs the tests when pytest is installed) and **rolls back automatically** if
-anything fails. It never touches `.env` and never deletes data. Set
-`BACKUP_PASSPHRASE` in `.env` and keep a copy of it outside the server.
+`update.sh`:
 
-## Writing posts
+1. backs up `instance/`, `uploads/` and any `*.db` into `backups/`;
+2. pulls the code with `git pull --ff-only` (aborts if there are local code
+   changes);
+3. upgrades dependencies from `requirements.txt`;
+4. runs `flask db upgrade`;
+5. checks that the app imports, and runs the test suite when pytest is
+   installed;
+6. encrypts any legacy plaintext messages and uploads (`flask encrypt-legacy`);
+7. scans dependencies with `pip-audit`;
+8. restarts the app with `UPDATE_RESTART_CMD` when set.
 
-Posts, comments and replies use BBCode: see `/editor_help` on your blog.
-External images (`[img]https://...[/img]`) are shown as links and never loaded,
-so readers' IP addresses are never sent to other sites. Upload images to the
-blog to embed them.
+If steps 2 to 5 fail, code and dependencies are rolled back. It never modifies
+`.env` and never deletes data. Automatic updates are off until you enable
+them; they run `./update.sh --auto` from cron, do nothing when there is no new
+commit, and log to `logs/update.log`.
+
+`backup.sh` encrypts with gpg (AES-256) when available, otherwise openssl
+AES-256-CBC with PBKDF2. Restoring never overwrites the live data.
 
 ## Mobile admin API
 
-- `GET /api/admin/mobile/ping` — test admin authentication
-- `GET /api/admin/mobile/conversations` — users and last message per conversation
-- `GET /api/admin/mobile/conversations/<user_id>/messages?limit=50` — history
-- `POST /api/admin/mobile/conversations/<user_id>/messages` — reply to a user
-- `GET /api/admin/mobile/stream` — real-time event stream (SSE)
+| Method and path | Purpose |
+|-----------------|---------|
+| `GET /api/admin/mobile/ping` | test admin authentication |
+| `GET /api/admin/mobile/conversations` | users and last message per conversation |
+| `GET /api/admin/mobile/conversations/<user_id>/messages?limit=50` | conversation history |
+| `POST /api/admin/mobile/conversations/<user_id>/messages` | reply to a user |
+| `GET /api/admin/mobile/stream` | real-time event stream (Server-Sent Events) |
 
-HTTP Basic Auth with an admin account; if the account has 2FA, also send the
-current code in the `X-TOTP-Code` header. Repeated failures lock the account and
-the client out (HTTP 429). Set `MOBILE_API_ENABLED=false` to turn it off (404).
+Authentication is HTTP Basic with an admin account. If the account has 2FA,
+the current code must be sent in the `X-TOTP-Code` header (otherwise 401).
+Repeated failures lock the username and the client out for 15 minutes (429).
+Set `MOBILE_API_ENABLED=false` to disable it entirely (404). Use it only over
+HTTPS or the onion service.
 
 ```bash
 curl -u admin:your_password -H "X-TOTP-Code: 123456" \
   https://blog.example.org/api/admin/mobile/conversations
 ```
 
-## Layout
+## Security notes
 
-```
-app/
-  __init__.py      app setup, extensions, template filters
-  routes.py        web routes, security headers, SocketIO handlers
-  services.py      shared helpers (auth, TOTP, uploads, chat, deletion cascades)
-  mobile_api.py    mobile admin REST API + SSE
-  cli.py           maintenance commands (flask encrypt-legacy)
-  models.py        database models
-  forms.py         WTForms classes (anti-spam, validators)
-  site_text.py     bilingual copy, admin-editable
-  image_safety.py  perceptual hashing + upload block list
-  encryption.py    Fernet message encryption
-  utils.py         BBCode, sanitizers, image pipeline, roles, persistent rate limiter
-  static/css/      style.css (Small Hours theme), icons.css, admin.css, pages/*.css
-  templates/       Jinja2 templates (no JavaScript, no <style>)
-deploy/            onion + classic deployment files
-archive/telegram/  removed Telegram bridge, kept read-only
-docs/ANONYMAT.md  privacy audit: what was found, fixed, and still open
-tests/             security regression tests
-update.sh auto-update.sh backup.sh
-```
+- Strict CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  `Referrer-Policy: no-referrer`, restrictive `Permissions-Policy`,
+  cross-origin isolation headers, generic `Server` header.
+- HSTS is sent over HTTPS, when `SESSION_COOKIE_SECURE` is on, or when
+  `FORCE_HSTS=true`.
+- CSRF tokens on every form, logout included; tokens expire after 4 hours.
+- User HTML is escaped or sanitised; uploads are type-checked (SVG, HTML and
+  XML refused), size and pixel limited, served only to authorised users.
+- Pages for logged-in users are sent with `Cache-Control: no-store`.
+- Security events (admin logins, failed admin logins, 2FA changes, role
+  changes, deletions) are written to the application log only.
 
-## Tests
+See [SECURITY.md](SECURITY.md) for the security changelog. **To report a
+vulnerability, open a private security advisory on GitHub** (Security tab of
+the repository) rather than a public issue.
+
+## Tests and CI
 
 ```bash
 pip install -r requirements-dev.txt
-pytest -q tests/
-pip-audit -r requirements.txt
+pytest tests                          # security regression tests
+pip-audit -r requirements.txt         # known CVEs in dependencies
 bandit -r app create_admin.py wsgi.py -q
 ```
 
-The same checks run on GitHub Actions for every push and every Monday, and
-Dependabot opens pull requests for dependency updates.
+The tests set up their own throwaway database and secrets; no `.env` is
+needed. GitHub Actions ([.github/workflows/security.yml](.github/workflows/security.yml))
+runs on every push to `main`, every pull request and every Monday:
 
-## Security
+- `pytest -q tests/` on Python 3.12;
+- `pip-audit` on `requirements.txt`;
+- `bandit` static analysis;
+- a template check that fails on `<script>`, `<style>`, inline event handlers,
+  `javascript:` URLs, or external `src`/`href` without `rel="noreferrer"`.
 
-- Passwords hashed with bcrypt; TOTP 2FA (brute-force and replay protected) + recovery codes
-- Password change, role change and "log out everywhere" invalidate other sessions
-- CSRF protection (logout included), strict CSP (`script-src 'none'`, `style-src 'self'`), HSTS over HTTPS
-- All user HTML escaped and sanitized (`nh3`); uploads access controlled, metadata stripped, encrypted at rest
-- Chat messages encrypted at rest, private per user; GDPR-style export and self-deletion
-- Persistent rate limiting with hashed keys (login, 2FA, API, comments, chat)
-- Encrypted backups, safe updates with rollback
+Dependabot opens grouped pull requests for Python dependencies (weekly) and
+GitHub Actions (monthly).
 
-See [SECURITY.md](SECURITY.md) for the changelog and how to report a vulnerability.
+## Project layout
+
+```
+app/
+  __init__.py      app setup, configuration, extensions, template filters
+  routes.py        web routes, security headers, SocketIO handlers, moderation, site texts
+  services.py      shared helpers: auth, TOTP, uploads, chat, data export, deletion
+  mobile_api.py    mobile admin REST API + SSE
+  cli.py           maintenance command (flask encrypt-legacy)
+  models.py        database models
+  forms.py         WTForms classes (anti-spam, validators)
+  site_text.py     bilingual copy, admin-editable
+  image_safety.py  perceptual hashing, upload block list, quarantine
+  encryption.py    Fernet encryption at rest
+  utils.py         BBCode, sanitisers, image pipeline, roles, persistent rate limiter
+  static/css/      style.css (Small Hours theme), icons.css, admin.css, pages/*.css
+  templates/       Jinja2 templates (no JavaScript, no <style>)
+migrations/        Alembic migrations (flask db upgrade)
+tests/             security regression tests
+deploy/            onion deployment script, Tor hardening, systemd, Caddy, nginx, torrc
+docs/              ANONYMAT.md (privacy audit), screenshots/
+archive/telegram/  removed Telegram bridge, kept read-only
+tools/             icon sprite builder
+create_admin.py    interactive admin creation
+wsgi.py            WSGI entry point (gunicorn wsgi:application)
+update.sh  auto-update.sh  backup.sh
+```
 
 ## Licence
 
-See [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
