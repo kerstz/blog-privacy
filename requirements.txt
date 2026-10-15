@@ -2,17 +2,17 @@
 # Re-check regularly with: pip install pip-audit && pip-audit -r requirements.txt
 # requests/urllib3/certifi/charset-normalizer were only needed by the removed Telegram bridge.
 alembic==1.20.0
-bcrypt==4.3.0
+bcrypt==5.0.0
 bidict==0.24.1
 blinker==1.9.0
 cffi==2.1.1
 click==8.5.0
-cryptography==50.0.1
+cryptography==50.0.2
 email-validator==2.3.0
 Flask-Bcrypt==1.0.1
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
-Flask-SocketIO==5.6.1
+Flask-SocketIO==5.7.0
 Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.3.0
 Flask==3.1.3
@@ -23,19 +23,19 @@ idna==3.20
 itsdangerous==2.2.0
 Jinja2==3.1.6
 Mako==1.4.3
-MarkupSafe==3.0.3
+MarkupSafe==3.0.4
 nh3==0.3.7
 piexif==1.1.3
 Pillow==12.3.0
-pycparser==3.0
+pycparser==3.11
 pyotp==2.10.0
-python-dotenv==1.2.3
+python-dotenv==1.2.4
 python-engineio==4.14.0
 python-socketio==5.17.0
 qrcode==8.2
 simple-websocket==1.1.0
 six==1.17.0
-SQLAlchemy==2.0.54
+SQLAlchemy==2.1.4
 typing_extensions==4.16.0
 Werkzeug==3.1.9
 wsproto==1.3.2
