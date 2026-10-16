@@ -1,8 +1,8 @@
-"""Web routes (public pages, auth, chat, admin panel) and SocketIO handlers."""
+"""Web routes (public pages, auth, chat, admin panel)."""
 from flask import (send_file, render_template, url_for, flash, redirect, request, abort,
                    send_from_directory, session, Response)
 from flask_login import login_user, current_user, logout_user, login_required
-from app import app, db, bcrypt, socketio
+from app import app, db, bcrypt
 from app.forms import (LoginForm, RegistrationForm, PostForm, CommentForm, EmptyForm, BannerForm,
                        StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm,
                        TOTPVerifyForm, ChangePasswordForm, ReauthForm, DeleteAccountForm,
@@ -14,7 +14,6 @@ from app.utils import (client_ip_is_meaningful, rate_limit, hit_rate_limit, html
                        hashed_key, record_failure, too_many_failures, clear_failures,
                        _RATE_LIMIT_STORE, _FAILURE_STORE)
 from datetime import datetime, timedelta
-from flask_socketio import emit
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 import re
@@ -27,7 +26,6 @@ import math
 import time
 import pyotp
 import io
-from flask_socketio import join_room, disconnect
 from app import mobile_api  # noqa: F401  (registers the /api/admin/mobile routes)
 from app.services import (
     apply_post_taxonomy,
@@ -57,15 +55,12 @@ from app.services import (
     _delete_user_and_data,
     _file_ext,
     _get_admin_user_id,
-    _notify_admins_new_message,
-    _notify_user,
     _remove_upload_file,
     _start_fresh_session,
     _store_totp_secret,
     _store_upload,
     _totp_secret,
     _user_conversation_query,
-    _user_room,
     _validate_uploaded_file,
     _verify_totp_once,
     _visible_posts_query,
@@ -793,12 +788,6 @@ def post_detail(post_id):
                     )
                     db.session.add(notification)
                     
-                    _notify_user(post.author_id, {
-                        'type': 'comment',
-                        'title': 'New comment!',
-                        'message': f'Someone commented on your article "{post.title}"',
-                    })
-                
                 # Check and award badges
                 check_and_award_badges(current_user)
                 
@@ -1134,7 +1123,6 @@ def chat():
                 db.session.add(message)
                 db.session.commit()
                 publish_mobile_event('new_message', serialize_chat_message(message))
-                _notify_admins_new_message(message)
                 flash("File sent!", "success")
             else:
                 flash(f"File upload failed: {validation_msg or 'invalid file'}", "danger")
@@ -1152,7 +1140,6 @@ def chat():
             db.session.add(message)
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
-            _notify_admins_new_message(message)
             flash("Message sent!", "success")
 
         return redirect(url_for('chat'))
@@ -1162,37 +1149,6 @@ def chat():
     messages = _user_conversation_query(current_user.id).order_by(Message.timestamp.asc()).all()
 
     return render_template('chat.html', form=form, messages=messages)
-
-
-@socketio.on('connect')
-def socket_connect(auth=None):
-    # Only authenticated users may open a socket; each joins a private room.
-    if not current_user.is_authenticated:
-        return False
-    join_room(_user_room(current_user.id))
-
-
-@socketio.on('message')
-def handle_message(data):
-    if not current_user.is_authenticated:
-        disconnect()
-        return
-    if not isinstance(data, dict):
-        return
-    msg = str(data.get('msg', '')).strip()
-    if not msg or len(msg) > 5000:
-        return
-    # Same counter as the /chat route.
-    if _action_rate_limited('chat_submit', max_calls=30, window_seconds=300):
-        return
-    message = Message(sender_id=current_user.id, receiver_id=_get_admin_user_id())
-    message.set_encrypted_content(msg)
-    db.session.add(message)
-    db.session.commit()
-    publish_mobile_event('new_message', serialize_chat_message(message))
-    _notify_admins_new_message(message)
-    # Acknowledge to the sender only (never broadcast private messages).
-    emit('message', {'id': message.id, 'msg': msg}, to=_user_room(current_user.id))
 
 
 @app.route('/admin/chat')
@@ -1273,9 +1229,6 @@ def admin_chat_user(user_id):
             db.session.add(message)
             db.session.commit()
             publish_mobile_event('new_message', serialize_chat_message(message))
-            
-            # Real-time ping to the recipient only (content stays server-side)
-            socketio.emit('new_message', {'message_id': message.id}, to=_user_room(user_id))
             
             flash('Message sent!', 'success')
             return redirect(url_for('admin_chat_user', user_id=user_id))
@@ -1541,7 +1494,6 @@ def upload_file():
     db.session.add(message)
     db.session.commit()
     publish_mobile_event('new_message', serialize_chat_message(message))
-    _notify_admins_new_message(message)
 
     flash('Image uploaded (metadata removed).', 'success')
     return redirect(url_for('chat'))
@@ -1827,12 +1779,6 @@ def reply_to_comment(post_id, comment_id):
             )
             db.session.add(notification)
             
-            _notify_user(parent_comment.author_id, {
-                'type': 'reply',
-                'title': 'New reply!',
-                'message': 'Someone replied to your comment',
-            })
-        
         # Check and award badges
         check_and_award_badges(current_user)
         
@@ -1935,12 +1881,6 @@ def like_post(post_id):
             )
             db.session.add(notification)
             
-            _notify_user(post.author_id, {
-                'type': 'like',
-                'title': 'New like!',
-                'message': f'Someone liked your article "{post.title}"',
-            })
-        
         flash('Article liked!', 'success')
     
     db.session.commit()
@@ -1985,12 +1925,6 @@ def like_comment(comment_id):
             )
             db.session.add(notification)
             
-            _notify_user(comment.author_id, {
-                'type': 'like',
-                'title': 'Comment liked!',
-                'message': 'Someone liked your comment',
-            })
-        
         flash('Comment liked!', 'success')
     
     db.session.commit()

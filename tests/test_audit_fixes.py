@@ -261,3 +261,19 @@ def test_flag_image_hashes_plaintext_and_blocks_reupload():
         assert User.query.filter_by(username='eve').one().is_banned
         assert Message.query.filter(Message.sender_id == User.query.filter_by(
             username='eve').one().id, Message.file_path.isnot(None)).count() == 0
+
+
+# ------------------------------------------------------------- M2
+
+def test_socketio_endpoint_is_gone():
+    client = app.test_client()
+    assert client.get('/socket.io/?EIO=4&transport=polling').status_code == 404
+    assert client.post('/socket.io/?EIO=4&transport=polling').status_code in (404, 405)
+
+
+def test_app_does_not_import_socketio():
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    for path in list((root / 'app').glob('*.py')) + [root / 'wsgi.py']:
+        text = path.read_text(encoding='utf-8')
+        assert 'flask_socketio' not in text and 'import socketio' not in text, path.name

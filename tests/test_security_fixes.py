@@ -34,7 +34,7 @@ import pyotp  # noqa: E402
 from PIL import Image  # noqa: E402
 from PIL.PngImagePlugin import PngInfo  # noqa: E402
 
-from app import app, db, bcrypt, socketio  # noqa: E402
+from app import app, db, bcrypt  # noqa: E402
 from app.models import (Comment, Donor, Like, Message, Notification, Post,  # noqa: E402
                         Revision, User)
 from app import routes, utils  # noqa: E402
@@ -664,67 +664,8 @@ def test_due_scheduled_post_published_on_next_request():
         assert post.is_published and post.is_draft is False
 
 
-# ------------------------------------------------------------- Fix 8 : Socket.IO
-
-class _unmanaged_socket_session:
-    """Flask-SocketIO 5.5.1 assigne `ctx.session`, ce que Flask 3.1 interdit
-    (propriete sans setter) : on coupe `manage_session` le temps du test."""
-
-    def __enter__(self):
-        self.previous = socketio.manage_session
-        socketio.manage_session = False
-
-    def __exit__(self, *exc):
-        socketio.manage_session = self.previous
-
-
-def test_socketio_anonymous_refused_and_no_notification_broadcast():
-    with _unmanaged_socket_session():
-        _socketio_anonymous_refused_and_no_notification_broadcast()
-
-
-def _socketio_anonymous_refused_and_no_notification_broadcast():
-    reset()
-    admin = make_user('admin', admin=True)
-    make_user('reader')
-    make_user('bystander')
-    post_id = make_post(admin)
-    anon_sock = socketio.test_client(app)
-    assert not anon_sock.is_connected()
-
-    admin_client = logged_in('admin')
-    admin_sock = socketio.test_client(app, flask_test_client=admin_client)
-    assert admin_sock.is_connected()
-    admin_sock.get_received()
-    bystander = logged_in('bystander')
-    bystander_sock = socketio.test_client(app, flask_test_client=bystander)
-    assert bystander_sock.is_connected()
-    bystander_sock.get_received()
-    reader = logged_in('reader')
-    reader.post(f'/like_post/{post_id}')
-    reader.post(f'/post/{post_id}', data={'content': 'hello'})
-    # no broadcast: a third user never receives them ...
-    assert [m for m in bystander_sock.get_received() if m['name'] == 'notification'] == []
-    # ... only the author of the post (private room) does
-    assert len([m for m in admin_sock.get_received() if m['name'] == 'notification']) == 2
-
-
-def test_socketio_message_rate_limited():
-    with _unmanaged_socket_session():
-        _socketio_message_rate_limited()
-
-
-def _socketio_message_rate_limited():
-    reset()
-    make_user('admin', admin=True)
-    uid = make_user('reader')
-    client = logged_in('reader')
-    sock = socketio.test_client(app, flask_test_client=client)
-    assert sock.is_connected()
-    for i in range(35):
-        sock.emit('message', {'msg': f'm{i}'})
-    with app.app_context():
-        assert Message.query.filter_by(sender_id=uid).count() == 30
+# ------------------------------------------------------------- Fix 8 : Socket.IO supprime
+# (le serveur ne l'expose plus : voir test_audit_fixes.py)
 
 
 # ------------------------------------------------------------- Fix 9 : suppressions

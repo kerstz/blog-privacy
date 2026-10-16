@@ -4,7 +4,6 @@ from flask_bcrypt import Bcrypt
 from flask_migrate import Migrate
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
-from flask_socketio import SocketIO
 from datetime import timedelta
 from markupsafe import Markup, escape
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -118,7 +117,7 @@ class _StripClientAddressFilter(logging.Filter):
 
 
 if os.environ.get('LOG_CLIENT_IP', '').lower() not in ('1', 'true', 'yes'):
-    for _logger_name in ('werkzeug', 'geventwebsocket.handler'):
+    for _logger_name in ('werkzeug',):
         logging.getLogger(_logger_name).addFilter(_StripClientAddressFilter())
     app.logger.addFilter(_StripClientAddressFilter())
 
@@ -133,8 +132,6 @@ login_manager.login_view = 'login'
 # 'basic' (not 'strong'): Tor / mobile users change IP often and must not be
 # logged out on every circuit change.
 login_manager.session_protection = 'basic'
-# Same-origin only, bounded message size (python-socketio DoS class)
-socketio = SocketIO(app, cors_allowed_origins=None, max_http_buffer_size=1_000_000)
 
 
 # Importez routes, models et client après l'initialisation
@@ -264,4 +261,4 @@ def rich_html_filter(s):
 
 
 if __name__ == '__main__':
-    socketio.run(app)
+    app.run()

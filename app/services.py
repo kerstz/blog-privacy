@@ -2,7 +2,7 @@
 (auth helpers, uploads, chat, deletion cascades, notifications)."""
 from flask import url_for, flash, redirect, request, session, has_request_context
 from flask_login import current_user
-from app import app, db, bcrypt, socketio
+from app import app, db, bcrypt
 from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge, Tag
 from app.utils import process_image_file, hit_rate_limit, anonymous_client_key
 from app.encryption import message_encryption
@@ -209,17 +209,6 @@ def _visible_posts_query():
     if not (current_user.is_authenticated and current_user.is_admin):
         query = query.filter(Post.is_published.is_(True))
     return query
-
-
-def _user_room(user_id):
-    return f"user_{int(user_id)}"
-
-
-def _notify_user(user_id, payload):
-    """Real-time event for ONE user (never broadcast: it leaked usernames,
-    titles and chat content to every connected socket)."""
-    if user_id:
-        socketio.emit('notification', payload, to=_user_room(user_id))
 
 
 # Login
@@ -692,12 +681,6 @@ def _user_conversation_query(user_id):
     )
 
 
-def _notify_admins_new_message(message):
-    for admin in User.query.filter_by(is_admin=True).all():
-        socketio.emit('new_message', {'message_id': message.id, 'from_user_id': message.sender_id},
-                      to=_user_room(admin.id))
-
-
 
 UPLOAD_FILE_ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
@@ -898,11 +881,5 @@ def check_and_award_badges(user):
                     message=f'You earned the badge "{badge.name}": {badge.description}',
                 )
                 db.session.add(notification)
-                
-                _notify_user(user.id, {
-                    'type': 'badge',
-                    'title': 'New badge unlocked!',
-                    'message': f'You unlocked the badge "{badge.name}": {badge.description}',
-                })
                 
                 flash(f'Congrats! You unlocked the badge "{badge.name}"!', 'success')

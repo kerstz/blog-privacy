@@ -27,7 +27,7 @@ os.chdir(ROOT)
 import pyotp  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from app import app, db, bcrypt, socketio  # noqa: E402
+from app import app, db, bcrypt  # noqa: E402
 from app.models import User, Post, Comment, Message, Donor  # noqa: E402
 from app import utils  # noqa: E402
 
@@ -260,19 +260,6 @@ def test_mobile_api_bruteforce_limited():
         c.get('/api/admin/mobile/ping', headers=bad)
     # 429 (locked out, Retry-After) is the stricter, merged behaviour; 401 was the old one
     assert c.get('/api/admin/mobile/ping', headers=good).status_code in (401, 429)
-
-
-def test_socketio_rejects_anonymous_and_does_not_broadcast():
-    anon = socketio.test_client(app)
-    assert not anon.is_connected()
-    a_http, b_http = login('alice'), login('bob')
-    a = socketio.test_client(app, flask_test_client=a_http)
-    b = socketio.test_client(app, flask_test_client=b_http)
-    a.emit('message', {'msg': 'socket-secret', 'sender_id': 3, 'receiver_id': 3})
-    assert all('socket-secret' not in str(ev) for ev in b.get_received())
-    with app.app_context():
-        m = Message.query.first()
-        assert m.sender_id == uid('alice')  # client-supplied sender_id ignored
 
 
 # ---------------------------------------------------------------- admin / functional
