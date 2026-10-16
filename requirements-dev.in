@@ -1,0 +1,7 @@
+# Test / audit tooling (pinned). Locked with hashes in requirements-dev.lock.
+-r requirements.in
+bandit==1.9.4
+pip-audit==2.10.1
+piexif==1.1.3
+pytest==9.1.1
+ruff==0.17.1
