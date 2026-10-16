@@ -76,6 +76,7 @@ if os.environ.get('TEMPLATE_AUTO_RELOAD', '').lower() in ('1', 'true', 'yes'):
 _proxy_count = int(os.environ.get('TRUSTED_PROXY_COUNT', '0') or 0)
 if _proxy_count <= 0 and os.environ.get('TRUST_PROXY', '').lower() in ('1', 'true', 'yes'):
     _proxy_count = 1
+app.config['TRUSTED_PROXY_COUNT'] = max(_proxy_count, 0)
 if _proxy_count > 0:
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=_proxy_count, x_proto=_proxy_count, x_host=_proxy_count)
 

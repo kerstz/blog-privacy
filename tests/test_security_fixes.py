@@ -289,7 +289,10 @@ def test_rate_limit_referrer_is_same_site_only():
 
 def test_register_rate_limited():
     reset()
+    # A meaningful (non-loopback) IP: 10 per hour per visitor. On loopback
+    # (onion service) the limit is a much higher shared ceiling (audit H1).
     client = app.test_client()
+    client.environ_base['REMOTE_ADDR'] = '203.0.113.50'
     codes = []
     for i in range(12):
         resp = client.post('/register', data={

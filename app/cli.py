@@ -6,6 +6,8 @@ import click
 from app import app, db
 from app.encryption import message_encryption
 from app.models import Message, User
+from app.utils import (clear_failures, clear_rate_limit, hashed_key,
+                       reset_security_state)
 from app.services import ENCRYPTED_SUFFIX, _absolute_upload_path, encrypt_upload_in_place
 
 
@@ -47,3 +49,26 @@ def encrypt_legacy():
             files += 1
             db.session.commit()
     click.echo(f"Encrypted {messages} legacy message(s) and {files} file(s).")
+
+
+@app.cli.command('unlock')
+@click.argument('username', required=False)
+@click.option('--all', 'unlock_all', is_flag=True,
+              help='Clear every rate limit and failure counter.')
+def unlock(username, unlock_all):
+    """Clear the login lockout of USERNAME (or everything with --all)."""
+    if unlock_all:
+        reset_security_state()
+        click.echo('All rate limits and failure counters cleared.')
+        return
+    if not username:
+        raise click.UsageError('Give a USERNAME or use --all.')
+    name = username.strip()
+    clear_failures('login:' + hashed_key(name.lower()))        # web login
+    clear_failures('admin_api:user:' + hashed_key(name.lower()))  # mobile API
+    clear_rate_limit('login:k:' + hashed_key(name.lower()))    # login rate limit
+    user = User.query.filter_by(username=name).first()
+    if user:
+        for prefix in ('totp_fail', 'totp_setup_fail', 'totp_disable_fail', 'reauth_fail'):
+            clear_rate_limit(f'{prefix}:{user.id}')
+    click.echo(f'Lockout cleared for {name}.')

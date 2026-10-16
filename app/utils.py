@@ -1,7 +1,7 @@
 # app/utils.py
 from app import db
 from functools import wraps
-from flask import redirect, url_for, flash, request
+from flask import redirect, url_for, flash, request, current_app
 from flask_login import current_user
 from app.models import Post
 from datetime import datetime
@@ -12,6 +12,7 @@ import sqlite3
 import re
 import hashlib
 import hmac
+import ipaddress
 import html as _html
 from html.parser import HTMLParser
 from PIL import Image
@@ -454,6 +455,28 @@ def _state_db():
     return conn
 
 
+def client_ip_is_meaningful() -> bool:
+    """True when request.remote_addr identifies the visitor.
+
+    Behind an onion service (or any reverse proxy without TRUSTED_PROXY_COUNT)
+    every request comes from loopback: the "IP" is then the same for everybody
+    and per-IP counters would be GLOBAL (one anonymous visitor could lock out
+    everyone, admin included). In that case the IP must not be used as a key.
+    """
+    try:
+        if int(current_app.config.get('TRUSTED_PROXY_COUNT', 0) or 0) > 0:
+            return True
+    except RuntimeError:
+        pass
+    addr = request.remote_addr
+    if not addr:
+        return False
+    try:
+        return not ipaddress.ip_address(addr).is_loopback
+    except ValueError:
+        return True
+
+
 def anonymous_client_key() -> str:
     """Client identifier for rate limiting, without keeping an IP address.
 
@@ -522,6 +545,12 @@ def clear_failures(key: str) -> None:
         _state_db().execute('DELETE FROM hits WHERE key = ?', ('f:' + _storage_key(key),))
 
 
+def clear_rate_limit(key: str) -> None:
+    """Forget the hits recorded by hit_rate_limit() for *key*."""
+    with _STATE_LOCK:
+        _state_db().execute('DELETE FROM hits WHERE key = ?', (_storage_key(key),))
+
+
 def purge_store(store: dict, now: float = None, max_keys: int = None, max_age: int = None):
     """Drop inactive keys of a {key: [timestamps]} dict when it grows too big.
 
@@ -553,18 +582,43 @@ _RATE_LIMIT_STORE = _StateStoreShim()
 _FAILURE_STORE = _StateStoreShim()
 
 
-def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('POST',)):
+# Without a meaningful client IP (onion service), anonymous visitors share one
+# counter: it is only a server-protection ceiling, so it is much higher.
+# TODO(audit-2026-10-16): the real defence against floods on an onion service is
+# Tor's PoW (HiddenServicePoWDefensesEnabled in the torrc), not this ceiling.
+SHARED_ANON_LIMIT_FACTOR = 20
+
+
+def rate_limit(key_prefix: str, max_calls: int, window_seconds: int, methods=('POST',),
+               key_func=None):
     """Rate limit decorator (persistent store, keyed per user/IP fingerprint).
-    Only the given HTTP methods are counted (GET page views are free)."""
+    Only the given HTTP methods are counted (GET page views are free).
+
+    key_func: optional callable returning a string (e.g. the submitted username)
+    used instead of the IP for anonymous visitors whose IP is not meaningful.
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
             if request.method in methods:
-                key = f"{key_prefix}:{_client_id()}"
-                # Also limit per IP so switching accounts does not bypass it.
-                ip_key = f"{key_prefix}:ip:{hashed_key(request.remote_addr or 'unknown')}"
-                if hit_rate_limit(key, max_calls, window_seconds) or \
-                        (ip_key != key and hit_rate_limit(ip_key, max_calls * 3, window_seconds)):
+                meaningful = client_ip_is_meaningful()
+                ip_key = None
+                limit = max_calls
+                anonymous = anonymous_client_key().startswith('anon:')
+                if anonymous and not meaningful:
+                    custom = key_func() if key_func else None
+                    if custom is not None:
+                        key = f"{key_prefix}:k:{hashed_key(str(custom).strip().lower())}"
+                    else:
+                        key = f"{key_prefix}:shared"
+                        limit = max_calls * SHARED_ANON_LIMIT_FACTOR
+                else:
+                    key = f"{key_prefix}:{_client_id()}"
+                    if meaningful:
+                        # Also limit per IP so switching accounts does not bypass it.
+                        ip_key = f"{key_prefix}:ip:{hashed_key(request.remote_addr or 'unknown')}"
+                if hit_rate_limit(key, limit, window_seconds) or \
+                        (ip_key and ip_key != key and hit_rate_limit(ip_key, max_calls * 3, window_seconds)):
                     flash('Too many requests. Please slow down.', 'danger')
                     ref = request.referrer
                     return redirect(ref if is_safe_redirect_url(ref) else url_for('index'))

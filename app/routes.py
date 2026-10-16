@@ -10,7 +10,7 @@ from app.forms import (LoginForm, RegistrationForm, PostForm, CommentForm, Empty
 from app.models import (User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like,
                         Notification, ContactMessage, Tag)
 from app.site_text import get_text
-from app.utils import (rate_limit, hit_rate_limit, html_to_text, anonymous_client_key,
+from app.utils import (client_ip_is_meaningful, rate_limit, hit_rate_limit, html_to_text, anonymous_client_key,
                        hashed_key, record_failure, too_many_failures, clear_failures,
                        _RATE_LIMIT_STORE, _FAILURE_STORE)
 from datetime import datetime, timedelta
@@ -848,7 +848,8 @@ LOGIN_CLIENT_MAX_FAILURES = (5, 300)
 
 
 @app.route('/login', methods=['GET', 'POST'])
-@rate_limit('login', max_calls=30, window_seconds=300)
+@rate_limit('login', max_calls=30, window_seconds=300,
+            key_func=lambda: (request.form.get('username') or '').strip().lower() or 'empty')
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('admin_dashboard') if current_user.is_admin else url_for('index'))
@@ -857,9 +858,13 @@ def login():
     if form.validate_on_submit():
         username = (form.username.data or '').strip()
         fkey = _login_failure_key(username)
+        # The per-client lock only makes sense when the IP identifies the
+        # visitor; behind an onion service it would be global (H1). The
+        # per-username lock stays the brute-force protection.
+        use_client_lock = client_ip_is_meaningful()
         ckey = 'login_client:' + anonymous_client_key()
         if too_many_failures(fkey, *LOGIN_USER_MAX_FAILURES) or \
-                too_many_failures(ckey, *LOGIN_CLIENT_MAX_FAILURES):
+                (use_client_lock and too_many_failures(ckey, *LOGIN_CLIENT_MAX_FAILURES)):
             flash('Login failed. Check your username and password.', 'danger')
             return render_template('login.html', title='Login', form=form)
 
@@ -889,7 +894,8 @@ def login():
         if not user:
             _check_user_password(None, form.password.data)
         record_failure(fkey)
-        record_failure(ckey)
+        if use_client_lock:
+            record_failure(ckey)
         if user and user.is_admin and hit_rate_limit(f"alert_admin_fail:{user.id}", 1, 900) is False:
             security_alert(f"failed login on admin account @{user.username}")
         flash('Login failed. Check your username and password.', 'danger')

@@ -2,7 +2,7 @@
 from flask import request, jsonify, Response, stream_with_context, abort
 from app import app, db, csrf, bcrypt
 from app.models import User, Message
-from app.utils import (anonymous_client_key, hashed_key, record_failure,
+from app.utils import (anonymous_client_key, client_ip_is_meaningful, hashed_key, record_failure,
                        too_many_failures, clear_failures)
 from functools import wraps
 from datetime import datetime
@@ -68,9 +68,12 @@ def authenticate_admin_api():
 
     user_key = 'admin_api:user:' + hashed_key(username.lower())
     client_key = 'admin_api:client:' + anonymous_client_key()
+    # Per-client lock only when the IP identifies the client (not behind an
+    # onion service where it would be global); the per-username lock remains.
+    use_client_lock = client_ip_is_meaningful()
     if (too_many_failures(user_key, ADMIN_API_USER_MAX_FAILURES, ADMIN_API_LOCKOUT_SECONDS)
-            or too_many_failures(client_key, ADMIN_API_CLIENT_MAX_FAILURES,
-                                 ADMIN_API_LOCKOUT_SECONDS)):
+            or (use_client_lock and too_many_failures(
+                client_key, ADMIN_API_CLIENT_MAX_FAILURES, ADMIN_API_LOCKOUT_SECONDS))):
         return None, _admin_api_error(
             'Too many failed attempts. Try again later.', 429,
             **{'Retry-After': str(ADMIN_API_LOCKOUT_SECONDS)})
@@ -83,7 +86,8 @@ def authenticate_admin_api():
         password_ok = False
     if not user or not password_ok:
         record_failure(user_key)
-        record_failure(client_key)
+        if use_client_lock:
+            record_failure(client_key)
         return None, _admin_api_error(
             'Authentication required for admin mobile API.', 401,
             **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})
@@ -98,7 +102,8 @@ def authenticate_admin_api():
         if not _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''),
                                  allow_reuse=True):
             record_failure(user_key)
-            record_failure(client_key)
+            if use_client_lock:
+                record_failure(client_key)
             return None, _admin_api_error(
                 'A valid two-factor code is required in the X-TOTP-Code header.', 401,
                 **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})

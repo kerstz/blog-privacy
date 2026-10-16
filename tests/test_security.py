@@ -199,7 +199,8 @@ def test_svg_upload_rejected():
 # ---------------------------------------------------------------- auth
 def test_login_is_rate_limited():
     c = app.test_client()
-    for _ in range(5):
+    # Per-username lock (10 failures); the per-client lock needs a real IP (audit H1)
+    for _ in range(10):
         c.post('/login', data={'username': 'alice', 'password': 'wrong-password'})
     r = c.post('/login', data={'username': 'alice', 'password': PASSWORD})
     assert r.status_code == 302 and '/login' not in r.headers['Location'] or b'Welcome' not in r.data
