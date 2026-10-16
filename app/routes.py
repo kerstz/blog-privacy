@@ -7,7 +7,7 @@ from app.forms import (LoginForm, RegistrationForm, PostForm, CommentForm, Empty
                        StaticPageForm, ContactForm, ProfileEditForm, TOTPSetupForm, TOTPDisableForm,
                        TOTPVerifyForm, ChangePasswordForm, ReauthForm, DeleteAccountForm,
                        SiteTextImportForm)
-from app.models import (User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like,
+from app.models import (CONTACT_RETENTION_DAYS, User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like,
                         Notification, ContactMessage, Tag)
 from app.site_text import get_text
 from app.utils import (client_ip_is_meaningful, rate_limit, hit_rate_limit, html_to_text, anonymous_client_key,
@@ -731,7 +731,7 @@ def contact():
             return redirect(url_for('contact'))
         contact_msg = ContactMessage(
             name=form.name.data.strip(),
-            email=form.email.data.strip(),
+            email=(form.email.data or '').strip(),
             message=form.message.data.strip()
         )
         db.session.add(contact_msg)
@@ -1028,7 +1028,7 @@ def admin_dashboard():
         {'count': unread_contact,
          'label': 'unread contact message',
          'plural': 'unread contact messages',
-         'url': url_for('manage_posts'), 'urgent': True},
+         'url': url_for('admin_contact'), 'urgent': True},
         {'count': recent_blocks,
          'label': 'blocked upload this month',
          'plural': 'blocked uploads this month',
@@ -1381,6 +1381,51 @@ def manage_users():
     users = User.query.all()
     form = EmptyForm()
     return render_template('manage_users.html', users=users, form=form)
+
+
+CONTACT_PAGE_SIZE = 30
+
+
+@app.route('/admin/contact')
+@admin_required
+def admin_contact():
+    page = max(request.args.get('page', 1, type=int) or 1, 1)
+    pagination = (ContactMessage.query
+                  .order_by(ContactMessage.timestamp.desc(), ContactMessage.id.desc())
+                  .paginate(page=page, per_page=CONTACT_PAGE_SIZE, error_out=False))
+    return render_template('admin_contact.html', title='Contact messages',
+                           messages=pagination.items, pagination=pagination,
+                           form=EmptyForm(), retention_days=CONTACT_RETENTION_DAYS)
+
+
+@app.route('/admin/contact/<int:message_id>/read', methods=['POST'])
+@admin_required
+def admin_contact_read(message_id):
+    if EmptyForm().validate_on_submit():
+        msg = db.get_or_404(ContactMessage, message_id)
+        msg.is_read = True
+        db.session.commit()
+    return redirect(url_for('admin_contact', page=request.args.get('page', 1, type=int)))
+
+
+@app.route('/admin/contact/<int:message_id>/delete', methods=['POST'])
+@admin_required
+def admin_contact_delete(message_id):
+    if EmptyForm().validate_on_submit():
+        db.session.delete(db.get_or_404(ContactMessage, message_id))
+        db.session.commit()
+        flash('Message deleted.', 'success')
+    return redirect(url_for('admin_contact'))
+
+
+@app.route('/admin/contact/delete-read', methods=['POST'])
+@admin_required
+def admin_contact_delete_read():
+    if EmptyForm().validate_on_submit():
+        count = ContactMessage.query.filter_by(is_read=True).delete()
+        db.session.commit()
+        flash(f'{count} read message(s) deleted.', 'success')
+    return redirect(url_for('admin_contact'))
 
 
 @app.route('/manage_comments', methods=['GET', 'POST'])

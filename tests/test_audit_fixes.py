@@ -124,3 +124,95 @@ def test_shared_anonymous_ceiling_is_high_on_loopback():
                                        'confirm_password': PASSWORD + str(i)})
     with app.app_context():
         assert User.query.count() == 12
+
+
+# ------------------------------------------------------------- H3
+
+def _contact(name='Ann', email='ann@example.org', message='hello <b>x</b>', days_old=0, read=False):
+    from datetime import datetime, timedelta
+    from app import db
+    from app.models import ContactMessage
+    with app.app_context():
+        m = ContactMessage(name=name, email=email, message=message, is_read=read,
+                           timestamp=datetime.utcnow() - timedelta(days=days_old))
+        db.session.add(m)
+        db.session.commit()
+        return m.id
+
+
+def _admin_client():
+    make_user('boss', admin=True)
+    client, resp = sign_in('boss')
+    assert resp.status_code == 302
+    return client
+
+
+def test_admin_contact_requires_admin():
+    reset()
+    make_user('alice')
+    mid = _contact()
+    anon = app.test_client()
+    assert anon.get('/admin/contact').status_code == 302
+    client, _ = sign_in('alice')
+    assert client.get('/admin/contact').status_code == 302
+    assert client.post(f'/admin/contact/{mid}/delete').status_code == 302
+    from app.models import ContactMessage
+    with app.app_context():
+        assert ContactMessage.query.count() == 1
+
+
+def test_admin_contact_list_read_delete():
+    reset()
+    keep = _contact(name='Keep', message='first')
+    done = _contact(name='Done', message='second', read=True)
+    client = _admin_client()
+    html = client.get('/admin/contact').get_data(as_text=True)
+    assert 'Keep' in html
+    xss = _contact(message='<script>alert(1)</script>')
+    html = client.get('/admin/contact').get_data(as_text=True)
+    assert '<script>alert(1)' not in html and '&lt;script&gt;' in html
+    client.post(f'/admin/contact/{xss}/delete')
+    from app.models import ContactMessage
+    assert client.post(f'/admin/contact/{keep}/read').status_code == 302
+    with app.app_context():
+        assert ContactMessage.query.get(keep).is_read is True
+    client.post('/admin/contact/delete-read')
+    with app.app_context():
+        assert ContactMessage.query.count() == 0
+    again = _contact()
+    client.post(f'/admin/contact/{again}/delete')
+    with app.app_context():
+        assert ContactMessage.query.count() == 0
+    assert done
+
+
+def test_dashboard_links_to_admin_contact():
+    reset()
+    _contact()
+    client = _admin_client()
+    assert '/admin/contact' in client.get('/admin_dashboard').get_data(as_text=True)
+
+
+def test_purge_contact_command():
+    reset()
+    _contact(days_old=100)
+    _contact(days_old=5)
+    from app.models import ContactMessage
+    result = app.test_cli_runner().invoke(args=['purge-contact'])
+    assert result.exit_code == 0, result.output
+    with app.app_context():
+        assert ContactMessage.query.count() == 1
+    result = app.test_cli_runner().invoke(args=['purge-contact', '--days', '1'])
+    with app.app_context():
+        assert ContactMessage.query.count() == 0
+
+
+def test_contact_email_optional():
+    reset()
+    from app.models import ContactMessage
+    client = app.test_client()
+    resp = client.post('/contact', data={'name': 'Bob', 'email': '', 'message': 'hi'})
+    assert resp.status_code == 302
+    with app.app_context():
+        m = ContactMessage.query.one()
+        assert m.email == '' and m.name == 'Bob'

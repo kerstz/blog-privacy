@@ -5,7 +5,9 @@ import click
 
 from app import app, db
 from app.encryption import message_encryption
-from app.models import Message, User
+from datetime import datetime, timedelta
+
+from app.models import CONTACT_RETENTION_DAYS, ContactMessage, Message, User
 from app.utils import (clear_failures, clear_rate_limit, hashed_key,
                        reset_security_state)
 from app.services import ENCRYPTED_SUFFIX, _absolute_upload_path, encrypt_upload_in_place
@@ -72,3 +74,14 @@ def unlock(username, unlock_all):
         for prefix in ('totp_fail', 'totp_setup_fail', 'totp_disable_fail', 'reauth_fail'):
             clear_rate_limit(f'{prefix}:{user.id}')
     click.echo(f'Lockout cleared for {name}.')
+
+
+@app.cli.command('purge-contact')
+@click.option('--days', default=CONTACT_RETENTION_DAYS, show_default=True, type=click.IntRange(min=0),
+              help='Delete contact messages older than this many days.')
+def purge_contact(days):
+    """Delete old contact messages (GDPR retention)."""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    count = ContactMessage.query.filter(ContactMessage.timestamp < cutoff).delete()
+    db.session.commit()
+    click.echo(f"Deleted {count} contact message(s) older than {days} day(s).")

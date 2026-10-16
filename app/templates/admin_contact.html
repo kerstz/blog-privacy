@@ -1,0 +1,54 @@
+{% extends 'admin_layout.html' %}
+{% block title %}Contact messages{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ static_v('css/pages/admin_contact.css') }}">
+{% endblock %}
+
+{% block content %}
+<h1>Contact messages</h1>
+<p class="desk-lede">
+    Messages older than {{ retention_days }} days should be purged
+    (<code>flask purge-contact --days {{ retention_days }}</code>).
+</p>
+
+<form method="post" action="{{ url_for('admin_contact_delete_read') }}" class="contact-bulk">
+    {{ form.hidden_tag() }}
+    <button type="submit" class="btn-danger">Delete all read messages</button>
+</form>
+
+{% if messages %}
+<ul class="contact-list">
+    {% for msg in messages %}
+    <li class="contact-item{% if not msg.is_read %} is-unread{% endif %}">
+        <div class="contact-meta">
+            <strong>{{ msg.name }}</strong>
+            {% if msg.email %}<span>&lt;{{ msg.email }}&gt;</span>{% endif %}
+            <time datetime="{{ msg.timestamp.strftime('%Y-%m-%dT%H:%M:%S') }}">{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }} UTC</time>
+            {% if not msg.is_read %}<span class="contact-badge">unread</span>{% endif %}
+        </div>
+        <p class="contact-body">{{ msg.message }}</p>
+        <div class="contact-actions">
+            {% if not msg.is_read %}
+            <form method="post" action="{{ url_for('admin_contact_read', message_id=msg.id, page=pagination.page) }}">
+                {{ form.hidden_tag() }}
+                <button type="submit" class="btn-success">Mark as read</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin_contact_delete', message_id=msg.id) }}">
+                {{ form.hidden_tag() }}
+                <button type="submit" class="btn-danger">Delete</button>
+            </form>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+<nav class="contact-pager" aria-label="Pages">
+    {% if pagination.has_prev %}<a href="{{ url_for('admin_contact', page=pagination.prev_num) }}">&larr; Newer</a>{% endif %}
+    <span>Page {{ pagination.page }} / {{ pagination.pages or 1 }}</span>
+    {% if pagination.has_next %}<a href="{{ url_for('admin_contact', page=pagination.next_num) }}">Older &rarr;</a>{% endif %}
+</nav>
+{% else %}
+<p>No contact messages.</p>
+{% endif %}
+{% endblock %}

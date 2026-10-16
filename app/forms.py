@@ -150,7 +150,7 @@ class StaticPageForm(FlaskForm):
 
 class ContactForm(AntiSpamMixin, FlaskForm):
     name = StringField('Your Name', validators=[DataRequired(), Length(max=100)])
-    email = StringField('Your Email', validators=[DataRequired(), Email(), Length(max=120)])
+    email = StringField('Your Email (optional)', validators=[Optional(), Email(), Length(max=120)])
     message = TextAreaField('Your Message', validators=[DataRequired(), Length(max=5000)])
     submit = SubmitField('Send Message')
 

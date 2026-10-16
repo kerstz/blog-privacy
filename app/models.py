@@ -393,11 +393,17 @@ class SiteTextRevision(db.Model):
         return f"SiteTextRevision('{self.key}', '{self.action}')"
 
 
+# GDPR: contact messages hold personal data (name, optional email); the
+# `flask purge-contact` command deletes the ones older than this many days.
+CONTACT_RETENTION_DAYS = 90
+
+
 class ContactMessage(db.Model):
     __tablename__ = 'contact_message'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
+    # Optional on the form: stored as '' when the visitor gives none.
     email = db.Column(db.String(120), nullable=False)
     message = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

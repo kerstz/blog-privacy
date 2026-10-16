@@ -44,6 +44,9 @@
             <a href="{{ url_for('admin_chat') }}" class="rail-link{% if request.endpoint in ('admin_chat', 'admin_chat_user') %} is-here{% endif %}">
                 <span class="icon-comment-dots"></span> Messages
             </a>
+            <a href="{{ url_for('admin_contact') }}" class="rail-link{% if request.endpoint == 'admin_contact' %} is-here{% endif %}">
+                <span class="icon-envelope"></span> Contact
+            </a>
             <a href="{{ url_for('manage_comments') }}" class="rail-link{% if request.endpoint == 'manage_comments' %} is-here{% endif %}">
                 <span class="icon-comments"></span> Comments
             </a>
