@@ -245,13 +245,13 @@ there).
 Check for new CVEs at any time without changing anything:
 
 ```bash
-pip install pip-audit && pip-audit -r requirements.txt
+pip install --require-hashes -r requirements-dev.lock && pip-audit -r requirements.lock --require-hashes --disable-pip --strict
 ```
 
 Run the security regression tests:
 
 ```bash
-pip install -r requirements-dev.txt && pytest -q tests/
+pip install --require-hashes -r requirements-dev.lock && pytest -q tests/
 ```
 
 ## Backups
@@ -271,15 +271,30 @@ rsync target for an off-site copy.
 - `SESSION_COOKIE_SECURE=true` and serve **only over HTTPS** (enables HSTS + `__Host-` cookie).
 - Strong random `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` (never the example values). **Back up** `ENCRYPTION_KEY`/`ENCRYPTION_SALT` (`./backup.sh` includes `.env`).
 - Behind Caddy/nginx set `TRUSTED_PROXY_COUNT=1`, otherwise rate limiting sees only the proxy IP. Route Tor through the proxy too (see `deploy/torrc.example`).
-- Run with the provided systemd unit (`deploy/blog.service`): dedicated user, sandboxing, one gunicorn worker with threads (the SSE streams and Socket.IO rooms live in the process).
+- Run with the provided systemd unit (`deploy/blog.service`): dedicated user, sandboxing, one gunicorn worker with threads (the SSE streams live in the process). On Tor, enable `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+, in `deploy/torrc.example`).
 - Enable 2FA on every admin account.
 - Enable scheduled encrypted backups and, ideally, automatic updates.
 - Never run with Flask debug mode.
 
+## Threat model
+
+The nominal adversary is an anonymous visitor on Tor: no client IP is available
+(everything arrives from `127.0.0.1`), and account creation, posting and password
+guessing are free for the attacker. Controls are per account (login lock, 2FA,
+rate limits), not per IP; the per-client login lock is skipped when the IP is not
+meaningful. Admins can clear locks with `flask unlock <username>` (`--all`).
+The mobile admin API is **off by default** (`MOBILE_API_ENABLED=false`) and
+requires TOTP for admin accounts. Contact messages are visible in `/admin/contact`
+and should be purged regularly (`flask purge-contact --days 90`).
+
+Supply chain: Python 3.12+, dependencies installed with
+`pip install --require-hashes -r requirements.lock` (see README.md to re-lock);
+CI actions are pinned by commit SHA.
+
 ## Known limitations
 
 - `style-src-attr 'unsafe-inline'` is still needed for `style=""` attributes (sanitized BBCode colors and sizes); `<style>` elements are blocked (`style-src 'self'`). Scripts are fully blocked (`script-src 'none'`).
-- SSE streams and Socket.IO rooms live in the process, so use one gunicorn worker (scale with threads).
+- SSE streams live in the process, so use one gunicorn worker (scale with threads).
 - `[img]` for images hosted on the blog only; there is no image library UI yet.
 - The database file itself is not encrypted (chat messages and uploaded files
   inside it / next to it are). Use full-disk encryption on the server.

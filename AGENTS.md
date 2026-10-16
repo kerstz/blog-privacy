@@ -8,7 +8,7 @@ of the docs live in `*.fr.md`.
 ## Stack
 - **Flask** + SQLAlchemy + Flask-Migrate + SQLite
 - **Flask-Login** + **Flask-Bcrypt** for auth, **pyotp** + **qrcode** for TOTP 2FA
-- **Flask-SocketIO** for real-time events (authenticated, per-user rooms)
+- Server-sent events only (no WebSocket / Socket.IO); Python 3.12+
 - **Fernet** (cryptography) for chat and upload encryption at rest
 - **nh3** HTML sanitizer, **Pillow** for metadata stripping / WebP re-encoding
 - **Flask-WTF** for CSRF + forms
@@ -19,7 +19,7 @@ of the docs live in `*.fr.md`.
 app/
   __init__.py       - Flask app, extensions, template filters (comment_html, rich_html, qr_data_uri)
   models.py         - database models
-  routes.py         - web routes + SocketIO handlers + security headers + moderation + site texts
+  routes.py         - web routes + security headers + moderation + site texts
   services.py       - shared helpers: auth (password/TOTP), uploads, chat, deletion cascades, badges
   mobile_api.py     - mobile admin REST API (Basic Auth + X-TOTP-Code, SSE)
   cli.py            - maintenance commands (`flask encrypt-legacy`)
@@ -42,7 +42,7 @@ wsgi.py             - WSGI entry point
 
 ## Running
 ```bash
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock   # Python 3.12+
 flask db upgrade
 python create_admin.py          # first time
 python wsgi.py                  # dev; production: deploy/blog.service (gunicorn)
@@ -62,10 +62,12 @@ pytest -q tests/                # security regression tests (requirements-dev.tx
 - `bandit -r app create_admin.py wsgi.py -q` must stay clean (annotate reviewed false positives with a reason line + `# nosec <ID>`)
 - Never use `|safe` on user/admin HTML: use `|comment_html` (BBCode) or `|rich_html` (posts/pages)
 - Uploads go through `_store_upload()` (random name, block-list screening, metadata stripped) and are served by `_send_upload()` (access controlled)
-- Real-time events: `_notify_user()` / per-user rooms only, never broadcast
+- Events are per-user only (SSE), never broadcast; the stream re-validates the account on each heartbeat
+- Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
+- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`; admin view `/admin/contact`
 - Rate limiting: `hit_rate_limit()` / `@rate_limit` (persistent SQLite store, keys hashed)
 - Admin routes use `@admin_required`
-- Keep requirements.txt pinned and CVE-free (`pip-audit -r requirements.txt`); see SECURITY.md
+- Edit `requirements.in`, re-lock with `uv pip compile --generate-hashes` (see README.md); keep it CVE-free (`pip-audit -r requirements.lock --require-hashes --disable-pip --strict`); see SECURITY.md
 
 ## Environment variables
 See `.env.example` (secrets, production, updates, backups).

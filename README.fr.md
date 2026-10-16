@@ -30,7 +30,7 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Double authentification TOTP** avec **codes de secours** à usage unique
 - **Page sécurité du compte** : changer de mot de passe, se déconnecter partout, télécharger ses données, supprimer son compte
 - **Anti-spam sans JS** (champ piège + délai minimum, sans captcha)
-- **API mobile admin** (Basic Auth + `X-TOTP-Code`, flux SSE)
+- **API mobile admin** (désactivée par défaut ; Basic Auth + `X-TOTP-Code` obligatoire pour les admins, flux SSE)
 - **Pages statiques, bannières, contact, dons en crypto** (QR codes générés côté serveur)
 - **Mises à jour sûres** : `./update.sh` (sauvegarde, mise à jour, vérification, retour arrière automatique), mises à jour automatiques optionnelles à la fréquence de votre choix, sauvegardes chiffrées
 
@@ -40,7 +40,7 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 git clone https://github.com/kerstz/blog-privacy.git
 cd blog-privacy
 python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock   # Python 3.12+
 cp .env.example .env        # puis remplir les secrets
 flask db upgrade
 python create_admin.py
@@ -110,18 +110,44 @@ votre blog). Les images externes (`[img]https://...[/img]`) sont affichées en l
 et jamais chargées : l'IP des lecteurs n'est jamais envoyée à d'autres sites.
 Pour intégrer une image, envoyez-la sur le blog.
 
+## Modèle de menace
+
+L'adversaire nominal est un **visiteur anonyme sur Tor** : toutes les requêtes
+arrivent de `127.0.0.1`, il n'y a pas d'IP client exploitable, et s'inscrire,
+publier, téléverser ou deviner des mots de passe ne coûte rien. La défense repose
+donc sur des limites par compte, la preuve de travail Tor, un traitement strict
+des entrées et l'absence de JavaScript, pas sur la réputation d'IP. Le verrou de
+connexion par client est ignoré quand l'IP n'est pas significative (onion, pas de
+proxy de confiance) ; le verrou par compte reste.
+
+## Exploitation
+
+- `flask unlock <pseudo>` (ou `flask unlock --all`) lève un verrou de connexion.
+- `/admin/contact` liste les messages du formulaire de contact (l'email est
+  facultatif) ; `flask purge-contact --days 90` supprime les anciens.
+- `deploy/torrc.example` active `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
+
+## Dépendances
+
+Python 3.12+ requis. Les dépendances directes sont épinglées dans
+`requirements.in` et verrouillées avec empreintes sha256 dans `requirements.lock`
+et `requirements-dev.lock`. Pour les régénérer (avec [uv](https://docs.astral.sh/uv/)),
+voir les commandes du [README anglais](README.md#dependencies).
+
 ## API mobile admin
 
 Authentification HTTP Basic avec un compte admin ; si la 2FA est activée, ajoutez
-le code du moment dans l'en-tête `X-TOTP-Code`. Liste des routes dans le
+le code du moment dans l'en-tête `X-TOTP-Code` ; **les comptes admin doivent avoir
+la 2FA** pour utiliser cette API, désactivée par défaut (`MOBILE_API_ENABLED=true`
+pour l'activer). Liste des routes dans le
 [README anglais](README.md#admin-mobile-chat-api).
 
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.lock
 pytest -q tests/
-pip-audit -r requirements.txt
+pip-audit -r requirements.lock --require-hashes --disable-pip --strict
 bandit -r app -q
 ```
 

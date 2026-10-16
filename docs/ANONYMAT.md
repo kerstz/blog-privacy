@@ -12,6 +12,10 @@ inversée, et le site contactait cinq domaines tiers à chaque page vue.
 Ce document liste ce qui a été trouvé, ce qui a été corrigé dans cette passe, et
 ce qui reste à faire.
 
+> Mise à jour (audit 2026-10-16) : Flask-SocketIO et tout le WebSocket ont depuis été
+> retirés de l'application ; les passages ci-dessous qui les mentionnent sont
+> conservés comme historique.
+
 ---
 
 ## 1. Ce qui a été corrigé

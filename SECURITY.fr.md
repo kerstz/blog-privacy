@@ -162,7 +162,7 @@ après chaque mise à jour, échec ou retour arrière.
 Vérifier les CVE à tout moment sans rien modifier :
 
 ```bash
-pip install pip-audit && pip-audit -r requirements.txt
+pip install --require-hashes -r requirements-dev.lock && pip-audit -r requirements.lock --require-hashes --disable-pip --strict
 ```
 
 ## Sauvegardes
@@ -182,15 +182,29 @@ copie distante optionnelle (rsync).
 - `SESSION_COOKIE_SECURE=true` et **HTTPS uniquement** (active HSTS + cookie `__Host-`).
 - `SECRET_KEY`, `ENCRYPTION_KEY`, `ENCRYPTION_SALT` aléatoires et forts. **Sauvegardez** `ENCRYPTION_KEY`/`ENCRYPTION_SALT` (`./backup.sh` inclut `.env`).
 - Derrière Caddy/nginx : `TRUSTED_PROXY_COUNT=1`. Faites aussi passer Tor par le proxy (voir `deploy/torrc.example`).
-- Utilisez le service systemd fourni (`deploy/blog.service`) : utilisateur dédié, sandbox, un worker gunicorn avec des threads.
+- Utilisez le service systemd fourni (`deploy/blog.service`) : utilisateur dédié, sandbox, un worker gunicorn avec des threads. Sur Tor, activez `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+, dans `deploy/torrc.example`).
 - Activez la 2FA sur tous les comptes admin.
 - Activez les sauvegardes chiffrées planifiées et, idéalement, les mises à jour automatiques.
 - Jamais de mode debug Flask.
 
+## Modèle de menace
+
+L'adversaire nominal est un visiteur anonyme sur Tor : aucune IP client
+(tout arrive de `127.0.0.1`), et créer des comptes, publier ou deviner des mots
+de passe est gratuit. Les contrôles sont par compte (verrou de connexion, 2FA,
+limites de débit), pas par IP ; le verrou par client est ignoré quand l'IP n'est
+pas significative. `flask unlock <pseudo>` (`--all`) lève un verrou. L'API mobile
+admin est **désactivée par défaut** (`MOBILE_API_ENABLED=false`) et exige le TOTP
+pour les admins. Les messages de contact sont visibles dans `/admin/contact` et
+à purger régulièrement (`flask purge-contact --days 90`).
+
+Chaîne d'approvisionnement : Python 3.12+, dépendances installées avec
+`pip install --require-hashes -r requirements.lock` ; actions CI épinglées par SHA.
+
 ## Limites connues
 
 - `style-src-attr 'unsafe-inline'` reste nécessaire pour les attributs `style=""` (couleurs et tailles BBCode assainies) ; les éléments `<style>` sont bloqués (`style-src 'self'`). Les scripts sont entièrement bloqués.
-- Les flux SSE et les salons Socket.IO vivent dans le processus : un seul worker gunicorn (montez en charge avec des threads).
+- Les flux SSE vivent dans le processus : un seul worker gunicorn (montez en charge avec des threads).
 - `[img]` uniquement pour les images hébergées sur le blog ; pas encore d'interface de bibliothèque d'images.
 - Le fichier de base de données n'est pas chiffré lui-même (les messages et les
   fichiers le sont) : utilisez le chiffrement du disque du serveur.

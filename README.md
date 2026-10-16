@@ -20,7 +20,7 @@ required, no third-party requests, built to run as a Tor onion service.
   revisions, categories and tags, search, RSS feed (`/feed.xml`)
 - **Comments** — nested, BBCode, parsed server-side so they work without JavaScript
 - **Encrypted chat** with the site owner — Fernet at rest (messages **and**
-  attachments), real-time over WebSocket
+  attachments)
 - **Bilingual** — every fixed text in English and French, switchable, and editable
   from the admin panel without touching code
 - **Moderation** — flag an image and it is fingerprinted, blocked for good, and its
@@ -28,7 +28,7 @@ required, no third-party requests, built to run as a Tor onion service.
 - **2FA** — TOTP per account, with one-time recovery codes
 - **Account security page** — change password, log out everywhere, download my
   data, delete my account
-- **Mobile admin API** — Basic Auth + `X-TOTP-Code`, SSE event stream
+- **Mobile admin API** (off by default) — Basic Auth + mandatory `X-TOTP-Code` for admins, SSE event stream
 - **No-JS anti-spam** — honeypot + minimum form time, no captcha
 - **Gamification** — XP, levels, badges
 - **Safe updates** — `./update.sh` (backup, update, health check, automatic
@@ -62,7 +62,7 @@ against someone with access to the server, and not against a legal demand. Say
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock   # Python 3.12+
 
 cp .env.example .env          # then fill in the three required secrets
 python -c "import secrets; print(secrets.token_urlsafe(48))"   # ×3
@@ -130,6 +130,36 @@ External images (`[img]https://...[/img]`) are shown as links and never loaded,
 so readers' IP addresses are never sent to other sites. Upload images to the
 blog to embed them.
 
+## Threat model
+
+The nominal adversary is an **anonymous visitor on Tor**: every request reaches
+the app from `127.0.0.1`, there is no usable client IP, and signing up, posting,
+uploading and guessing passwords cost the attacker nothing. Defences therefore
+rely on per-account limits, proofs of work (Tor PoW), strict input handling and
+no JavaScript, not on IP reputation. Per-client login locks are skipped when the
+IP is not meaningful (onion, no trusted proxy); the per-account lock remains.
+
+## Operations
+
+- `flask unlock <username>` (or `flask unlock --all`) clears a login lock.
+- `/admin/contact` lists contact-form messages (the email is optional);
+  `flask purge-contact --days 90` deletes old ones.
+- `deploy/torrc.example` enables `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
+
+## Dependencies
+
+Dependencies are pinned in `requirements.in` (direct) and locked with sha256
+hashes in `requirements.lock` / `requirements-dev.lock`. Python 3.12+ is required.
+Regenerate after changing a pin (needs [uv](https://docs.astral.sh/uv/)):
+
+```bash
+uv pip compile --python-version 3.12 --no-header --no-annotate requirements.in -o requirements.txt
+uv pip compile --python-version 3.12 --generate-hashes --no-header --no-annotate requirements.in -o requirements.lock
+uv pip compile --python-version 3.12 --generate-hashes --no-header --no-annotate requirements-dev.in -o requirements-dev.lock
+```
+
+`requirements.txt` is the same list without hashes (kept for compatibility).
+
 ## Mobile admin API
 
 - `GET /api/admin/mobile/ping` — test admin authentication
@@ -139,8 +169,10 @@ blog to embed them.
 - `GET /api/admin/mobile/stream` — real-time event stream (SSE)
 
 HTTP Basic Auth with an admin account; if the account has 2FA, also send the
-current code in the `X-TOTP-Code` header. Repeated failures lock the account and
-the client out (HTTP 429). Set `MOBILE_API_ENABLED=false` to turn it off (404).
+current code in the `X-TOTP-Code` header; **admin accounts must have 2FA enabled**
+to use this API. Repeated failures lock the account (HTTP 429). The API is
+**disabled by default** (404): set `MOBILE_API_ENABLED=true` to turn it on. The
+SSE stream re-checks the account on every heartbeat.
 
 ```bash
 curl -u admin:your_password -H "X-TOTP-Code: 123456" \
@@ -152,10 +184,10 @@ curl -u admin:your_password -H "X-TOTP-Code: 123456" \
 ```
 app/
   __init__.py      app setup, extensions, template filters
-  routes.py        web routes, security headers, SocketIO handlers
+  routes.py        web routes, security headers
   services.py      shared helpers (auth, TOTP, uploads, chat, deletion cascades)
   mobile_api.py    mobile admin REST API + SSE
-  cli.py           maintenance commands (flask encrypt-legacy)
+  cli.py           maintenance commands (flask encrypt-legacy, unlock, purge-contact)
   models.py        database models
   forms.py         WTForms classes (anti-spam, validators)
   site_text.py     bilingual copy, admin-editable
@@ -174,9 +206,9 @@ update.sh auto-update.sh backup.sh
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install --require-hashes -r requirements-dev.lock
 pytest -q tests/
-pip-audit -r requirements.txt
+pip-audit -r requirements.lock --require-hashes --disable-pip --strict
 bandit -r app create_admin.py wsgi.py -q
 ```
 

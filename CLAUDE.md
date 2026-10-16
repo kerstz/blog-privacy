@@ -6,7 +6,7 @@ depressedyoungman. No JavaScript, no third-party requests, Tor friendly.
 ## Stack
 - **Flask** + SQLAlchemy + Flask-Migrate + SQLite
 - **Flask-Login** + **Flask-Bcrypt** for auth
-- **Flask-SocketIO** for real-time events (authenticated, per-user rooms)
+- Server-sent events only (no WebSocket / Socket.IO); Python 3.12+
 - **Fernet** (cryptography) for message and upload encryption at rest
 - **pyotp** + **qrcode** for TOTP 2FA (+ recovery codes)
 - **Pillow** for image re-encoding / metadata stripping, **nh3** for HTML sanitizing
@@ -17,7 +17,7 @@ depressedyoungman. No JavaScript, no third-party requests, Tor friendly.
 app/
   __init__.py       - Flask app, extensions init, template filters
   models.py         - database models (Post, Comment, User, Message, Like, Notification, Badge, Banner, StaticPage, Revision, Donor, ContactMessage, Tag, SiteText, SiteTextRevision, BlockedImageHash, BlockedUploadEvent)
-  routes.py         - web routes, security headers, SocketIO handlers, moderation, site-text editor
+  routes.py         - web routes, security headers, moderation, site-text editor
   services.py       - shared helpers: auth (password/TOTP), upload pipeline, chat, deletion cascades, badges
   mobile_api.py     - mobile admin REST API (Basic Auth + X-TOTP-Code) + SSE
   cli.py            - maintenance commands (`flask encrypt-legacy`)
@@ -40,7 +40,7 @@ archive/telegram/   - Removed Telegram bridge, kept read-only
 
 ## Running
 ```bash
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock   # Python 3.12+; regenerate with uv, see README.md
 flask db upgrade                # run migrations
 python create_admin.py          # first time
 python wsgi.py                  # or gunicorn wsgi:application
@@ -67,7 +67,9 @@ pytest -q tests/                # needs requirements-dev.txt
 - UI texts go through `t('key')` and `site_text.DEFAULTS` (EN + FR)
 - BBCode is parsed server-side (NoScript friendly)
 - Telegram bridge removed; archived read-only in archive/telegram/
-- `bandit -r app create_admin.py wsgi.py -q` and `pip-audit -r requirements.txt` must stay clean
+- `bandit -r app create_admin.py wsgi.py -q` and `pip-audit -r requirements.lock --require-hashes --disable-pip --strict` must stay clean; edit requirements.in then re-lock
+- Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
+- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`; admin view `/admin/contact`
 
 ## Environment variables
 - `SECRET_KEY` (>= 32 chars) - Flask secret key
@@ -78,4 +80,4 @@ pytest -q tests/                # needs requirements-dev.txt
 - `SESSION_COOKIE_SECURE` (default true; false for plain-HTTP dev or http .onion) / `MAX_CONTENT_LENGTH` / `MAX_UPLOAD_BYTES`
 - `SECURITY_STATE_DB` - persistent rate limiter file (default instance/security_state.db)
 - `ONION_ADDRESS` - adds the Onion-Location header
-- `MOBILE_API_ENABLED` - mobile admin API (default true; `false` makes `/api/admin/mobile/*` return 404). 2FA accounts send the code in `X-TOTP-Code`
+- `MOBILE_API_ENABLED` - mobile admin API (default false; `/api/admin/mobile/*` returns 404 unless true). Admins must have TOTP and send the code in `X-TOTP-Code`
