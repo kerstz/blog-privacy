@@ -81,7 +81,7 @@ def test_env_example_documents_operational_variables():
     text = _read(".env.example")
     for var in ("BACKUP_PASSPHRASE", "BACKUP_KEEP", "BACKUP_REMOTE",
                 "UPDATE_RESTART_CMD", "HOST", "PORT", "FLASK_DEBUG",
-                "MOBILE_API_ENABLED=false", "UPDATE_TRUSTED_KEYS_DIR"):
+                "MOBILE_API_ENABLED=false", "UPDATE_GPG_HOME", "UPDATE_TRUSTED_FINGERPRINTS"):
         assert re.search(rf"^#?\s*{re.escape(var)}", text, re.M), var
 
 
