@@ -182,16 +182,16 @@ decrypt_stream() {  # $1 = backup file -> tar.gz stream on stdout
     case "$file" in
         *.tar.gz) cat "$file" ;;
         *.gpg)
-            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file"; return 1; }
+            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file" >&2; return 1; }
             gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 -d "$file" 3<<<"$pass" ;;
         *.enc)
-            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file"; return 1; }
+            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file" >&2; return 1; }
             if [ ! -f "$file.hmac" ] || [ "$(cat "$file.hmac")" != "$(mac_file "$file" "$pass")" ]; then
-                log "!! Missing or invalid HMAC for $file: refusing to decrypt."
+                log "!! Missing or invalid HMAC for $file: refusing to decrypt." >&2
                 return 1
             fi
             BACKUP_PASS="$pass" openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASS -in "$file" ;;
-        *) log "!! Unknown backup format: $file"; return 1 ;;
+        *) log "!! Unknown backup format: $file" >&2; return 1 ;;
     esac
 }
 
@@ -236,7 +236,7 @@ make_backup() {
 
 # Installs the dependencies of the code that is currently checked out, from
 # the hash-pinned requirements.lock (--require-hashes: every artifact must
-# match a known sha256). No `pip install --upgrade pip`, no unpinned tool in
+# match a known sha256). No self-upgrade of pip, no unpinned tool in
 # the production venv. Only an old checkout without a lock falls back to
 # requirements.txt (with a warning).
 install_deps() {
@@ -284,14 +284,18 @@ db_current_revision() {
 # return to the previous schema. Replacement is atomic (copy + mv), WAL/journal
 # leftovers of the live file are removed.
 restore_db_from_backup() {  # $1 = archive made by make_backup
-    local archive="${1:-}" tmp f rel dest restored=0
+    local archive="${1:-}" tmp f rel dest restored=0 st
     if [ -z "$archive" ] || [ ! -f "$archive" ]; then
         log "!! No backup archive available: cannot restore the database."
         return 1
     fi
     tmp="$(mktemp -d "$ROOT/instance/.restore.XXXXXX")"
-    if ! decrypt_stream "$archive" | tar -C "$tmp" -xzf - --no-wildcards-match-slash \
-            --wildcards 'instance/*.db' '*.db' 2>/dev/null; then
+    # tar exits 2 when one of the two patterns matches nothing (normal: there
+    # is usually no root-level *.db): only the decryption status matters here.
+    st=(0 0)
+    decrypt_stream "$archive" | tar -C "$tmp" -xzf - --no-wildcards-match-slash \
+        --wildcards 'instance/*.db' '*.db' 2>/dev/null || st=("${PIPESTATUS[@]}")
+    if [ "${st[0]}" != 0 ]; then
         log "!! Could not read the database out of $archive"
         rm -rf "$tmp"; return 1
     fi
