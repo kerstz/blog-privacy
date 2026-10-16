@@ -5,10 +5,28 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # Wait 5 days after a release before proposing it (supply-chain
+    # protection); security updates ignore the cooldown.
+    cooldown:
+      default-days: 5
     groups:
-      python-deps:
+      # Security fixes get their own PRs, never mixed with routine bumps.
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      python-versions:
+        applies-to: version-updates
         patterns: ["*"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
-      interval: monthly
+      interval: weekly
+    cooldown:
+      default-days: 5
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      actions-versions:
+        applies-to: version-updates
+        patterns: ["*"]

@@ -17,41 +17,64 @@ jobs:
     name: Security tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements-dev.txt
+          cache-dependency-path: requirements-dev.lock
+      - run: pip install --require-hashes -r requirements-dev.lock
       - run: pytest -q tests/
 
   dependency-audit:
     name: Dependency CVE scan (pip-audit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-      - run: pip install pip-audit
-      - run: pip-audit -r requirements.txt --desc on
+      - run: pip install --require-hashes -r requirements-dev.lock
+      # --strict: a package that cannot be audited fails the job.
+      - run: pip-audit -r requirements.lock --require-hashes --disable-pip --strict --desc on
 
   static-analysis:
     name: Static security analysis (bandit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.12"
-      - run: pip install bandit
+      - run: pip install --require-hashes -r requirements-dev.lock
       - run: bandit -r app create_admin.py wsgi.py -q
+
+  lint:
+    name: Lint (ruff, syntax errors and undefined names only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+      - run: pip install --require-hashes -r requirements-dev.lock
+      - run: ruff check --select E9,F63,F7,F82 app tests wsgi.py create_admin.py
 
   no-javascript:
     name: No JavaScript / no third-party resources in templates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
       - name: Check templates
         run: |
           set -e
