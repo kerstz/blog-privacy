@@ -28,6 +28,7 @@
             {{ field(password_form.current_password) }}
             {{ field(password_form.new_password) }}
             {{ field(password_form.confirm_password) }}
+            {% if current_user.totp_enabled %}{{ field(password_form.code) }}{% endif %}
             <button type="submit" class="account-btn">{{ t('account.sec.password.submit') }}</button>
         </form>
     </section>

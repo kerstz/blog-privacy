@@ -193,6 +193,10 @@ class ChangePasswordForm(FlaskForm):
     current_password = PasswordField('Current password', validators=[DataRequired(), Length(max=PASSWORD_MAX)])
     new_password = PasswordField('New password', validators=NEW_PASSWORD_VALIDATORS)
     confirm_password = PasswordField('Confirm new password', validators=[DataRequired(), EqualTo('new_password', message='Passwords do not match.')])
+    code = StringField('2FA code or recovery code (if 2FA is enabled)', validators=[
+        Optional(), Length(min=6, max=11),
+        Regexp(r'^(\d{6}|[A-Za-z0-9]{5}-?[A-Za-z0-9]{5})$', message='6-digit code or recovery code.'),
+    ])
     submit = SubmitField('Change password')
 
     def validate_new_password(self, new_password):

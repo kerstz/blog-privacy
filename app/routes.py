@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 import re
+from urllib.parse import quote
 import mimetypes
 from cryptography.fernet import InvalidToken
 import json
@@ -194,7 +195,7 @@ def apply_security_headers(response):
             'Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
     # Tor: advertise the .onion mirror to Tor Browser users (ONION_ADDRESS env)
     if ONION_ADDRESS and not request.host.endswith('.onion'):
-        response.headers.setdefault('Onion-Location', f"http://{ONION_ADDRESS}{request.full_path.rstrip('?')}")
+        response.headers.setdefault('Onion-Location', f"http://{ONION_ADDRESS}{quote(request.full_path.rstrip('?'), safe='/?=&')}")
     # Pages for logged-in users must never be stored by shared caches.
     if current_user.is_authenticated and 'Cache-Control' not in response.headers:
         response.headers['Cache-Control'] = 'no-store'
@@ -2160,7 +2161,8 @@ def _reauthenticate(form):
     if hit_rate_limit(fail_key, 5, 900, record=False):
         flash('Too many failed attempts. Please wait 15 minutes.', 'danger')
         return False
-    if not _check_user_password(current_user, form.password.data):
+    password_field = form.password if hasattr(form, 'password') else form.current_password
+    if not _check_user_password(current_user, password_field.data):
         hit_rate_limit(fail_key, 5, 900)
         flash('Incorrect password.', 'danger')
         return False
@@ -2200,12 +2202,12 @@ def change_password():
     forced = bool(current_user.must_change_password)
     if request.method == 'GET' or not form.validate_on_submit():
         return render_template('change_password.html', form=form, forced=forced)
+    # Password + 2FA code (when enabled), same rules and counter as the other
+    # sensitive account actions (a stolen session alone cannot change it).
     if hit_rate_limit(f"reauth_fail:{current_user.id}", 5, 900, record=False):
         flash('Too many failed attempts. Please wait 15 minutes.', 'danger')
         return redirect(url_for('account_security'))
-    if not _check_user_password(current_user, form.current_password.data):
-        hit_rate_limit(f"reauth_fail:{current_user.id}", 5, 900)
-        flash('Incorrect current password.', 'danger')
+    if not _reauthenticate(form):
         return render_template('change_password.html', form=form, forced=forced)
     current_user.password = bcrypt.generate_password_hash(form.new_password.data).decode('utf-8')
     current_user.must_change_password = False

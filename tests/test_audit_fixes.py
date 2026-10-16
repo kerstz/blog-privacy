@@ -350,3 +350,46 @@ def test_mobile_api_off_by_default_env_unset():
     os.environ.pop('MOBILE_API_ENABLED', None)
     assert app.test_client().get('/api/admin/mobile/ping',
                                  headers=basic('boss', PASSWORD)).status_code == 404
+
+
+# ------------------------------------------------------------- B7
+
+def test_onion_location_header_survives_crlf_in_path():
+    reset()
+    old = routes.ONION_ADDRESS
+    routes.ONION_ADDRESS = 'exampleexampleexample.onion'
+    try:
+        resp = app.test_client().get('/%0d%0aX-Evil:%201')
+        assert resp.status_code in (200, 404)
+        value = resp.headers['Onion-Location']
+        assert '\r' not in value and '\n' not in value
+        assert value.startswith('http://exampleexampleexample.onion/')
+        assert '%0D%0A' in value.upper()
+    finally:
+        routes.ONION_ADDRESS = old
+
+
+# ------------------------------------------------------------- B3
+
+def test_change_password_requires_totp_when_enabled():
+    reset()
+    totp = _totp_admin('boss')
+    client = app.test_client()
+    # log in with password + code
+    client.post('/login', data={'username': 'boss', 'password': PASSWORD})
+    client.post('/login/totp', data={'code': totp.now()})
+    data = {'current_password': PASSWORD, 'new_password': 'Brand-New-Pass-99',
+            'confirm_password': 'Brand-New-Pass-99'}
+    client.post('/account/password', data=data)       # no code
+    from app.models import User
+    from app import bcrypt
+    with app.app_context():
+        assert bcrypt.check_password_hash(User.query.filter_by(username='boss').one().password,
+                                          PASSWORD)
+    import time
+    # a fresh code (the previous one was consumed by the login)
+    code = totp.at(time.time() + 30)
+    client.post('/account/password', data={**data, 'code': code})
+    with app.app_context():
+        assert bcrypt.check_password_hash(User.query.filter_by(username='boss').one().password,
+                                          'Brand-New-Pass-99')
