@@ -277,3 +277,76 @@ def test_app_does_not_import_socketio():
     for path in list((root / 'app').glob('*.py')) + [root / 'wsgi.py']:
         text = path.read_text(encoding='utf-8')
         assert 'flask_socketio' not in text and 'import socketio' not in text, path.name
+
+
+# ------------------------------------------------------------- M3
+
+def _totp_admin(name='boss'):
+    import pyotp
+    from app import db
+    from app.models import User
+    make_user(name, admin=True)
+    secret = pyotp.random_base32()
+    with app.app_context():
+        user = User.query.filter_by(username=name).one()
+        routes._store_totp_secret(user, secret)
+        user.totp_enabled = True
+        db.session.commit()
+    return pyotp.TOTP(secret)
+
+
+def _stream_closes_after(mutate):
+    from app import mobile_api, db
+    from app.models import User
+    reset()
+    totp = _totp_admin()
+    client = app.test_client()
+    old = mobile_api.SSE_HEARTBEAT_SECONDS
+    mobile_api.SSE_HEARTBEAT_SECONDS = 0.05
+    try:
+        resp = client.get('/api/admin/mobile/stream',
+                          headers={**basic('boss', PASSWORD), 'X-TOTP-Code': totp.now()},
+                          buffered=False)
+        assert resp.status_code == 200
+        chunks = iter(resp.response)
+        assert b'connected' in next(chunks)
+        assert b'heartbeat' in next(chunks)   # still authorized
+        with app.app_context():
+            user = User.query.filter_by(username='boss').one()
+            mutate(user)
+            db.session.commit()
+        for _ in range(10):  # the stream must end within a few heartbeats
+            try:
+                next(chunks)
+            except StopIteration:
+                return True
+        return False
+    finally:
+        mobile_api.SSE_HEARTBEAT_SECONDS = old
+
+
+def test_sse_closes_when_admin_banned():
+    assert _stream_closes_after(lambda u: setattr(u, 'is_banned', True))
+
+
+def test_sse_closes_when_admin_demoted():
+    assert _stream_closes_after(lambda u: setattr(u, 'is_admin', False))
+
+
+def test_sse_closes_when_session_version_changes():
+    assert _stream_closes_after(lambda u: u.rotate_session_token())
+
+
+def test_sse_closes_when_password_change_forced():
+    assert _stream_closes_after(lambda u: setattr(u, 'must_change_password', True))
+
+
+# ------------------------------------------------------------- M4
+
+def test_mobile_api_off_by_default_env_unset():
+    import os
+    reset()
+    _totp_admin()
+    os.environ.pop('MOBILE_API_ENABLED', None)
+    assert app.test_client().get('/api/admin/mobile/ping',
+                                 headers=basic('boss', PASSWORD)).status_code == 404

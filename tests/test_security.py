@@ -240,7 +240,7 @@ def test_mobile_api_requires_totp_when_enabled():
     import base64
     hdr = {'Authorization': 'Basic ' + base64.b64encode(f'admin:{PASSWORD}'.encode()).decode()}
     c = app.test_client()
-    assert c.get('/api/admin/mobile/ping', headers=hdr).status_code == 200
+    assert c.get('/api/admin/mobile/ping', headers=hdr).status_code == 403  # 2FA mandatory (M4)
     secret = pyotp.random_base32()
     with app.app_context():
         u = User.query.filter_by(username='admin').first()

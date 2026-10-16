@@ -10,6 +10,7 @@ import json
 import base64
 import os
 import queue
+import time
 from app.services import (
     _DUMMY_PASSWORD_HASH,
     _verify_totp_once,
@@ -25,6 +26,8 @@ from app.services import (
 ADMIN_API_USER_MAX_FAILURES = 10
 ADMIN_API_CLIENT_MAX_FAILURES = 30
 ADMIN_API_LOCKOUT_SECONDS = 900
+# Seconds between SSE heartbeats; the account is re-checked at each one.
+SSE_HEARTBEAT_SECONDS = 25
 
 
 def parse_basic_auth():
@@ -42,8 +45,9 @@ def parse_basic_auth():
 
 
 def _mobile_api_enabled():
-    return os.environ.get('MOBILE_API_ENABLED', 'true').strip().lower() \
-        not in ('0', 'false', 'no', 'off')
+    """The mobile API is OFF unless MOBILE_API_ENABLED is explicitly truthy."""
+    return os.environ.get('MOBILE_API_ENABLED', 'false').strip().lower() \
+        in ('1', 'true', 'yes', 'on')
 
 
 def _admin_api_error(message, status, **headers):
@@ -58,7 +62,7 @@ def authenticate_admin_api():
     - lockout after repeated failures, per username and per client (429 +
       Retry-After);
     - banned accounts and accounts that must change their password are refused;
-    - accounts with 2FA must send the current code in `X-TOTP-Code`.
+    - admin accounts MUST have 2FA enabled (403 otherwise) and send the current code in `X-TOTP-Code`.
     """
     username, password = parse_basic_auth()
     if not username or not password:
@@ -97,6 +101,11 @@ def authenticate_admin_api():
     if user.must_change_password:
         return None, _admin_api_error(
             'Password change required: sign in on the website first.', 403)
+    if not user.totp_enabled:
+        # Basic Auth alone is too weak for an admin API: 2FA is mandatory.
+        return None, _admin_api_error(
+            'Two-factor authentication must be enabled on this admin account '
+            'to use the mobile API.', 403)
     if user.totp_enabled:
         # The code is sent on every stateless call: allow_reuse (about 90 s).
         if not _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''),
@@ -223,7 +232,22 @@ def api_admin_mobile_send_message(user_id):
 @admin_api_required
 def api_admin_mobile_stream():
     admin_user = request.admin_api_user
+    admin_id = admin_user.id
+    session_version = admin_user.session_version or 0
+    admin_username = admin_user.username
     subscriber_queue = queue.Queue(maxsize=100)
+
+    def still_authorized():
+        """Re-read the account: a demoted, banned, forced-to-change-password
+        or logged-out (session_version changed) admin loses the stream."""
+        db.session.remove()
+        try:
+            fresh = db.session.get(User, admin_id)
+            return bool(fresh and fresh.is_admin and not fresh.is_banned
+                        and not fresh.must_change_password and fresh.totp_enabled
+                        and (fresh.session_version or 0) == session_version)
+        finally:
+            db.session.remove()
 
     with mobile_event_lock:
         if len(mobile_event_subscribers) >= 10:
@@ -235,18 +259,28 @@ def api_admin_mobile_stream():
             welcome = {
                 'type': 'connected',
                 'payload': {
-                    'admin_id': admin_user.id,
-                    'username': admin_user.username
+                    'admin_id': admin_id,
+                    'username': admin_username
                 },
                 'created_at': datetime.utcnow().isoformat() + 'Z'
             }
             yield f"data: {json.dumps(welcome)}\n\n"
 
+            last_check = time.monotonic()
             while True:
                 try:
-                    event = subscriber_queue.get(timeout=25)
-                    yield f"data: {json.dumps(event)}\n\n"
+                    event = subscriber_queue.get(timeout=SSE_HEARTBEAT_SECONDS)
                 except queue.Empty:
+                    event = None
+                # Re-check the account at least once per heartbeat period, even
+                # while events keep flowing.
+                if event is None or time.monotonic() - last_check >= SSE_HEARTBEAT_SECONDS:
+                    if not still_authorized():
+                        return
+                    last_check = time.monotonic()
+                if event is not None:
+                    yield f"data: {json.dumps(event)}\n\n"
+                else:
                     heartbeat = {'type': 'heartbeat', 'created_at': datetime.utcnow().isoformat() + 'Z'}
                     yield f"data: {json.dumps(heartbeat)}\n\n"
         finally:

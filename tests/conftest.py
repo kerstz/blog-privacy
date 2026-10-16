@@ -16,7 +16,6 @@ os.environ.setdefault('ENCRYPTION_SALT', 's' * 16)
 os.environ.setdefault('DATABASE_URL', f'sqlite:///{_TMP}/t.db')
 os.environ.setdefault('SECURITY_STATE_DB', f'{_TMP}/s.db')
 os.environ['SESSION_COOKIE_SECURE'] = '0'
-os.environ.pop('MOBILE_API_ENABLED', None)
 for _name in ('TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_CHAT_ID'):
     os.environ.pop(_name, None)
 
@@ -26,4 +25,8 @@ def _antispam_off_and_clean_limits():
     from app import app, utils
     app.config['ANTISPAM_ENABLED'] = False
     utils.reset_security_state()
+    # The mobile API is off by default; most tests exercise it, so enable it
+    # (test_mobile_api_disabled_by_default removes the variable itself).
+    os.environ['MOBILE_API_ENABLED'] = 'true'
     yield
+    os.environ.pop('MOBILE_API_ENABLED', None)

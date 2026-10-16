@@ -60,7 +60,6 @@ def reset():
     routes.action_rate_limit_buckets.clear()
     utils._RATE_LIMIT_STORE.clear()
     utils._FAILURE_STORE.clear()
-    os.environ.pop('MOBILE_API_ENABLED', None)
 
 
 def make_user(username, admin=False, **extra):
@@ -433,12 +432,27 @@ def test_totp_issuer_is_brand_name():
 
 # ------------------------------------------------------------- Fix 4 : API mobile
 
-def test_mobile_api_enabled_by_default_and_works():
+def test_mobile_api_disabled_by_default_and_requires_admin_2fa():
+    # Behaviour changed on purpose (audit M4): off unless MOBILE_API_ENABLED is
+    # truthy, and an admin without 2FA is refused (403) even when enabled.
     reset()
     make_user('boss', admin=True)
+    os.environ.pop('MOBILE_API_ENABLED', None)
+    assert app.test_client().get('/api/admin/mobile/ping',
+                                 headers=basic('boss', PASSWORD)).status_code == 404
+    os.environ['MOBILE_API_ENABLED'] = 'true'
     client = app.test_client()
     assert client.get('/api/admin/mobile/ping').status_code == 401
     resp = client.get('/api/admin/mobile/ping', headers=basic('boss', PASSWORD))
+    assert resp.status_code == 403 and 'Two-factor' in resp.get_json()['error']
+    secret = pyotp.random_base32()
+    with app.app_context():
+        user = User.query.filter_by(username='boss').one()
+        routes._store_totp_secret(user, secret)
+        user.totp_enabled = True
+        db.session.commit()
+    resp = client.get('/api/admin/mobile/ping',
+                      headers={**basic('boss', PASSWORD), 'X-TOTP-Code': pyotp.TOTP(secret).now()})
     assert resp.status_code == 200 and resp.get_json()['admin']['username'] == 'boss'
 
 
