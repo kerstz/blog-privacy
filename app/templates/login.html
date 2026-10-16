@@ -6,9 +6,11 @@
     <form method="POST">
         {{ form.hidden_tag() }}
         <div class="input-group">
+            <label for="username" class="visually-hidden">{{ t('auth.username') }}</label>
             {{ form.username(class="form-control", placeholder=t('auth.username')) }}
         </div>
         <div class="input-group">
+            <label for="password" class="visually-hidden">{{ t('auth.password') }}</label>
             {{ form.password(class="form-control", placeholder=t('auth.password')) }}
         </div>
         <button type="submit" class="btn btn-primary">{{ t('auth.login.title') }}</button>

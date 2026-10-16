@@ -19,6 +19,7 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a href="#main" class="skip-link">{{ t('nav.skip') }}</a>
     <!-- Navbar -->
     <header>
         <nav class="navbar">
@@ -77,7 +78,7 @@
     </header>
 
     <!-- Main Content -->
-    <main class="container">
+    <main class="container" id="main">
         {# Les messages flash n'etaient rendus nulle part sur le site public :
            « Login failed », « Too many requests », « Account suspended » ou
            « Message sent » restaient invisibles et s'accumulaient en session

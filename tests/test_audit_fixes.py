@@ -393,3 +393,15 @@ def test_change_password_requires_totp_when_enabled():
     with app.app_context():
         assert bcrypt.check_password_hash(User.query.filter_by(username='boss').one().password,
                                           'Brand-New-Pass-99')
+
+
+# ------------------------------------------------------------- M12
+
+def test_login_register_have_labels_and_skip_link():
+    client = app.test_client()
+    for path, ids in (('/login', ('username', 'password')),
+                      ('/register', ('username', 'password', 'confirm_password'))):
+        html = client.get(path).get_data(as_text=True)
+        for field_id in ids:
+            assert f'<label for="{field_id}"' in html, (path, field_id)
+        assert 'href="#main"' in html and 'id="main"' in html

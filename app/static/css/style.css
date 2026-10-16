@@ -24,7 +24,7 @@
     /* Text — cool grey, never pure white. White glares at 4am. */
     --ash:     #c3c9d6;
     --ash-mid: #8b93a3;
-    --ash-dim: #6b7385;
+    --ash-dim: #7d8597;
 
     /* The only light in the room: cold, pale, far away. */
     --moon:        #7d93c8;
@@ -881,3 +881,30 @@ button.logout-btn { cursor: pointer; font: inherit; }
 
 /* Hint under a form field */
 .form-hint { margin: .3rem 0 0; font-size: .85rem; color: var(--ash-dim); }
+
+/* Accessibility helpers */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-link {
+    position: absolute;
+    left: 0.5rem;
+    top: -4rem;
+    z-index: 1000;
+    padding: 0.5rem 1rem;
+    background: var(--ash);
+    color: var(--night-100);
+}
+
+.skip-link:focus {
+    top: 0.5rem;
+}

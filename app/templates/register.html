@@ -7,12 +7,15 @@
         {{ form.hidden_tag() }}
         <div class="hp-field" aria-hidden="true">{{ form.website.label }} {{ form.website() }}</div>
         <div class="input-group">
+            <label for="username" class="visually-hidden">{{ t('auth.username') }}</label>
             {{ form.username(class="input-field", placeholder=t('auth.username')) }}
         </div>
         <div class="input-group">
+            <label for="password" class="visually-hidden">{{ t('auth.password') }}</label>
             {{ form.password(class="input-field", placeholder=t('auth.password')) }}
         </div>
         <div class="input-group">
+            <label for="confirm_password" class="visually-hidden">{{ t('auth.password_confirm') }}</label>
             {{ form.confirm_password(class="input-field", placeholder=t('auth.password_confirm')) }}
         </div>
         <button type="submit" class="auth-btn">{{ t('auth.register.submit') }}</button>

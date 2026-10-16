@@ -172,6 +172,7 @@ DEFAULTS = {
     'auth.register.has_account': {'en': 'Already have an account?',
                                   'fr': 'Tu as déjà un compte ?'},
     'auth.register.signin': {'en': 'Sign in here', 'fr': 'Connecte-toi ici'},
+    'nav.skip':         {'en': 'Skip to main content', 'fr': 'Aller au contenu principal'},
     'auth.username':     {'en': 'Username',        'fr': 'Nom d\'utilisateur'},
     'auth.password':     {'en': 'Password',        'fr': 'Mot de passe'},
     'auth.password_confirm': {'en': 'Confirm password',
