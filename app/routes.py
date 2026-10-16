@@ -219,8 +219,8 @@ def flag_message_image(message_id):
     image signalee, toute nouvelle tentative de la televerser — meme ré-encodee
     ou redimensionnee — est refusee automatiquement.
     """
-    from app.image_safety import (dhash_of_path, format_dhash, quarantine_file,
-                                  sha256_of_file)
+    from app.image_safety import (dhash_of_bytes, format_dhash, quarantine_file,
+                                  sha256_of_bytes)
     from app.models import BlockedImageHash, BlockedUploadEvent
 
     form = EmptyForm()
@@ -238,9 +238,16 @@ def flag_message_image(message_id):
         flash('The file is no longer on disk.', 'danger')
         return redirect(url_for('admin_chat_user', user_id=message.sender_id))
 
-    digest = sha256_of_file(path)
+    # Hash the PLAINTEXT (uploads are encrypted at rest: hashing the .enc file
+    # would give a value no future upload can ever match). Done in memory only.
     try:
-        perceptual = format_dhash(dhash_of_path(path))
+        plain = read_upload_bytes(message.file_path)
+    except Exception:
+        flash('The file could not be read.', 'danger')
+        return redirect(url_for('admin_chat_user', user_id=message.sender_id))
+    digest = sha256_of_bytes(plain)
+    try:
+        perceptual = format_dhash(dhash_of_bytes(plain))
     except Exception:
         # Fichier non decodable comme image : on retient au moins le SHA-256.
         perceptual = None

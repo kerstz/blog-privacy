@@ -216,3 +216,48 @@ def test_contact_email_optional():
     with app.app_context():
         m = ContactMessage.query.one()
         assert m.email == '' and m.name == 'Bob'
+
+
+# ------------------------------------------------------------- M1
+
+def _gradient_png():
+    import io
+    from PIL import Image
+    img = Image.new('RGB', (64, 64))
+    img.putdata([((x * 4) % 256, (y * 4) % 256, ((x * y) // 3) % 256)
+                 for y in range(64) for x in range(64)])
+    buf = io.BytesIO()
+    img.save(buf, 'PNG')
+    buf.seek(0)
+    return buf
+
+
+def test_flag_image_hashes_plaintext_and_blocks_reupload():
+    import hashlib
+    from app.models import BlockedImageHash, Message, User
+    from app.services import read_upload_bytes
+    reset()
+    make_user('boss', admin=True)
+    make_user('mallory')
+    make_user('eve')
+    mal, _ = sign_in('mallory')
+    mal.post('/chat', data={'message': '', 'file': (_gradient_png(), 'a.png')},
+             content_type='multipart/form-data')
+    with app.app_context():
+        msg = Message.query.filter(Message.file_path.isnot(None)).one()
+        mid, path = msg.id, msg.file_path
+        plain = read_upload_bytes(path)
+    boss, _ = sign_in('boss')
+    assert boss.post(f'/admin/flag_image/{mid}').status_code == 302
+    with app.app_context():
+        entry = BlockedImageHash.query.one()
+        assert entry.sha256 == hashlib.sha256(plain).hexdigest()
+        assert entry.dhash is not None
+        assert User.query.filter_by(username='mallory').one().is_banned
+    eve, _ = sign_in('eve')
+    eve.post('/chat', data={'message': '', 'file': (_gradient_png(), 'b.png')},
+             content_type='multipart/form-data')
+    with app.app_context():
+        assert User.query.filter_by(username='eve').one().is_banned
+        assert Message.query.filter(Message.sender_id == User.query.filter_by(
+            username='eve').one().id, Message.file_path.isnot(None)).count() == 0

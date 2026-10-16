@@ -85,6 +85,18 @@ def sha256_of_stream(stream):
     return h.hexdigest()
 
 
+def sha256_of_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def dhash_of_bytes(data):
+    """dHash of an in-memory image (nothing is written to disk)."""
+    import io
+    with Image.open(io.BytesIO(data)) as img:
+        img.load()
+        return dhash(img)
+
+
 def dhash(image, size=8):
     """dHash 64 bits : compare chaque pixel a son voisin de droite.
 
