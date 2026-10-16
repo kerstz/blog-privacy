@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
-# Safe updater: pulls the latest code, upgrades dependencies to the patched
-# versions pinned in requirements.txt, applies DB migrations, checks that the
-# app still starts (and runs the test suite when pytest is installed), then
-# runs a CVE scan. It NEVER deletes or overwrites your data:
+# Safe updater: fetches the latest code, VERIFIES ITS SIGNATURE, upgrades
+# dependencies to the patched versions pinned in requirements.lock, applies DB
+# migrations, checks that the app still starts (and runs the test suite when
+# pytest is installed), then runs a CVE scan. It NEVER deletes or overwrites
+# your data without a reason:
 #   - .env, instance/ (database) and uploads/ are never modified by this script
+#     (the only exception is the rollback, which restores the database)
 #   - a timestamped backup of the database + uploads is taken first
-#   - `git pull --ff-only` refuses to run if you have local code changes
+#   - only a fast-forward to a commit signed by a trusted key is accepted;
+#     the script refuses to run if you have local code changes
 #   - if the new version fails its checks, code + dependencies are rolled back
 #
 # Usage:
@@ -17,14 +20,133 @@
 #   VENV=/path/to/venv ./update.sh
 #   RESTART_CMD="sudo systemctl restart blog" ./update.sh --auto
 #
+# Authenticity of the code (settings in the environment or in .env):
+#   UPDATE_GPG_HOME=/path/to/gnupg-dir   dedicated GNUPGHOME holding ONLY the
+#                           public keys allowed to sign releases. Required:
+#                           without it the update is refused (fail closed).
+#   UPDATE_TRUSTED_FINGERPRINTS="FPR1 FPR2"   optional: additionally pin the
+#                           signing key (full fingerprints, primary or subkey).
+#   UPDATE_ALLOW_UNSIGNED=1 explicit opt-out: update WITHOUT any signature
+#                           check (noisy warning in the log). Not recommended.
+#
+# TODO(audit-2026-10-16): decision needed. The "Merge pull request" commits
+# created by GitHub are signed by GitHub's web-flow key, and only if the merge
+# is done in the web UI. Either (a) sign the release tips yourself and import
+# only your key, or (b) import GitHub's web-flow key and pin it with
+# UPDATE_TRUSTED_FINGERPRINTS. Until the maintainers choose, an unsigned tip
+# is refused.
+#
 # Run it regularly: new CVEs are published every week. To schedule it, see
 # ./auto-update.sh (daily / weekly / monthly / custom).
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
-# Bash reads a script while running it, and step 2 (git pull) rewrites this
-# very file: always run from a private copy so the update can never execute
-# a half-old, half-new script.
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+# Read one KEY=value from .env without executing the file.
+env_get() {
+    [ -f "$ROOT/.env" ] || return 0
+    { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+}
+
+# Status messages only go to the log (logs/update.log). Nothing is sent to a
+# third party: the former Telegram notification was removed on purpose.
+notify() {
+    log "$1" || true
+}
+
+encrypt_legacy() {
+    # Idempotent: encrypts chat messages / uploads still stored in plaintext.
+    FLASK_APP=app "$PY" -m flask encrypt-legacy \
+        || log "!! flask encrypt-legacy failed (data untouched); run it again by hand."
+}
+
+# Authenticity check of the commit we are about to fast-forward to. Runs
+# BEFORE any merge/checkout, so unverified code is never put in the work tree
+# (let alone executed). Returns 0 only if the commit is acceptable.
+#   - UPDATE_GPG_HOME unset: refuse, unless UPDATE_ALLOW_UNSIGNED=1
+#   - otherwise `git verify-commit --raw` with GNUPGHOME=$UPDATE_GPG_HOME must
+#     report a valid signature (VALIDSIG), and, when UPDATE_TRUSTED_FINGERPRINTS
+#     is set, the signing key (or its primary key) must be listed there.
+# The signature on the tip commit covers the whole history behind it (hash
+# chain), so intermediate commits need not be signed individually.
+verify_target() {
+    local rev="$1" home allow fprs out line sig_fpr sig_primary want ok=0
+    home="${UPDATE_GPG_HOME:-$(env_get UPDATE_GPG_HOME)}"
+    allow="${UPDATE_ALLOW_UNSIGNED:-$(env_get UPDATE_ALLOW_UNSIGNED)}"
+    fprs="${UPDATE_TRUSTED_FINGERPRINTS:-$(env_get UPDATE_TRUSTED_FINGERPRINTS)}"
+    if [ -z "$home" ]; then
+        if [ "$allow" = "1" ]; then
+            log "!!!! WARNING: UPDATE_ALLOW_UNSIGNED=1 and no UPDATE_GPG_HOME: updating WITHOUT"
+            log "!!!! verifying the authenticity of ${rev:0:12}. Anyone able to push to the"
+            log "!!!! remote (or to impersonate it) gets code execution on this server."
+            return 0
+        fi
+        log "!! No UPDATE_GPG_HOME configured: refusing to update (fail closed)."
+        log "!! Create a dedicated keyring with the release signing key (see README) or,"
+        log "!! at your own risk, set UPDATE_ALLOW_UNSIGNED=1."
+        return 1
+    fi
+    if [ ! -d "$home" ]; then
+        log "!! UPDATE_GPG_HOME '$home' is not a directory. Refusing to update."
+        return 1
+    fi
+    if ! out="$(GNUPGHOME="$home" git verify-commit --raw "$rev" 2>&1)"; then
+        log "!! The signature of ${rev:0:12} could not be verified. Refusing to update."
+        printf '%s\n' "$out" | sed 's/^/    /'
+        return 1
+    fi
+    if printf '%s\n' "$out" | grep -qE '^\[GNUPG:\] (BADSIG|ERRSIG|EXPSIG|EXPKEYSIG|REVKEYSIG) '; then
+        log "!! ${rev:0:12} has a bad, expired or revoked signature. Refusing to update."
+        return 1
+    fi
+    if [ -z "$fprs" ]; then
+        if printf '%s\n' "$out" | grep -q '^\[GNUPG:\] VALIDSIG '; then
+            log "Signature of ${rev:0:12} OK (any key of $home)."
+            return 0
+        fi
+        log "!! No valid signature found for ${rev:0:12}. Refusing to update."
+        return 1
+    fi
+    while read -r line; do
+        sig_fpr="$(printf '%s' "$line" | awk '{print $3}')"
+        sig_primary="$(printf '%s' "$line" | awk '{print $NF}')"
+        for want in ${fprs//,/ }; do
+            want="${want^^}"
+            if [ "${sig_fpr^^}" = "$want" ] || [ "${sig_primary^^}" = "$want" ]; then ok=1; fi
+        done
+    done < <(printf '%s\n' "$out" | grep '^\[GNUPG:\] VALIDSIG ' || true)
+    if [ "$ok" != 1 ]; then
+        log "!! ${rev:0:12} is signed, but not by a key listed in UPDATE_TRUSTED_FINGERPRINTS. Refusing to update."
+        return 1
+    fi
+    log "Signature of ${rev:0:12} OK (trusted fingerprint)."
+}
+
+# git fetch + resolve the upstream tip into TARGET. Never touches the work tree.
+fetch_target() {
+    if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
+        log "!! The current branch has no upstream (git branch -u origin/main). Aborting."
+        return 1
+    fi
+    git fetch --quiet || return 1
+    TARGET="$(git rev-parse '@{u}')"
+}
+
+rollback() {
+    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
+    if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
+        git reset --quiet --hard "$PREV_COMMIT"
+    fi
+    "$PY" -m pip install --quiet -r requirements.txt || true
+    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
+    exit 1
+}
+
+main() {
+# Bash reads a script while running it, and step 2 (merge) rewrites this very
+# file: always run from a private copy so the update can never execute a
+# half-old, half-new script.
 if [ "${BLOG_UPDATE_COPY:-}" != "1" ]; then
     root_dir="$(cd "$(dirname "$0")" && pwd)"
     tmp_copy="$(mktemp "${TMPDIR:-/tmp}/blog-update.XXXXXX")"
@@ -34,7 +156,7 @@ fi
 trap 'rm -f "${BLOG_UPDATE_SELF:-}"' EXIT
 
 AUTO=0
-RESUME_FROM=""   # set when a new update.sh takes over right after the pull
+RESUME_FROM=""   # set when a new update.sh takes over right after the merge
 while [ $# -gt 0 ]; do
     case "$1" in
         --auto) AUTO=1 ;;
@@ -50,13 +172,6 @@ BACKUP_DIR="$ROOT/backups"
 LOCK_FILE="$ROOT/instance/.update.lock"
 KEEP_UPDATE_BACKUPS="${KEEP_UPDATE_BACKUPS:-10}"
 
-log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
-
-# Read one KEY=value from .env without executing the file.
-env_get() {
-    [ -f "$ROOT/.env" ] || return 0
-    { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
-}
 [ -z "${RESTART_CMD:-}" ] && RESTART_CMD="$(env_get UPDATE_RESTART_CMD)"
 
 # Pick the virtualenv (VENV env var, ./venv or ./.venv); fall back to system python.
@@ -67,12 +182,6 @@ if [ -z "$VENV" ]; then
     done
 fi
 if [ -n "$VENV" ]; then PY="$VENV/bin/python"; else PY="$(command -v python3)"; fi
-
-# Status messages only go to the log (logs/update.log). Nothing is sent to a
-# third party: the former Telegram notification was removed on purpose.
-notify() {
-    log "$1" || true
-}
 
 # Only one update at a time (cron + manual run).
 mkdir -p "$ROOT/instance"
@@ -90,20 +199,10 @@ if [ -d .git ]; then
     PREV_COMMIT="${RESUME_FROM:-$(git rev-parse HEAD)}"
 fi
 
-encrypt_legacy() {
-    # Idempotent: encrypts chat messages / uploads still stored in plaintext.
-    FLASK_APP=app "$PY" -m flask encrypt-legacy \
-        || log "!! flask encrypt-legacy failed (data untouched); run it again by hand."
-}
-
 # 0. In --auto mode, do nothing (no backup, no restart) when there is no new code.
 if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
-    if ! git rev-parse --abbrev-ref '@{u}' >/dev/null 2>&1; then
-        log "!! The current branch has no upstream (git branch -u origin/main). Aborting."
-        exit 1
-    fi
-    git fetch --quiet
-    if [ -z "$RESUME_FROM" ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse '@{u}')" ]; then
+    fetch_target || exit 1
+    if [ -z "$RESUME_FROM" ] && [ "$(git rev-parse HEAD)" = "$TARGET" ]; then
         log "Already up to date."
         # The running version is the installed, known-good one: safe to run.
         encrypt_legacy
@@ -117,16 +216,6 @@ if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
         exit 0
     fi
 fi
-
-rollback() {
-    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
-    if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
-        git reset --quiet --hard "$PREV_COMMIT"
-    fi
-    "$PY" -m pip install --quiet -r requirements.txt || true
-    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
-    exit 1
-}
 
 if [ -z "$RESUME_FROM" ]; then
 # 1. Backup (read-only copy of your data)
@@ -146,15 +235,25 @@ else
     log "(nothing to back up)"
 fi
 
-# 2. Code update (only if this is a git checkout; never overwrites local edits)
+# 2. Code update (only if this is a git checkout; never overwrites local edits).
+#    fetch -> verify the signature of the target -> fast-forward. Nothing is
+#    merged or checked out before the signature has been verified.
 if [ "$IS_GIT" = 1 ]; then
-    log "Pulling latest code (fast-forward only)"
+    log "Fetching latest code"
     if ! git diff --quiet || ! git diff --cached --quiet; then
         log "!! Local code changes detected: commit or stash them first. Aborting (nothing changed)."
         notify "blog-privacy: update skipped, the server has local code changes."
         exit 1
     fi
-    git pull --ff-only --quiet || rollback "git pull failed"
+    fetch_target || { notify "blog-privacy: update aborted, git fetch failed (nothing changed)."; exit 1; }
+    if [ "$TARGET" != "$(git rev-parse HEAD)" ]; then
+        if ! verify_target "$TARGET"; then
+            notify "blog-privacy: update REFUSED, the new commit ${TARGET:0:12} has no valid trusted signature (nothing changed)."
+            exit 1
+        fi
+        log "Fast-forwarding to ${TARGET:0:12}"
+        git merge --ff-only --quiet "$TARGET" || rollback "fast-forward failed"
+    fi
     # If the updater itself changed, let the NEW version run the next steps
     # (it knows about the new release: migrations, data conversions...).
     if ! git diff --quiet "$PREV_COMMIT" HEAD -- update.sh; then
@@ -220,3 +319,8 @@ else
     [ "$AUTO" = 1 ] && notify "blog-privacy: updated to $NEW_COMMIT. Restart the app to apply it (UPDATE_RESTART_CMD is not set)."
 fi
 log "Backups of your data before the update are in: $BACKUP_DIR"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi

@@ -16,6 +16,12 @@
 # (the cron user then needs a sudoers rule for exactly that command, see
 # SECURITY.md). Output goes to logs/update.log.
 #
+# Authenticity: update.sh only fast-forwards to a commit whose signature is
+# valid for the dedicated keyring UPDATE_GPG_HOME (optionally pinned with
+# UPDATE_TRUSTED_FINGERPRINTS). `enable` therefore REFUSES to schedule anything
+# until UPDATE_GPG_HOME is set in .env (or UPDATE_ALLOW_UNSIGNED=1, unsafe).
+# See the header of update.sh.
+#
 # Automatic updates are OFF by default: you decide.
 # ---------------------------------------------------------------------------
 set -euo pipefail
@@ -24,7 +30,33 @@ cd "$(dirname "$0")"
 ROOT="$(pwd)"
 MARKER="# blog-privacy auto-update ($ROOT)"
 
-usage() { sed -n '3,22p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '3,/^# ----/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 1; }
+
+# Read one KEY=value from .env without executing the file.
+env_get() {
+    [ -f "$ROOT/.env" ] || return 0
+    { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+}
+
+# Fail closed: an unattended updater must not be scheduled without a
+# signature policy, otherwise it would run unverified code from the remote.
+require_signature_policy() {
+    local home allow
+    home="${UPDATE_GPG_HOME:-$(env_get UPDATE_GPG_HOME)}"
+    allow="${UPDATE_ALLOW_UNSIGNED:-$(env_get UPDATE_ALLOW_UNSIGNED)}"
+    if [ -n "$home" ]; then
+        [ -d "$home" ] || { echo "UPDATE_GPG_HOME '$home' is not a directory."; exit 1; }
+        return 0
+    fi
+    if [ "$allow" = "1" ]; then
+        echo "WARNING: UPDATE_ALLOW_UNSIGNED=1: automatic updates will NOT verify commit signatures."
+        return 0
+    fi
+    echo "Refusing to enable automatic updates: UPDATE_GPG_HOME is not set in .env."
+    echo "update.sh only installs commits signed by a key of that dedicated keyring."
+    echo "Create the keyring (see README / header of update.sh), or set UPDATE_ALLOW_UNSIGNED=1 at your own risk."
+    exit 1
+}
 
 command -v crontab >/dev/null 2>&1 || { echo "crontab is not installed (apt install cron)."; exit 1; }
 
@@ -50,6 +82,7 @@ case "${1:-}" in
                 fi
                 ;;
         esac
+        require_signature_policy
         chmod +x "$ROOT/update.sh"
         mkdir -p "$ROOT/logs"
         line="$cron cd '$ROOT' && ./update.sh --auto >> '$ROOT/logs/update.log' 2>&1 $MARKER"
