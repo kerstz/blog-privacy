@@ -176,7 +176,7 @@ class User(db.Model, UserMixin):
         import json
         try:
             return json.loads(self.badges) if self.badges else []
-        except:
+        except (ValueError, TypeError):
             return []
 
     def add_badge(self, badge_name):
