@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ---------------------------------------------------------------------------
 # Safe updater: fetches the latest code, VERIFIES ITS SIGNATURE, upgrades
-# dependencies to the patched versions pinned in requirements.lock, applies DB
+# dependencies to the patched versions pinned in requirements.lock (hashes enforced), applies DB
 # migrations, checks that the app still starts (and runs the test suite when
 # pytest is installed), then runs a CVE scan. It NEVER deletes or overwrites
 # your data without a reason:
@@ -234,9 +234,36 @@ make_backup() {
         | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | while read -r f; do rm -f "$f" "$f.hmac"; done
 }
 
-# Installs the dependencies of the code that is currently checked out.
+# Installs the dependencies of the code that is currently checked out, from
+# the hash-pinned requirements.lock (--require-hashes: every artifact must
+# match a known sha256). No `pip install --upgrade pip`, no unpinned tool in
+# the production venv. Only an old checkout without a lock falls back to
+# requirements.txt (with a warning).
 install_deps() {
-    "$PY" -m pip install --quiet -r requirements.txt
+    if [ -f requirements.lock ]; then
+        "$PY" -m pip install --quiet --require-hashes -r requirements.lock
+    else
+        log "!! requirements.lock is missing: falling back to UNHASHED requirements.txt."
+        "$PY" -m pip install --quiet -r requirements.txt
+    fi
+}
+
+# CVE scan of the dependencies. pip-audit is NEVER installed in the production
+# venv: it runs from an isolated, version-pinned environment (uvx or pipx).
+# Without one of them the scan is skipped. Returns non-zero only when
+# vulnerabilities are reported.
+run_pip_audit() {
+    local spec="${UPDATE_PIP_AUDIT_SPEC:-pip-audit==2.9.0}" req=requirements.txt
+    local extra=()
+    if [ -f requirements.lock ]; then req=requirements.lock; extra=(--no-deps --disable-pip); fi
+    if command -v uvx >/dev/null 2>&1; then
+        uvx --from "$spec" pip-audit -r "$req" ${extra[@]+"${extra[@]}"}
+    elif command -v pipx >/dev/null 2>&1; then
+        pipx run --spec "$spec" pip-audit -r "$req" ${extra[@]+"${extra[@]}"}
+    else
+        log "pip-audit skipped: neither uvx nor pipx is installed (it must not be installed in the production venv)."
+        return 0
+    fi
 }
 
 # Current Alembic revision (informational, logged before the update so that
@@ -383,12 +410,9 @@ if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
         # The running version is the installed, known-good one: safe to run.
         encrypt_legacy
         log "Checking installed dependencies for new CVEs."
-        "$PY" -m pip install --quiet --upgrade pip-audit >/dev/null 2>&1 || true
-        if ! "$PY" -m pip_audit -r requirements.txt >/tmp/blog-pip-audit.$$ 2>&1; then
-            cat /tmp/blog-pip-audit.$$
+        if ! run_pip_audit; then
             notify "blog-privacy: pip-audit found vulnerable dependencies and no fix has been published in the repository yet. Check update.log."
         fi
-        rm -f /tmp/blog-pip-audit.$$
         exit 0
     fi
 fi
@@ -435,10 +459,9 @@ else
     log "Resuming after the code update (previous version: ${RESUME_FROM:0:12})"
 fi
 
-# 3. Dependencies (patched versions pinned in requirements.txt)
-log "Upgrading dependencies"
-"$PY" -m pip install --quiet --upgrade pip || true
-"$PY" -m pip install --quiet --upgrade -r requirements.txt || rollback "dependency install failed"
+# 3. Dependencies (hash-pinned in requirements.lock)
+log "Installing dependencies"
+install_deps || rollback "dependency install failed"
 
 # 4. Database schema migrations (Alembic only ADDS/ALTERS schema, data is kept)
 if [ -d migrations ]; then
@@ -463,8 +486,7 @@ encrypt_legacy
 
 # 7. Vulnerability scan of the installed dependencies
 log "Scanning dependencies for known CVEs (pip-audit)"
-"$PY" -m pip install --quiet --upgrade pip-audit || true
-if "$PY" -m pip_audit -r requirements.txt; then
+if run_pip_audit; then
     log "No known vulnerabilities."
 else
     log "!! pip-audit reported vulnerabilities above."
