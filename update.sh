@@ -7,7 +7,9 @@
 # your data without a reason:
 #   - .env, instance/ (database) and uploads/ are never modified by this script
 #     (the only exception is the rollback, which restores the database)
-#   - a timestamped backup of the database + uploads is taken first
+#   - a timestamped backup of the database + uploads is taken first, encrypted
+#     with BACKUP_PASSPHRASE (same as backup.sh); without a passphrase the
+#     backup is left in clear text but WITHOUT instance/quarantine
 #   - only a fast-forward to a commit signed by a trusted key is accepted;
 #     the script refuses to run if you have local code changes
 #   - if the new version fails its checks, code + dependencies are rolled back
@@ -40,6 +42,7 @@
 # ./auto-update.sh (daily / weekly / monthly / custom).
 # ---------------------------------------------------------------------------
 set -euo pipefail
+umask 077
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
@@ -133,6 +136,104 @@ fetch_target() {
     TARGET="$(git rev-parse '@{u}')"
 }
 
+# ---- encrypted update backups ---------------------------------------------
+# The crypto below mirrors backup.sh (same BACKUP_PASSPHRASE, same formats):
+# gpg --symmetric AES256 when gpg exists (authenticated), otherwise openssl
+# AES-256-CBC + PBKDF2 (600000 it.) plus an HMAC-SHA256 sidecar (<file>.hmac,
+# encrypt-then-MAC) that is verified before anything is decrypted.
+# Without a passphrase no clear-text archive containing instance/quarantine
+# is ever written: the quarantine is left out and a warning is logged.
+
+# Prints the passphrase (BACKUP_PASSPHRASE env or .env, >= 16 chars) or fails.
+backup_passphrase() {
+    local p="${BACKUP_PASSPHRASE:-$(env_get BACKUP_PASSPHRASE)}"
+    [ -n "$p" ] && [ "${#p}" -ge 16 ] || return 1
+    printf '%s' "$p"
+}
+
+# HMAC-SHA256 (hex) of a file, key derived from the passphrase with PBKDF2.
+mac_file() {  # $1 = file, $2 = passphrase
+    BACKUP_PASS="$2" "$PY" -I -c '
+import hashlib, hmac, os, sys
+k = hashlib.pbkdf2_hmac("sha256", os.environ["BACKUP_PASS"].encode(), b"blog-privacy-backup-mac-v1", 600000)
+h = hmac.new(k, digestmod="sha256")
+with open(sys.argv[1], "rb") as f:
+    for b in iter(lambda: f.read(1 << 20), b""):
+        h.update(b)
+print(h.hexdigest())' "$1"
+}
+
+encrypt_stream() {  # stdin -> $1.gpg|$1.enc ; prints the output path
+    local pass; pass="$(backup_passphrase)" || return 1
+    if command -v gpg >/dev/null 2>&1; then
+        gpg --batch --yes --quiet --pinentry-mode loopback --passphrase-fd 3 \
+            --symmetric --cipher-algo AES256 -o "$1.gpg" 3<<<"$pass" || return 1
+        echo "$1.gpg"
+    else
+        BACKUP_PASS="$pass" openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
+            -pass env:BACKUP_PASS -out "$1.enc" || return 1
+        mac_file "$1.enc" "$pass" > "$1.enc.hmac" || return 1
+        echo "$1.enc"
+    fi
+}
+
+decrypt_stream() {  # $1 = backup file -> tar.gz stream on stdout
+    local file="$1" pass
+    case "$file" in
+        *.tar.gz) cat "$file" ;;
+        *.gpg)
+            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file"; return 1; }
+            gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 -d "$file" 3<<<"$pass" ;;
+        *.enc)
+            pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file"; return 1; }
+            if [ ! -f "$file.hmac" ] || [ "$(cat "$file.hmac")" != "$(mac_file "$file" "$pass")" ]; then
+                log "!! Missing or invalid HMAC for $file: refusing to decrypt."
+                return 1
+            fi
+            BACKUP_PASS="$pass" openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASS -in "$file" ;;
+        *) log "!! Unknown backup format: $file"; return 1 ;;
+    esac
+}
+
+# Backup of instance/ (database, quarantine), uploads/ and root *.db files.
+# Sets BACKUP_FILE (empty when there was nothing to save). The archive is
+# created with umask 077 and chmod 600.
+make_backup() {
+    BACKUP_FILE=""
+    local base="$BACKUP_DIR/update_backup_$STAMP.tar.gz" f out
+    local to_save=() excl=(--exclude='instance/.update.lock')
+    mkdir -p "$BACKUP_DIR"
+    chmod 700 "$BACKUP_DIR"
+    [ -d instance ] && to_save+=("instance")
+    [ -d uploads ] && to_save+=("uploads")
+    for f in *.db; do [ -e "$f" ] && to_save+=("$f"); done
+    if [ ${#to_save[@]} -eq 0 ]; then
+        log "(nothing to back up)"
+        return 0
+    fi
+    if backup_passphrase >/dev/null; then
+        log "Encrypted backup of database and uploads -> $base.gpg|.enc"
+        if ! out="$(tar "${excl[@]}" -czf - "${to_save[@]}" | encrypt_stream "$base")"; then
+            rm -f "$base.gpg" "$base.enc" "$base.enc.hmac"
+            log "!! Encrypting the backup failed. Aborting (nothing changed)."
+            return 1
+        fi
+        BACKUP_FILE="$out"
+    else
+        log "!! WARNING: BACKUP_PASSPHRASE is missing or shorter than 16 characters: the backup"
+        log "!! is NOT encrypted, so instance/quarantine is EXCLUDED from it. Set BACKUP_PASSPHRASE"
+        log "!! in .env (same value as for backup.sh) to get complete encrypted backups."
+        log "Backup of database and uploads -> $base"
+        tar "${excl[@]}" --exclude='instance/quarantine' -czf "$base" "${to_save[@]}" || return 1
+        BACKUP_FILE="$base"
+    fi
+    chmod 600 "$BACKUP_FILE"
+    # keep only the most recent update backups
+    ls -1t "$BACKUP_DIR"/update_backup_*.tar.gz "$BACKUP_DIR"/update_backup_*.tar.gz.gpg \
+        "$BACKUP_DIR"/update_backup_*.tar.gz.enc 2>/dev/null \
+        | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | while read -r f; do rm -f "$f" "$f.hmac"; done
+}
+
 rollback() {
     log "!! $1 -> rolling back code and dependencies (your data is untouched)."
     if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
@@ -219,21 +320,7 @@ fi
 
 if [ -z "$RESUME_FROM" ]; then
 # 1. Backup (read-only copy of your data)
-log "Backup of database and uploads -> $BACKUP_DIR/update_backup_$STAMP.tar.gz"
-mkdir -p "$BACKUP_DIR"
-chmod 700 "$BACKUP_DIR"
-to_save=()
-[ -d instance ] && to_save+=("instance")
-[ -d uploads ] && to_save+=("uploads")
-for f in *.db; do [ -e "$f" ] && to_save+=("$f"); done
-if [ ${#to_save[@]} -gt 0 ]; then
-    tar --exclude='instance/.update.lock' -czf "$BACKUP_DIR/update_backup_$STAMP.tar.gz" "${to_save[@]}"
-    chmod 600 "$BACKUP_DIR/update_backup_$STAMP.tar.gz"
-    # keep only the most recent update backups
-    ls -1t "$BACKUP_DIR"/update_backup_*.tar.gz 2>/dev/null | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | xargs -r rm -f
-else
-    log "(nothing to back up)"
-fi
+make_backup || exit 1
 
 # 2. Code update (only if this is a git checkout; never overwrites local edits).
 #    fetch -> verify the signature of the target -> fast-forward. Nothing is
