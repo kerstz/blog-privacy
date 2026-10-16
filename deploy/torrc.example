@@ -6,3 +6,7 @@
 # spoof its "IP" to bypass rate limiting when TRUSTED_PROXY_COUNT=1.
 HiddenServiceDir /var/lib/tor/blog/
 HiddenServicePort 80 127.0.0.1:8080
+# Proof-of-work anti-DoS (Tor >= 0.4.8): under load the service asks clients
+# for a small computation before accepting their circuit. Harmless for normal
+# visitors; it raises the cost of flooding the service (audit 2026-10-16, H1).
+HiddenServicePoWDefensesEnabled 1

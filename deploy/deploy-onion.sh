@@ -96,6 +96,10 @@ ok "Sources trouvees dans ${SRC_DIR}"
 # dependances casse, c'est presque toujours ici qu'il faut regarder.
 PY_VERSION="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')"
 ok "Python ${PY_VERSION}"
+# Le lockfile est resolu pour Python 3.12+ : une version plus ancienne ferait
+# echouer --require-hashes (ou installerait autre chose que ce qui est teste).
+python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)' \
+    || die "Python 3.12 ou plus recent est requis (trouve : ${PY_VERSION}). Installez python3.12 (ou une distribution recente) puis relancez."
 
 if (( DRY_RUN )); then
     warn "Mode simulation : aucune modification ne sera ecrite."
@@ -224,7 +228,8 @@ if command -v rsync >/dev/null 2>&1; then
         "${SRC_DIR}/" "${APP_DIR}/"
 else
     run cp -r "${SRC_DIR}/app" "${SRC_DIR}/migrations" "${SRC_DIR}/wsgi.py" \
-              "${SRC_DIR}/requirements.txt" "${SRC_DIR}/create_admin.py" "${APP_DIR}/"
+              "${SRC_DIR}/requirements.txt" "${SRC_DIR}/requirements.lock" \
+              "${SRC_DIR}/create_admin.py" "${APP_DIR}/"
 fi
 ok "Sources copiees dans ${APP_DIR}"
 
@@ -232,9 +237,11 @@ if [[ ! -d "$VENV_DIR" ]]; then
     run python3 -m venv "$VENV_DIR"
     ok "Environnement virtuel cree"
 fi
-run "${VENV_DIR}/bin/python" -m pip install --quiet --upgrade pip
-run "${VENV_DIR}/bin/python" -m pip install --quiet -r "${APP_DIR}/requirements.txt"
-run "${VENV_DIR}/bin/python" -m pip install --quiet gunicorn
+# pip epingle, puis installation STRICTEMENT depuis le lockfile : chaque paquet
+# (gunicorn compris) est verifie par son empreinte sha256, rien n'est resolu en
+# ligne. Pour mettre a jour les versions, regenerer requirements.lock (README).
+run "${VENV_DIR}/bin/python" -m pip install --quiet "pip==26.2.1"
+run "${VENV_DIR}/bin/python" -m pip install --quiet --require-hashes -r "${APP_DIR}/requirements.lock"
 ok "Dependances installees"
 
 # Les donnees vivent hors de l'arborescence applicative : une reinstallation
@@ -478,6 +485,11 @@ append_hs_block() {
 ${HS_MARK}
 HiddenServiceDir ${TOR_HS_DIR}
 HiddenServicePort 80 ${BIND_ADDR}:${BIND_PORT}
+# Proof-of-work contre le DoS (Tor >= 0.4.8) : sous charge, le service demande
+# un petit calcul aux clients avant de traiter leur connexion. Sans effet pour
+# un visiteur normal ; ignore par les Tor plus anciens (la directive y est
+# refusee : voir torrc_verify / journalctl -u tor).
+HiddenServicePoWDefensesEnabled 1
 # Pas de HiddenServiceVersion : v3 est la seule version depuis Tor 0.4.6 et la
 # directive a ete retiree — l'ecrire ferait refuser le fichier de configuration.
 # Ne journalise que l'essentiel, sans adresses.
@@ -489,19 +501,20 @@ EOF
 }
 
 if grep -qF "$HS_MARK" "$TORRC" 2>/dev/null; then
-    if grep -qF "HiddenServicePort 80 ${BIND_ADDR}:${BIND_PORT}" "$TORRC"; then
+    if grep -qF "HiddenServicePort 80 ${BIND_ADDR}:${BIND_PORT}" "$TORRC" \
+       && grep -qF "HiddenServicePoWDefensesEnabled 1" "$TORRC"; then
         ok "Service onion deja declare dans ${TORRC}"
     else
         # Le port d'ecoute a change depuis la derniere installation. Sans cette
         # mise a jour, tor renverrait les visiteurs vers un port ou plus rien
         # n'ecoute : l'adresse onion repondrait « connexion refusee », alors que
         # tout le reste aurait l'air correct.
-        warn "Le port d'ecoute a change — mise a jour du bloc dans ${TORRC}"
+        warn "Port d'ecoute ou defense PoW a mettre a jour — reecriture du bloc dans ${TORRC}"
         if (( ! DRY_RUN )); then
             sed -i "\|^${HS_MARK}$|,\|^${HS_MARK} fin$|d" "$TORRC"
             append_hs_block
         fi
-        ok "Bloc onion reecrit sur ${BIND_ADDR}:${BIND_PORT}"
+        ok "Bloc onion reecrit sur ${BIND_ADDR}:${BIND_PORT} (PoW actif)"
     fi
 else
     if (( ! DRY_RUN )); then
