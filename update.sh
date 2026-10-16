@@ -234,13 +234,84 @@ make_backup() {
         | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | while read -r f; do rm -f "$f" "$f.hmac"; done
 }
 
+# Installs the dependencies of the code that is currently checked out.
+install_deps() {
+    "$PY" -m pip install --quiet -r requirements.txt
+}
+
+# Current Alembic revision (informational, logged before the update so that
+# an operator can see exactly which schema the backup corresponds to).
+db_current_revision() {
+    FLASK_APP=app "$PY" -m flask db current 2>/dev/null \
+        | awk '/^[0-9A-Za-z_]+([[:space:]]|$)/ && $1 != "INFO" {print $1; exit}' || true
+}
+
+# Put the database files back from the backup taken just before the update.
+# Only *.db files (instance/*.db and root *.db) are restored: uploads/, .env
+# and instance/quarantine are NOT touched (a migration never changes them).
+# We restore the snapshot instead of running `flask db downgrade` because a
+# downgrade needs the downgrade() code of the NEW migrations (often missing,
+# and frequently lossy: dropped columns/tables), whereas the snapshot is an
+# exact, tested copy. Data written between the backup and the rollback (the
+# app keeps serving during the update) is lost; it is the price of an exact
+# return to the previous schema. Replacement is atomic (copy + mv), WAL/journal
+# leftovers of the live file are removed.
+restore_db_from_backup() {  # $1 = archive made by make_backup
+    local archive="${1:-}" tmp f rel dest restored=0
+    if [ -z "$archive" ] || [ ! -f "$archive" ]; then
+        log "!! No backup archive available: cannot restore the database."
+        return 1
+    fi
+    tmp="$(mktemp -d "$ROOT/instance/.restore.XXXXXX")"
+    if ! decrypt_stream "$archive" | tar -C "$tmp" -xzf - --no-wildcards-match-slash \
+            --wildcards 'instance/*.db' '*.db' 2>/dev/null; then
+        log "!! Could not read the database out of $archive"
+        rm -rf "$tmp"; return 1
+    fi
+    while IFS= read -r f; do
+        rel="${f#"$tmp"/}"
+        if ! "$PY" -I -c 'import sqlite3, sys; c = sqlite3.connect("file:" + sys.argv[1] + "?mode=ro", uri=True); sys.exit(0 if c.execute("PRAGMA integrity_check").fetchone()[0] == "ok" else 1)' "$f"; then
+            log "!! The backed-up database $rel is corrupted: not restoring it."
+            rm -rf "$tmp"; return 1
+        fi
+        dest="$ROOT/$rel"
+        cp -p "$f" "$dest.restore.$$" && mv -f "$dest.restore.$$" "$dest" || { rm -rf "$tmp"; return 1; }
+        rm -f "$dest-wal" "$dest-shm" "$dest-journal"
+        log "Database restored from backup: $rel"
+        restored=$((restored + 1))
+    done < <(find "$tmp" -type f -name '*.db' | sort)
+    rm -rf "$tmp"
+    if [ "$restored" -eq 0 ]; then
+        log "!! The backup contains no database file: nothing restored."
+        return 1
+    fi
+}
+
+# Roll back code, dependencies and (when a migration may have run) the
+# database. Order: code first, then dependencies of the old code, then DB.
 rollback() {
-    log "!! $1 -> rolling back code and dependencies (your data is untouched)."
+    local db_state="the database was not modified (no migration had started)"
+    log "!! $1 -> rolling back code, dependencies and, if needed, the database."
     if [ "$IS_GIT" = 1 ] && [ -n "$PREV_COMMIT" ]; then
         git reset --quiet --hard "$PREV_COMMIT"
     fi
-    "$PY" -m pip install --quiet -r requirements.txt || true
-    notify "blog-privacy: automatic update FAILED ($1) and was rolled back. Check update.log."
+    install_deps || true
+    if [ "${DB_TOUCHED:-0}" = 1 ]; then
+        if restore_db_from_backup "${BACKUP_FILE:-}"; then
+            db_state="the database was restored from ${BACKUP_FILE##*/} (taken just before the update, schema ${PREV_DB_REV:-unknown}); writes made since that backup are lost"
+            if [ -n "${RESTART_CMD:-}" ]; then
+                log "Restarting the app on the restored database: $RESTART_CMD"
+                bash -c "$RESTART_CMD" || log "!! restart failed, restart the app by hand."
+            else
+                log "!! Restart the app now: it may still hold the pre-restore database file open."
+            fi
+        else
+            db_state="the DATABASE COULD NOT BE RESTORED, it may be on a newer schema than the code: restore it by hand from ${BACKUP_FILE:-backups/}"
+            log "!! $db_state"
+        fi
+    fi
+    log "Rollback result: code back to ${PREV_COMMIT:0:12}; $db_state. uploads/ and .env were not touched."
+    notify "blog-privacy: automatic update FAILED ($1) and was rolled back ($db_state). Check update.log."
     exit 1
 }
 
@@ -295,6 +366,10 @@ fi
 log "Python: $PY"
 PREV_COMMIT=""
 IS_GIT=0
+# State handed over by the previous process when update.sh changed itself
+BACKUP_FILE="${BLOG_UPDATE_BACKUP_FILE:-}"
+PREV_DB_REV="${BLOG_UPDATE_PREV_DB_REV:-}"
+DB_TOUCHED=0   # set to 1 right before the first migration is attempted
 if [ -d .git ]; then
     IS_GIT=1
     PREV_COMMIT="${RESUME_FROM:-$(git rev-parse HEAD)}"
@@ -319,8 +394,12 @@ if [ "$AUTO" = 1 ] && [ "$IS_GIT" = 1 ]; then
 fi
 
 if [ -z "$RESUME_FROM" ]; then
-# 1. Backup (read-only copy of your data)
+# 1. Backup (read-only copy of your data) + schema revision before the update
 make_backup || exit 1
+if [ -d migrations ]; then
+    PREV_DB_REV="$(db_current_revision)"
+    log "Alembic revision before the update: ${PREV_DB_REV:-unknown}"
+fi
 
 # 2. Code update (only if this is a git checkout; never overwrites local edits).
 #    fetch -> verify the signature of the target -> fast-forward. Nothing is
@@ -348,7 +427,8 @@ if [ "$IS_GIT" = 1 ]; then
         resume_args=(--resume-after-pull "$PREV_COMMIT")
         [ "$AUTO" = 1 ] && resume_args+=(--auto)
         rm -f "${BLOG_UPDATE_SELF:-}"   # exec skips the EXIT trap
-        exec env -u BLOG_UPDATE_COPY -u BLOG_UPDATE_SELF bash "$ROOT/update.sh" "${resume_args[@]}"
+        exec env -u BLOG_UPDATE_COPY -u BLOG_UPDATE_SELF \
+            BLOG_UPDATE_BACKUP_FILE="$BACKUP_FILE" BLOG_UPDATE_PREV_DB_REV="${PREV_DB_REV:-}" bash "$ROOT/update.sh" "${resume_args[@]}"
     fi
 fi
 else
@@ -363,6 +443,7 @@ log "Upgrading dependencies"
 # 4. Database schema migrations (Alembic only ADDS/ALTERS schema, data is kept)
 if [ -d migrations ]; then
     log "Applying database migrations"
+    DB_TOUCHED=1
     FLASK_APP=app "$PY" -m flask db upgrade || rollback "database migration failed"
 fi
 
