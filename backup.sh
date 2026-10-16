@@ -19,8 +19,13 @@
 #   BACKUP_KEEP=14          number of backups kept locally (default 14)
 #   BACKUP_REMOTE=user@host:/path/   optional rsync target for an off-site copy
 #
-# Encryption: gpg (AES-256, authenticated) when available, otherwise
-# openssl AES-256-CBC + PBKDF2.
+# Encryption: gpg --symmetric AES256 (authenticated, MDC) is always preferred.
+# Fallback without gpg: openssl AES-256-CBC + PBKDF2 (600000 iterations), which
+# is NOT authenticated by itself, so an HMAC-SHA256 sidecar "<file>.enc.hmac"
+# (encrypt-then-MAC, key derived from the passphrase with PBKDF2) is written
+# and verified before decrypting. Legacy *.enc backups without sidecar can
+# still be restored (a warning is printed): same openssl parameters as before.
+# update.sh uses the same formats for its pre-update backups.
 # ---------------------------------------------------------------------------
 set -euo pipefail
 umask 077
@@ -34,7 +39,7 @@ env_get() {
     [ -f "$ROOT/.env" ] || return 0
     { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
 }
-usage() { sed -n '3,25p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+usage() { sed -n '3,/^# ----/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 1; }
 
 PY=python3
 for d in venv .venv env; do [ -x "$ROOT/$d/bin/python" ] && PY="$ROOT/$d/bin/python" && break; done
@@ -50,6 +55,18 @@ passphrase() {
     printf '%s' "$p"
 }
 
+# HMAC-SHA256 (hex) of a file; key = PBKDF2(passphrase), no secret on argv.
+mac_file() {  # $1 = file, $2 = passphrase
+    BACKUP_PASS="$2" "$PY" -I -c '
+import hashlib, hmac, os, sys
+k = hashlib.pbkdf2_hmac("sha256", os.environ["BACKUP_PASS"].encode(), b"blog-privacy-backup-mac-v1", 600000)
+h = hmac.new(k, digestmod="sha256")
+with open(sys.argv[1], "rb") as f:
+    for b in iter(lambda: f.read(1 << 20), b""):
+        h.update(b)
+print(h.hexdigest())' "$1"
+}
+
 encrypt() {  # stdin -> $1
     local pass; pass="$(passphrase)"
     if command -v gpg >/dev/null 2>&1; then
@@ -59,6 +76,7 @@ encrypt() {  # stdin -> $1
     else
         BACKUP_PASS="$pass" openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
             -pass env:BACKUP_PASS -out "$1.enc"
+        mac_file "$1.enc" "$pass" > "$1.enc.hmac"
         echo "$1.enc"
     fi
 }
@@ -90,8 +108,9 @@ PYEOF
     chmod 600 "$out"
     echo "Encrypted backup: $out"
 
-    local keep; keep="${BACKUP_KEEP:-$(env_get BACKUP_KEEP)}"; keep="${keep:-14}"
-    ls -1t "$BACKUP_DIR"/backup_*.tar.gz.* 2>/dev/null | tail -n +$((keep + 1)) | xargs -r rm -f
+    local keep old; keep="${BACKUP_KEEP:-$(env_get BACKUP_KEEP)}"; keep="${keep:-14}"
+    ls -1t "$BACKUP_DIR"/backup_*.tar.gz.gpg "$BACKUP_DIR"/backup_*.tar.gz.enc 2>/dev/null \
+        | tail -n +$((keep + 1)) | while read -r old; do rm -f "$old" "$old.hmac"; done
 
     local remote; remote="${BACKUP_REMOTE:-$(env_get BACKUP_REMOTE)}"
     if [ -n "$remote" ]; then
@@ -110,7 +129,14 @@ do_restore() {
     local pass; pass="$(passphrase)"
     case "$file" in
         *.gpg) gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 -d "$file" 3<<<"$pass" | tar -C "$dest" -xzf - ;;
-        *.enc) BACKUP_PASS="$pass" openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASS -in "$file" | tar -C "$dest" -xzf - ;;
+        *.enc)
+            if [ -f "$file.hmac" ]; then
+                [ "$(cat "$file.hmac")" = "$(mac_file "$file" "$pass")" ] \
+                    || { echo "HMAC mismatch: the backup is corrupted or was tampered with. Refusing to decrypt."; exit 1; }
+            else
+                echo "WARNING: no $file.hmac (legacy unauthenticated backup): integrity cannot be verified." >&2
+            fi
+            BACKUP_PASS="$pass" openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -pass env:BACKUP_PASS -in "$file" | tar -C "$dest" -xzf - ;;
         *) echo "Unknown backup format: $file"; exit 1 ;;
     esac
     echo "Restored into $dest. Stop the app, then copy back what you need (instance/, uploads/, .env)."
@@ -129,7 +155,7 @@ schedule() {
             else
                 echo "Scheduled backups: disabled (enable with: ./backup.sh enable daily)"
             fi
-            echo "Latest backups:"; ls -1t "$BACKUP_DIR"/backup_*.tar.gz.* 2>/dev/null | head -5 || true ;;
+            echo "Latest backups:"; ls -1t "$BACKUP_DIR"/backup_*.tar.gz.gpg "$BACKUP_DIR"/backup_*.tar.gz.enc 2>/dev/null | head -5 || true ;;
         *)
             local cron
             case "$1" in
