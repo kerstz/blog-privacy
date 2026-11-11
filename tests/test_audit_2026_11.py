@@ -90,3 +90,35 @@ def test_blog_service_is_hardened():
     assert re.search(r'^RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6\s*$', unit, re.M)
     # a missing optional directory must not stop the service with ProtectSystem=strict
     assert '-/srv/blog/backups' in unit
+
+
+def test_healthz_does_not_run_scheduled_publication(monkeypatch):
+    """The probe is read-only: the before_request publisher must not run."""
+    reset()
+    from app import utils
+
+    def fail():
+        raise AssertionError('publisher must not run for /healthz')
+
+    monkeypatch.setattr(utils, 'publish_scheduled_posts', fail)
+    assert app.test_client().get('/healthz').status_code == 200
+
+
+def test_publisher_failure_does_not_break_requests(monkeypatch):
+    reset()
+    from app import utils
+
+    def boom():
+        raise RuntimeError('db down')
+
+    monkeypatch.setattr(utils, 'publish_scheduled_posts', boom)
+    assert app.test_client().get('/about').status_code == 200
+
+
+def test_dhash_is_stable_and_detects_gradient():
+    from PIL import Image
+    from app.image_safety import dhash
+    img = Image.new('L', (64, 64))
+    img.putdata([x * 4 for _ in range(64) for x in range(64)])  # left to right gradient
+    assert dhash(img) == 0  # left < right everywhere: no bit set
+    assert dhash(img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)) == (1 << 64) - 1

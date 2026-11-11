@@ -105,7 +105,7 @@ def dhash(image, size=8):
     gradients horizontaux — la « forme » de l'image.
     """
     img = image.convert('L').resize((size + 1, size), Image.Resampling.LANCZOS)
-    pixels = list(img.getdata())
+    pixels = img.tobytes()  # mode L: one byte per pixel (getdata() is deprecated)
     bits = 0
     index = 0
     for row in range(size):

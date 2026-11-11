@@ -139,9 +139,19 @@ def enforce_password_change():
 
 @app.before_request
 def publish_due_scheduled_posts():
-    """Publish the posts whose scheduled date has passed."""
+    """Publish the posts whose scheduled date has passed.
+
+    Skipped for the health probe (it must stay read-only and must report a
+    database outage itself, as a 503). A failure here never breaks the request.
+    """
+    if request.endpoint == 'healthz':
+        return
     from app.utils import publish_scheduled_posts
-    publish_scheduled_posts()
+    try:
+        publish_scheduled_posts()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Scheduled publication failed')
 
 
 # Optional .onion address, e.g. ONION_ADDRESS=abcd...xyz.onion (56 chars + .onion)
