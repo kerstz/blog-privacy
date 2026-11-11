@@ -253,7 +253,7 @@ install_deps() {
 # Without one of them the scan is skipped. Returns non-zero only when
 # vulnerabilities are reported.
 run_pip_audit() {
-    local spec="${UPDATE_PIP_AUDIT_SPEC:-pip-audit==2.9.0}" req=requirements.txt
+    local spec="${UPDATE_PIP_AUDIT_SPEC:-pip-audit==2.10.1}" req=requirements.txt
     local extra=()
     if [ -f requirements.lock ]; then req=requirements.lock; extra=(--no-deps --disable-pip); fi
     if command -v uvx >/dev/null 2>&1; then
