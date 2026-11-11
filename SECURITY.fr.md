@@ -18,6 +18,8 @@
 - **Profil public** : les « commentaires récents » n'affichent plus les
   commentaires faits sur des articles repassés en brouillon (fuite de titres).
 - **`/healthz`** : sonde anonyme de vie + base de données (`ok` / `unavailable`).
+- **Compteurs du profil public** : `total_comments` et la liste ne comptent plus que
+  les commentaires non supprimés d'articles publiés (avant : tous).
 - **`deploy/blog.service`** : isolation systemd renforcée ; le dossier de
   sauvegardes facultatif ne bloque plus le démarrage s'il est absent.
 

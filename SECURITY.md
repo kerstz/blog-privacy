@@ -25,6 +25,8 @@
   on posts that were later unpublished (it exposed draft titles).
 - **`/healthz`**: anonymous liveness + database probe (`ok` / `unavailable`,
   nothing else, no cookie) for systemd, Caddy/nginx or monitoring.
+- **Public profile counters**: `total_comments` and the recent list now count only
+  non-deleted comments on published posts (previously every comment).
 - **`deploy/blog.service`**: more systemd sandboxing (`PrivateDevices`,
   `ProtectKernelLogs`, `ProtectClock`, `ProtectHostname`, `RestrictNamespaces`,
   `RestrictRealtime`, `RestrictAddressFamilies`, `SystemCallFilter`, `UMask=0077`);
