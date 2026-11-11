@@ -33,6 +33,7 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **API mobile admin** (désactivée par défaut ; Basic Auth + `X-TOTP-Code` obligatoire pour les admins, flux SSE)
 - **Pages statiques, bannières, contact, dons en crypto** (QR codes générés côté serveur)
 - **Mises à jour sûres** : `./update.sh` (sauvegarde, mise à jour, vérification, retour arrière automatique), mises à jour automatiques optionnelles à la fréquence de votre choix, sauvegardes chiffrées
+- **Sonde de santé** : `GET /healthz` renvoie `ok` (HTTP 200) si l'application et sa base répondent, `unavailable` (503) sinon ; aucune donnée, aucun cookie
 
 ## Démarrage rapide
 

@@ -9,6 +9,29 @@
 > (HMAC) instead of IP addresses. The remaining items of this changelog still
 > apply.
 
+## Audit release - November 2026
+
+**Update with `./update.sh`.**
+
+- **Pillow 12.3.0 -> 13.0.0**: 39 advisories (decoders for TIFF, JPEG, GIF, BMP,
+  PDF/EPS helpers and others, e.g. PYSEC-2026-4329..4343, GHSA-78g4-xqwv-q3g8)
+  are fixed in 13.0.0. Uploaded images are decoded by Pillow, so this update is
+  important. Dev-only pins `certifi` and `filelock` were refreshed too.
+  `pip-audit` and `osv-scanner` report nothing.
+- **Attachment access check**: `_` and `%` in a requested file name were
+  interpreted as SQL `LIKE` wildcards when looking up the owning message; they
+  are now matched literally (defence in depth, the names are random).
+- **Public profile**: the "recent comments" list no longer shows comments made
+  on posts that were later unpublished (it exposed draft titles).
+- **`/healthz`**: anonymous liveness + database probe (`ok` / `unavailable`,
+  nothing else, no cookie) for systemd, Caddy/nginx or monitoring.
+- **`deploy/blog.service`**: more systemd sandboxing (`PrivateDevices`,
+  `ProtectKernelLogs`, `ProtectClock`, `ProtectHostname`, `RestrictNamespaces`,
+  `RestrictRealtime`, `RestrictAddressFamilies`, `SystemCallFilter`, `UMask=0077`);
+  the optional backups directory no longer blocks start-up when missing.
+- Known and accepted: `gitleaks` flags four documentation examples
+  (`curl -u admin:your_password`) in old README commits; they are placeholders.
+
 ## Account security release — September 2026 (3)
 
 **Update with `./update.sh`.** After this first update, run `flask encrypt-legacy`

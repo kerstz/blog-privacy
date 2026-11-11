@@ -5,6 +5,22 @@
 > La version de référence est l'anglaise ([SECURITY.md](SECURITY.md), avec le
 > détail complet des CVE) ; ce fichier en est la traduction.
 
+## Version d'audit - novembre 2026
+
+**Mettez à jour avec `./update.sh`.**
+
+- **Pillow 12.3.0 -> 13.0.0** : 39 avis de sécurité (décodeurs TIFF, JPEG, GIF,
+  BMP, etc.) corrigés en 13.0.0. Les images envoyées sont décodées par Pillow :
+  cette mise à jour est importante. Les dépendances de développement `certifi`
+  et `filelock` sont aussi mises à jour. `pip-audit` et `osv-scanner` sont propres.
+- **Contrôle d'accès aux pièces jointes** : `_` et `%` dans un nom de fichier
+  demandé n'agissent plus comme jokers SQL `LIKE` (défense en profondeur).
+- **Profil public** : les « commentaires récents » n'affichent plus les
+  commentaires faits sur des articles repassés en brouillon (fuite de titres).
+- **`/healthz`** : sonde anonyme de vie + base de données (`ok` / `unavailable`).
+- **`deploy/blog.service`** : isolation systemd renforcée ; le dossier de
+  sauvegardes facultatif ne bloque plus le démarrage s'il est absent.
+
 ## Version sécurité des comptes — septembre 2026 (3)
 
 **Mettez à jour avec `./update.sh`.** Après cette première mise à jour, lancez

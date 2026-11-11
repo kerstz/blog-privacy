@@ -69,6 +69,7 @@ pytest -q tests/                # needs requirements-dev.txt
 - Telegram bridge removed; archived read-only in archive/telegram/
 - `bandit -r app create_admin.py wsgi.py -q` and `pip-audit -r requirements.lock --require-hashes --disable-pip --strict` must stay clean; edit requirements.in then re-lock
 - Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
+- `GET /healthz`: anonymous health probe (`ok`/503), nothing else
 - CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`; admin view `/admin/contact`
 
 ## Environment variables

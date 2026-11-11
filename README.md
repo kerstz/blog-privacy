@@ -33,6 +33,8 @@ required, no third-party requests, built to run as a Tor onion service.
 - **Gamification** — XP, levels, badges
 - **Safe updates** — `./update.sh` (backup, update, health check, automatic
   rollback), optional scheduled updates, encrypted backups
+- **Health check** — `GET /healthz` returns `ok` (HTTP 200) when the app and its
+  database respond, `unavailable` (503) otherwise; no data, no cookie
 
 ## What it deliberately does not do
 

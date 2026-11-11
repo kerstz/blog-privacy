@@ -64,6 +64,7 @@ pytest -q tests/                # security regression tests (requirements-dev.tx
 - Uploads go through `_store_upload()` (random name, block-list screening, metadata stripped) and are served by `_send_upload()` (access controlled)
 - Events are per-user only (SSE), never broadcast; the stream re-validates the account on each heartbeat
 - Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
+- `GET /healthz`: anonymous health probe (`ok`/503), nothing else
 - CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`; admin view `/admin/contact`
 - Rate limiting: `hit_rate_limit()` / `@rate_limit` (persistent SQLite store, keys hashed)
 - Admin routes use `@admin_required`
