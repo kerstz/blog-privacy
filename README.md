@@ -156,6 +156,7 @@ Regenerate after changing a pin (needs [uv](https://docs.astral.sh/uv/)):
 uv pip compile --python-version 3.12 --no-header --no-annotate requirements.in -o requirements.txt
 uv pip compile --python-version 3.12 --generate-hashes --no-header --no-annotate requirements.in -o requirements.lock
 uv pip compile --python-version 3.12 --generate-hashes --no-header --no-annotate requirements-dev.in -o requirements-dev.lock
+uv pip compile --python-version 3.12 --no-header --no-annotate requirements-dev.in -o requirements-dev.txt
 ```
 
 `requirements.txt` is the same list without hashes (kept for compatibility).
