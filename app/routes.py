@@ -679,6 +679,23 @@ def import_site_texts():
     return redirect(back)
 
 
+@app.route('/healthz')
+def healthz():
+    """Liveness + database check for systemd / reverse proxy / monitoring.
+
+    Anonymous and read-only: it answers `ok` or `unavailable` and nothing else
+    (no version, no exception text). Nothing about the visitor is recorded.
+    """
+    from sqlalchemy import text
+    try:
+        db.session.execute(text('SELECT 1'))
+    except Exception:
+        app.logger.exception('Health check: database unavailable')
+        return Response('unavailable\n', status=503, mimetype='text/plain',
+                        headers={'Cache-Control': 'no-store'})
+    return Response('ok\n', mimetype='text/plain', headers={'Cache-Control': 'no-store'})
+
+
 @app.route('/robots.txt')
 def robots_txt():
     """Decourage l'indexation et l'archivage automatique du site."""
@@ -1247,8 +1264,10 @@ def _attachment_message(filename):
     """The Message whose attachment is `filename`, if any (current "uploads/<name>"
     form or older bare file name)."""
     base = os.path.basename(filename)
+    # `autoescape`: "_" and "%" in the requested name are literal characters,
+    # not LIKE wildcards (the random names contain "_").
     return Message.query.filter(
-        (Message.file_path == base) | (Message.file_path.like(f'%/{base}'))
+        (Message.file_path == base) | Message.file_path.endswith(f'/{base}', autoescape=True)
     ).first()
 
 
@@ -1967,11 +1986,15 @@ def mark_all_notifications_read():
 def user_profile(user_id):
     user = db.get_or_404(User, user_id)
     user_posts = Post.query.filter_by(author_id=user_id, is_published=True).order_by(Post.date_posted.desc()).limit(5).all()
-    user_comments = Comment.query.filter_by(author_id=user_id).order_by(Comment.date_posted.desc()).limit(5).all()
-    
+    # Public page: only comments on published posts (a draft title must not leak
+    # through a comment made before the post was unpublished).
+    public_comments = Comment.query.join(Post, Comment.post_id == Post.id) \
+        .filter(Comment.author_id == user_id, Comment.deleted.isnot(True), Post.is_published.is_(True))
+    user_comments = public_comments.order_by(Comment.date_posted.desc()).limit(5).all()
+
     # Statistics
     total_posts = Post.query.filter_by(author_id=user_id, is_published=True).count()
-    total_comments = Comment.query.filter_by(author_id=user_id).count()
+    total_comments = public_comments.count()
     total_likes_received = db.session.query(db.func.sum(Post.likes_count))\
         .filter(Post.author_id == user_id).scalar() or 0
     
