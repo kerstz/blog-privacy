@@ -1,4 +1,4 @@
-alembic==1.20.0
+alembic==1.20.1
 bandit==1.9.4
 bcrypt==4.3.0
 blinker==1.9.0
@@ -7,8 +7,8 @@ cachecontrol==0.14.4
 certifi==2026.10.23
 cffi==2.1.1
 charset-normalizer==3.5.2
-click==8.5.0
-cryptography==50.0.1
+click==8.5.1
+cryptography==50.0.2
 cyclonedx-python-lib==11.12.0
 defusedxml==0.7.1
 dnspython==2.9.0
@@ -29,7 +29,7 @@ jinja2==3.1.6
 license-expression==30.4.4
 mako==1.4.3
 markdown-it-py==4.2.0
-markupsafe==3.0.3
+markupsafe==3.0.4
 mdurl==0.1.2
 msgpack==1.2.3
 nh3==0.3.7
@@ -48,13 +48,13 @@ pycparser==3.0
 pygments==2.21.0
 pyotp==2.10.0
 pyparsing==3.3.3
-pytest==9.1.1
-python-dotenv==1.2.3
+pytest==9.2.0
+python-dotenv==1.2.4
 pyyaml==6.0.3
 qrcode==8.2
 requests==2.34.2
 rich==15.0.0
-ruff==0.17.1
+ruff==0.17.4
 sortedcontainers==2.4.0
 sqlalchemy==2.0.54
 stevedore==5.9.1
