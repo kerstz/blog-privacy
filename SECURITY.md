@@ -59,6 +59,9 @@ git merge --ff-only origin/main
 - **Public dates without time of day.** Posts, comments and the RSS feed showed
   the minute every reader commented (time zone, habits). The public pages now
   show the day; `PUBLIC_TIME_PRECISION=minute` restores the old display.
+- **`Server: gunicorn`** was sent on every response (gunicorn drops the app's
+  value): an onion service served by gunicorn directly advertised its stack.
+  `wsgi.py` now makes gunicorn send `Server: server`.
 - The pending 2FA secret is stored encrypted in the (readable) session cookie;
   HSTS is never sent to a `.onion` name or a loopback probe; `Permissions-Policy`
   denies `browsing-topics`; a comment on a post taken back to draft can no

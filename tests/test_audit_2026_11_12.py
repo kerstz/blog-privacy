@@ -714,3 +714,34 @@ def test_posts_export_is_markdown_with_front_matter():
     assert '- one\n- two' in first
     draft = archive.read(names[0]).decode()
     assert 'published: false' in draft and '<p>legacy <em>html</em></p>' in draft
+
+
+# ------------------------------------------- gunicorn: no "Server: gunicorn"
+
+def test_gunicorn_does_not_advertise_itself(tmp_path):
+    import socket
+    import subprocess
+    import urllib.request
+    with socket.socket() as probe:
+        probe.bind(('127.0.0.1', 0))
+        port = probe.getsockname()[1]
+    env = dict(os.environ, DATABASE_URL=f'sqlite:///{tmp_path}/g.db',
+               SECURITY_STATE_DB=str(tmp_path / 's.db'), PYTHONWARNINGS='ignore')
+    proc = subprocess.Popen([sys.executable, '-m', 'gunicorn', '--workers', '1', '--bind',
+                             f'127.0.0.1:{port}', '--access-logfile', '/dev/null', 'wsgi:application'],
+                            cwd=REPO, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.time() + 30
+        while True:
+            try:
+                with urllib.request.urlopen(f'http://127.0.0.1:{port}/healthz', timeout=2) as resp:  # nosec B310
+                    server = resp.headers.get('Server')
+                break
+            except OSError:
+                if time.time() > deadline:
+                    raise
+                time.sleep(0.3)
+    finally:
+        proc.terminate()
+        proc.wait(timeout=30)
+    assert server == 'server'

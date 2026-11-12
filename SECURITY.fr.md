@@ -59,6 +59,9 @@ git merge --ff-only origin/main
   la minute de chaque commentaire (fuseau horaire, habitudes). Les pages
   publiques n'affichent plus que le jour ; `PUBLIC_TIME_PRECISION=minute`
   rétablit l'ancien affichage.
+- **`Server: gunicorn`** partait sur chaque réponse (gunicorn ignore la valeur de
+  l'application) : un service onion servi directement par gunicorn annonçait sa
+  pile logicielle. `wsgi.py` fait maintenant envoyer `Server: server`.
 - Le secret 2FA en attente est chiffré dans le cookie de session (lisible) ; HSTS
   n'est jamais envoyé à un nom `.onion` ni à une sonde locale ;
   `Permissions-Policy` refuse `browsing-topics` ; un commentaire sur un article

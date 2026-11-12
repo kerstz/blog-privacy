@@ -332,6 +332,7 @@ tête du fichier, mais le supprimer ou l'utiliser réellement serait plus sain.
 | 2.4 Tests, `pip-audit`, `bandit` | Faits (CI). Les migrations sont testées sur une base vierge. |
 | 2.4 `routes.py` monolithique | Découpé (`services.py`, `mobile_api.py`, `cli.py`). |
 | 2.5 `config.py` | Supprimé. |
+| 3.5 En-tête `Server` | Corrigé : gunicorn ignorait la valeur de l'application et envoyait `Server: gunicorn`, visible sur un service onion servi directement (`deploy-onion.sh`) ; `wsgi.py` le remplace par `server`. |
 | 3.6 `ENCRYPTION_ITERATIONS` bloqué à 100 000 | Débloqué : `flask rotate-key` (même clé, 600 000 itérations). |
 
 Nouveau en novembre : les pièces jointes ne sont plus jamais écrites en clair
