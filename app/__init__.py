@@ -159,11 +159,12 @@ def load_user(user_id):
 @app.context_processor
 def inject_site_text():
     from app.site_text import (LANGUAGES, current_language, format_date,
-                               get_text, get_rich_text)
+                               get_text, get_rich_text, rfc822_public)
     return dict(
         t=get_text,
         t_rich=get_rich_text,
         fmt_date=format_date,
+        rfc822_public=rfc822_public,
         current_language=current_language,
         LANGUAGES=LANGUAGES,
     )

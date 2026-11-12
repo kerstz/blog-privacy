@@ -306,3 +306,66 @@ def test_blocked_image_is_quarantined_from_memory(tmp_path, monkeypatch):
     assert len(quarantined) == 1 and quarantined[0].read_bytes() == data
     assert (quarantined[0].stat().st_mode & 0o777) == 0o600
     assert not (tmp_path / 'up').exists() or not any((tmp_path / 'up').iterdir())
+
+
+# ------------------------------------------- public pages: no time of day
+
+def _post_with_comment(when):
+    from app.models import Post
+    admin = make_user('boss', admin=True)
+    reader = make_user('reader')
+    with app.app_context():
+        post = Post(title='T', content='c', author_id=admin, is_published=True,
+                    is_draft=False, date_posted=when)
+        db.session.add(post)
+        db.session.commit()
+        db.session.add(Comment(content='hi', content_format='bbcode', post_id=post.id,
+                               author_id=reader, date_posted=when))
+        db.session.commit()
+        return post.id
+
+
+def test_public_dates_hide_the_time_of_day(monkeypatch):
+    from datetime import datetime
+    monkeypatch.delenv('PUBLIC_TIME_PRECISION', raising=False)
+    reset()
+    post_id = _post_with_comment(datetime(2026, 8, 24, 3, 47, 12))
+    client = app.test_client()
+    for page in (f'/post/{post_id}', '/', '/posts'):
+        html = client.get(page).get_data(as_text=True)
+        assert '03:47' not in html, page
+        assert 'August 24, 2026' in html, page
+    feed = client.get('/feed.xml').get_data(as_text=True)
+    assert '<pubDate>Mon, 24 Aug 2026 00:00:00 +0000</pubDate>' in feed
+    assert '<title>depressedyoungmanblog</title>' in feed
+    # the operator can opt back in
+    monkeypatch.setenv('PUBLIC_TIME_PRECISION', 'minute')
+    assert '03:47' in client.get(f'/post/{post_id}').get_data(as_text=True)
+    assert '03:47:12 +0000' in client.get('/feed.xml').get_data(as_text=True)
+
+
+def test_profile_picture_only_rendered_for_who_can_load_it():
+    from app.models import User
+    from test_security_fixes import logged_in
+    reset()
+    owner = make_user('alice')
+    make_user('bob')
+    with app.app_context():
+        db.session.get(User, owner).profile_picture = 'uploads/profile_x.webp.enc'
+        db.session.commit()
+    assert 'profile_x.webp.enc' not in app.test_client().get(f'/profile/{owner}').get_data(as_text=True)
+    assert 'profile_x.webp.enc' not in logged_in('bob').get(f'/profile/{owner}').get_data(as_text=True)
+    assert 'profile_x.webp.enc' in logged_in('alice').get(f'/profile/{owner}').get_data(as_text=True)
+
+
+def test_pending_totp_secret_is_not_readable_in_the_session_cookie():
+    from test_security_fixes import logged_in
+    reset()
+    make_user('alice')
+    client = logged_in('alice')
+    html = client.get('/totp/setup').get_data(as_text=True)
+    secret = re.search(r'\b([A-Z2-7]{32})\b', html).group(1)
+    cookie = client.get_cookie(app.config['SESSION_COOKIE_NAME'])
+    payload = app.session_interface.get_signing_serializer(app).loads(cookie.value)
+    assert secret not in repr(payload)
+    assert secret not in cookie.value

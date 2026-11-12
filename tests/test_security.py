@@ -513,8 +513,10 @@ def test_recovery_code_login_single_use():
 def test_recovery_codes_shown_once_when_enabling_2fa():
     a = login('alice')
     a.get('/totp/setup')
+    from app.encryption import message_encryption
     with a.session_transaction() as s:
-        secret = s['totp_pending_secret']
+        # kept encrypted in the (readable) session cookie
+        secret = message_encryption.decrypt_message(s['totp_pending_secret'])
     html = a.post('/totp/setup', data={'code': pyotp.TOTP(secret).now()}).data.decode()
     import re as _re
     shown = _re.findall(r'<span>([A-Z0-9]{5}-[A-Z0-9]{5})</span>', html)

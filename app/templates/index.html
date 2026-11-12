@@ -17,7 +17,7 @@
         {% if posts %}
             {% for post in posts %}
             <article class="blog-post">
-                <p class="post-meta">{{ fmt_date(post.date_posted) }}</p>
+                <p class="post-meta">{{ fmt_date(post.date_posted, 'public') }}</p>
                 <h2><a href="{{ url_for('post_detail', post_id=post.id) }}" class="post-title">{{ post.title }}</a></h2>
                 {{ taxonomy(post) }}
                 <p class="post-excerpt">{{ post.content|excerpt(180) }}</p>

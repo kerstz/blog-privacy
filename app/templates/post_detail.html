@@ -5,7 +5,7 @@
 <div class="post-content">
     <h2 class="post-title">{{ post.title }}</h2>
     <div class="post-meta">
-        <span class="post-date">{{ fmt_date(post.date_posted, 'long') }}</span>
+        <span class="post-date">{{ fmt_date(post.date_posted, 'public') }}</span>
         <span class="post-views">{{ post.views_count }} {{ t('posts.views') }}</span>
     </div>
     
@@ -39,7 +39,7 @@
             <span class="comment-author {% if comment.author and comment.author.is_admin %}admin{% else %}user{% endif %}">
                 {% if comment.author %}{{ comment.author.username }}{% else %}[deleted]{% endif %}
             </span>
-            <span class="comment-date"> · {{ comment.date_posted.strftime('%Y-%m-%d %H:%M') }}</span>
+            <span class="comment-date"> · {{ fmt_date(comment.date_posted, 'public') }}</span>
         </div>
 
         <div class="comment-content">

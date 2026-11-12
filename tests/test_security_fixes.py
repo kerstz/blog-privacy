@@ -405,7 +405,8 @@ def test_totp_setup_stores_encrypted_and_disable_needs_fresh_code():
     client = logged_in('reader')
     client.get('/totp/setup')
     with client.session_transaction() as sess:
-        secret = sess['totp_pending_secret']
+        # kept encrypted in the (readable) session cookie
+        secret = message_encryption.decrypt_message(sess['totp_pending_secret'])
     resp = client.post('/totp/setup', data={'code': pyotp.TOTP(secret).now()})
     # the recovery codes are shown once, on the response itself (not a redirect)
     assert resp.status_code == 200 and 'recovery' in resp.get_data(as_text=True).lower()

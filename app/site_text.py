@@ -563,6 +563,26 @@ MONTHS_LONG = {
 }
 
 
+def public_time_precision():
+    """'day' (default) or 'minute' (PUBLIC_TIME_PRECISION): how precisely the
+    public pages and the RSS feed date posts and comments."""
+    import os
+    value = (os.environ.get('PUBLIC_TIME_PRECISION') or 'day').strip().lower()
+    return 'minute' if value == 'minute' else 'day'
+
+
+def rfc822_public(value):
+    """RFC 822 date for the RSS feed, at the public precision (midnight UTC
+    when only the day is shown). English names, as the format requires."""
+    if value is None:
+        return ''
+    if public_time_precision() == 'day':
+        value = value.replace(hour=0, minute=0, second=0, microsecond=0)
+    days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    return (f"{days[value.weekday()]}, {value.day:02d} {MONTHS_SHORT['en'][value.month - 1]} "
+            f"{value.year} {value:%H:%M:%S} +0000")
+
+
 def format_date(value, style='short', lang=None):
     """Date localisee sans passer par `locale` ni par une bibliotheque tierce.
 
@@ -572,11 +592,23 @@ def format_date(value, style='short', lang=None):
 
     style='short' -> « Aug 24 · 03:47 » / « 24 août · 03:47 »
     style='long'  -> « August 24, 2026 at 03:47 » / « 24 août 2026 à 03:47 »
+    style='day'   -> « August 24, 2026 » / « 24 août 2026 »
+    style='public' -> 'day', or 'long' when PUBLIC_TIME_PRECISION=minute: the
+                     time of day of every post and comment reveals when the
+                     author and the readers are awake (time zone, habits).
     """
     if value is None:
         return ''
     lang = normalize_language(lang) or current_language()
     idx = value.month - 1
+
+    if style == 'public':
+        style = 'long' if public_time_precision() == 'minute' else 'day'
+    if style == 'day':
+        month = MONTHS_LONG.get(lang, MONTHS_LONG['en'])[idx]
+        if lang == 'fr':
+            return f"{value.day} {month} {value.year}"
+        return f"{month} {value.day}, {value.year}"
 
     if style == 'long':
         month = MONTHS_LONG.get(lang, MONTHS_LONG['en'])[idx]

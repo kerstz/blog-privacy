@@ -9,6 +9,7 @@ from app.forms import (LoginForm, RegistrationForm, PostForm, CommentForm, Empty
                        SiteTextImportForm)
 from app.models import (CONTACT_RETENTION_DAYS, User, Post, Comment, Revision, Banner, StaticPage, Message, Donor, Like,
                         Notification, ContactMessage, Tag)
+from app.encryption import message_encryption
 from app.site_text import get_text
 from app.utils import (client_ip_is_meaningful, rate_limit, hit_rate_limit, html_to_text, anonymous_client_key,
                        hashed_key, record_failure, too_many_failures, clear_failures,
@@ -2106,11 +2107,13 @@ def totp_setup():
 
     form = TOTPSetupForm()
 
-    # Generate (or reuse pending) secret stored in session
+    # Generate (or reuse) the pending secret. The Flask session is a signed but
+    # READABLE cookie: the secret is kept there encrypted (Fernet), so the
+    # cookie alone (browser profile, backup, proxy log) does not hold the seed.
     if 'totp_pending_secret' not in session:
-        session['totp_pending_secret'] = pyotp.random_base32()
+        session['totp_pending_secret'] = message_encryption.encrypt_message(pyotp.random_base32())
 
-    pending_secret = session['totp_pending_secret']
+    pending_secret = message_encryption.decrypt_message(session['totp_pending_secret'])
 
     if form.validate_on_submit():
         if hit_rate_limit(f"totp_setup_fail:{current_user.id}", 10, 300, record=False):
