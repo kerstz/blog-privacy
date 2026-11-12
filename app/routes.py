@@ -182,6 +182,18 @@ CONTENT_SECURITY_POLICY = (
 )
 
 
+def _hsts_applies():
+    if os.environ.get('FORCE_HSTS', '').lower() in ('1', 'true', 'yes'):
+        return True
+    if request.is_secure:
+        return True
+    host = (request.host or '').lower()
+    host = host[1:].split(']', 1)[0] if host.startswith('[') else host.split(':', 1)[0]
+    if host.endswith('.onion') or host in ('localhost', '127.0.0.1', '::1'):
+        return False
+    return bool(app.config.get('SESSION_COOKIE_SECURE'))
+
+
 @app.after_request
 def apply_security_headers(response):
     response.headers.setdefault('X-Frame-Options', 'DENY')
@@ -192,7 +204,8 @@ def apply_security_headers(response):
     response.headers.setdefault(
         'Permissions-Policy',
         'geolocation=(), microphone=(), camera=(), payment=(), usb=(), '
-        'magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()'
+        'magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=(), '
+        'browsing-topics=()'
     )
     response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
     response.headers.setdefault('Cross-Origin-Resource-Policy', 'same-origin')
@@ -200,9 +213,9 @@ def apply_security_headers(response):
 
     # HSTS only on an effective HTTPS connection (or when forced): sending it
     # over plain HTTP has no effect, and sending it wrongly can lock a test
-    # site out.
-    if request.is_secure or app.config.get('SESSION_COOKIE_SECURE') \
-            or os.environ.get('FORCE_HSTS', '').lower() in ('1', 'true', 'yes'):
+    # site out. Never on a .onion name or a loopback probe (deploy-onion.sh
+    # checks the header is absent there).
+    if _hsts_applies():
         response.headers.setdefault(
             'Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
     # Tor: advertise the .onion mirror to Tor Browser users (ONION_ADDRESS env)
@@ -1836,6 +1849,9 @@ def edit_comment(comment_id, post_id):
         abort(403)  # Forbidden access
     if comment.deleted:
         abort(404)
+    # A post taken back to draft is closed to its readers, editing included
+    # (same rule as replies and likes).
+    _require_visible_post(post)
 
     form = CommentForm()
     if form.validate_on_submit():

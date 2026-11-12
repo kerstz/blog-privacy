@@ -369,3 +369,48 @@ def test_pending_totp_secret_is_not_readable_in_the_session_cookie():
     payload = app.session_interface.get_signing_serializer(app).loads(cookie.value)
     assert secret not in repr(payload)
     assert secret not in cookie.value
+
+
+# ------------------------------------------- headers and small rules
+
+def test_hsts_never_sent_to_onion_or_loopback(monkeypatch):
+    monkeypatch.delenv('FORCE_HSTS', raising=False)
+    old = app.config['SESSION_COOKIE_SECURE']
+    app.config['SESSION_COOKIE_SECURE'] = True
+    try:
+        client = app.test_client()
+        onion = 'a' * 56 + '.onion'
+        for host in (onion, '127.0.0.1:8877', 'localhost', '[::1]:8000'):
+            resp = client.get('/healthz', headers={'Host': host})
+            assert 'Strict-Transport-Security' not in resp.headers, host
+        assert 'Strict-Transport-Security' in client.get('/healthz', headers={'Host': 'blog.example.org'}).headers
+        assert 'Strict-Transport-Security' in client.get('/healthz', base_url='https://x' + onion[1:]).headers
+        monkeypatch.setenv('FORCE_HSTS', 'true')
+        assert 'Strict-Transport-Security' in client.get('/healthz', headers={'Host': onion}).headers
+    finally:
+        app.config['SESSION_COOKIE_SECURE'] = old
+
+
+def test_permissions_policy_denies_topics():
+    assert 'browsing-topics=()' in app.test_client().get('/').headers['Permissions-Policy']
+
+
+def test_comment_on_unpublished_post_cannot_be_edited_by_its_author():
+    from app.models import Post
+    from test_security_fixes import logged_in
+    reset()
+    admin = make_user('boss', admin=True)
+    reader = make_user('reader')
+    post_id = make_post(admin)
+    with app.app_context():
+        comment = Comment(content='mine', content_format='bbcode', post_id=post_id, author_id=reader)
+        db.session.add(comment)
+        post = db.session.get(Post, post_id)
+        post.is_published, post.is_draft = False, True
+        db.session.commit()
+        cid = comment.id
+    client = logged_in('reader')
+    assert client.get(f'/edit_comment/{cid}/{post_id}').status_code == 404
+    assert client.post(f'/edit_comment/{cid}/{post_id}', data={'content': 'changed'}).status_code == 404
+    with app.app_context():
+        assert db.session.get(Comment, cid).content == 'mine'
