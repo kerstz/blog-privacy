@@ -276,7 +276,7 @@ install_deps() {
 run_pip_audit() {
     local spec="${UPDATE_PIP_AUDIT_SPEC:-pip-audit==2.10.1}" req=requirements.txt
     local extra=()
-    if [ -f requirements.lock ]; then req=requirements.lock; extra=(--no-deps --disable-pip); fi
+    if [ -f requirements.lock ]; then req=requirements.lock; extra=(--require-hashes --disable-pip); fi
     if command -v uvx >/dev/null 2>&1; then
         uvx --from "$spec" pip-audit -r "$req" ${extra[@]+"${extra[@]}"}
     elif command -v pipx >/dev/null 2>&1; then

@@ -88,6 +88,8 @@ def test_hashed_install_and_no_unpinned_tools():
     assert not re.search(r"pip\s+install[^\n]*gunicorn", src)
     assert "-m pip_audit" not in src  # not run from the production venv
     assert "uvx" in src or "pipx" in src
+    # the CVE scan checks the hashed lock exactly as CI does (not --no-deps)
+    assert "extra=(--require-hashes --disable-pip)" in src
 
 
 def test_rollback_restores_database():
