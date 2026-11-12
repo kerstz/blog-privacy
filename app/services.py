@@ -5,7 +5,7 @@ from flask_login import current_user
 from app import app, db, bcrypt
 from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge, Tag
 from app.utils import (SHARED_ANON_LIMIT_FACTOR, anonymous_client_key, client_ip_is_meaningful,
-                       hit_rate_limit, process_image_file)
+                       hit_rate_limit, reencode_image_bytes)
 from app.encryption import message_encryption
 from functools import wraps
 from datetime import datetime
@@ -558,23 +558,37 @@ def _validate_uploaded_file(file_obj, allowed_exts=None, max_bytes=None, image_o
 ENCRYPTED_SUFFIX = '.enc'
 
 
+def write_encrypted_file(target, plain):
+    """Encrypt `plain` (bytes) and write it atomically to `target` (mode 0600).
+    The ciphertext is checked to decrypt back to the same bytes first."""
+    from app.encryption import message_encryption
+    token = message_encryption.encrypt_bytes(plain)
+    if message_encryption.decrypt_bytes(token) != plain:
+        raise RuntimeError('encryption self-check failed')
+    tmp = target + '.tmp'
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        with os.fdopen(fd, 'wb') as f:
+            f.write(token)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, target)
+    except BaseException:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+        raise
+    return target
+
+
 def encrypt_upload_in_place(absolute_path):
     """Encrypt a plaintext file on disk; returns the new path (<name>.enc).
     Written to a temporary file first, the plaintext is removed only once the
     ciphertext is safely on disk and decrypts back to the same bytes."""
-    from app.encryption import message_encryption
     with open(absolute_path, 'rb') as f:
         plain = f.read()
-    token = message_encryption.encrypt_bytes(plain)
-    if message_encryption.decrypt_bytes(token) != plain:
-        raise RuntimeError('encryption self-check failed')
-    target = absolute_path + ENCRYPTED_SUFFIX
-    tmp = target + '.tmp'
-    with open(tmp, 'wb') as f:
-        f.write(token)
-        f.flush()
-        os.fsync(f.fileno())
-    os.replace(tmp, target)
+    target = write_encrypted_file(absolute_path + ENCRYPTED_SUFFIX, plain)
     os.remove(absolute_path)
     return target
 
@@ -604,19 +618,37 @@ class UploadRefused(Exception):
 
 
 def screen_uploaded_image(file_path, user):
+    """Refuse an image (file on disk) that is on the blocked-hash list.
+
+    Same as screen_uploaded_image_bytes(); on a match the file is moved to the
+    quarantine. The upload pipeline itself screens in memory.
+    """
+    with open(file_path, 'rb') as fh:
+        data = fh.read()
+    refusal = screen_uploaded_image_bytes(data, _file_ext(file_path), user)
+    if refusal:
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+    return refusal
+
+
+def screen_uploaded_image_bytes(data, ext, user):
     """Refuse an image that is on the blocked-hash list.
 
-    Returns None if the image passes. Otherwise: quarantines the file, bans the
-    author, logs the event and returns an error message.
+    Returns None if the image passes. Otherwise: quarantines the original
+    bytes, bans the author, logs the event and returns an error message.
 
     To be called BEFORE the image is re-encoded: re-encoding changes its
     SHA-256 (the perceptual dHash survives both).
     """
-    from app.image_safety import check_image, quarantine_file, sha256_of_file
+    import io
+    from app.image_safety import check_image, quarantine_bytes, sha256_of_bytes
     from app.models import BlockedUploadEvent
 
     try:
-        match, distance = check_image(path=file_path)
+        match, distance = check_image(stream=io.BytesIO(data))
     except Exception:
         # A failing check must neither let the image through silently nor block
         # a legitimate upload: log it and let it pass.
@@ -626,9 +658,9 @@ def screen_uploaded_image(file_path, user):
     if match is None:
         return None
 
-    digest = sha256_of_file(file_path)
-    quarantined = quarantine_file(
-        file_path,
+    digest = sha256_of_bytes(data)
+    quarantined = quarantine_bytes(
+        data, ext,
         reason=f'hash match id={match.id} label={match.label or "-"} distance={distance}'
     )
     db.session.add(BlockedUploadEvent(
@@ -692,37 +724,37 @@ def strip_image_metadata(file_path):
 def _store_upload(file_obj, prefix, user=None):
     """Save an already-validated upload under a random, unguessable name.
 
-    Pipeline (order matters):
+    Pipeline (order matters), entirely in memory:
       1. image: checked against the block list on the original bytes
          (quarantine + ban on a match -> UploadRefused);
       2. image: re-encoded to WebP, ALL metadata stripped (EXIF, GPS, XMP...);
-      3. every file is encrypted at rest (Fernet, ENCRYPTION_KEY).
-    Returns (relative_path, file_type) or (None, None) if processing failed.
-    The original filename is never used on disk (no overwrite of other users'
-    files, no information leak, no guessable URL).
+      3. every file is encrypted (Fernet, ENCRYPTION_KEY) before it is written.
+    The plaintext, and the original photo with its GPS tags, never touch the
+    uploads folder (it used to be saved there first, then deleted: recoverable
+    from the disk). Returns (relative_path, file_type) or (None, None) if the
+    image cannot be processed. The original filename is never used on disk (no
+    overwrite of other users' files, no information leak, no guessable URL).
     """
     ext = _file_ext(file_obj.filename)
-    filename = f"{prefix}_{secrets.token_urlsafe(18)}.{ext}"
-    # Stored relative ("uploads/<name>"), written to the project's uploads
-    # folder whatever the current working directory is.
-    absolute_path = _absolute_upload_path(f"{UPLOAD_FOLDER}/{filename}")
-    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
-    file_obj.save(absolute_path)
     file_type = get_file_type(file_obj.filename)
+    stream = file_obj.stream
+    stream.seek(0)
+    data = stream.read()   # bounded: validated size, MAX_CONTENT_LENGTH
     if ext in IMAGE_EXTENSIONS:
-        refusal = screen_uploaded_image(absolute_path, user or current_user)
+        refusal = screen_uploaded_image_bytes(data, ext, user or current_user)
         if refusal:
             raise UploadRefused(refusal)
-        processed = process_image_file(absolute_path)
-        if not processed:
-            try:
-                os.remove(absolute_path)
-            except OSError:
-                pass
+        data = reencode_image_bytes(data)
+        if data is None:
             return None, None
-        absolute_path, file_type = processed, 'image'
-    encrypted = encrypt_upload_in_place(absolute_path)
-    return f"{UPLOAD_FOLDER}/{os.path.basename(encrypted)}", file_type
+        ext, file_type = 'webp', 'image'
+    filename = f"{prefix}_{secrets.token_urlsafe(18)}.{ext}{ENCRYPTED_SUFFIX}"
+    # Stored relative ("uploads/<name>"), written to the uploads folder
+    # whatever the current working directory is.
+    absolute_path = _absolute_upload_path(f"{UPLOAD_FOLDER}/{filename}")
+    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+    write_encrypted_file(absolute_path, data)
+    return f"{UPLOAD_FOLDER}/{filename}", file_type
 
 
 def _user_conversation_query(user_id):

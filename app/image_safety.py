@@ -203,6 +203,32 @@ def check_image(path=None, stream=None, threshold=None):
     return best, best_distance
 
 
+def _write_quarantine_note(dest, reason):
+    with open(dest + '.txt', 'w', encoding='utf-8') as fh:
+        fh.write(
+            "Fichier mis en quarantaine automatiquement.\n"
+            f"Date (UTC) : {datetime.utcnow().isoformat()}\n"
+            f"Motif      : {reason}\n"
+            f"SHA-256    : {sha256_of_file(dest)}\n\n"
+            "Ne pas ouvrir ce fichier. Signalement : "
+            "https://www.internet-signalement.gouv.fr (PHAROS).\n"
+        )
+
+
+def quarantine_bytes(data, ext, reason=''):
+    """Ecrit en quarantaine un televersement refuse qui n'a jamais touche le
+    disque (pipeline en memoire). Meme nommage et meme note que quarantine_file."""
+    stamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    ext = ''.join(c for c in (ext or '') if c.isalnum())[:10]
+    name = f'{stamp}_{sha256_of_bytes(data)[:16]}' + (f'.{ext}' if ext else '')
+    dest = os.path.join(quarantine_dir(), name)
+    fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'wb') as fh:
+        fh.write(data)
+    _write_quarantine_note(dest, reason)
+    return name
+
+
 def quarantine_file(src_path, reason=''):
     """Deplace un fichier en quarantaine et retourne son nouveau nom.
 
@@ -214,14 +240,5 @@ def quarantine_file(src_path, reason=''):
     name = f'{stamp}_{digest}{os.path.splitext(src_path)[1]}'
     dest = os.path.join(quarantine_dir(), name)
     shutil.move(src_path, dest)
-
-    with open(dest + '.txt', 'w', encoding='utf-8') as fh:
-        fh.write(
-            "Fichier mis en quarantaine automatiquement.\n"
-            f"Date (UTC) : {datetime.utcnow().isoformat()}\n"
-            f"Motif      : {reason}\n"
-            f"SHA-256    : {sha256_of_file(dest)}\n\n"
-            "Ne pas ouvrir ce fichier. Signalement : "
-            "https://www.internet-signalement.gouv.fr (PHAROS).\n"
-        )
+    _write_quarantine_note(dest, reason)
     return name

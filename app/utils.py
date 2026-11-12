@@ -382,6 +382,28 @@ def process_image_file(src_path: str, max_px: int = 1600, save_webp: bool = True
         return None
 
 
+def reencode_image_bytes(data: bytes, max_px: int = 1600):
+    """In-memory variant of process_image_file(): decode, strip ALL metadata,
+    shrink to `max_px`, re-encode as WebP. Returns the WebP bytes, or None if
+    `data` is not a decodable image. Nothing is written to disk.
+
+    JPEG photos are decoded at reduced scale (`draft`, DCT scaling): a 40 MP
+    picture never has to exist in memory at full size to end up 1600 px wide.
+    """
+    import io
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            if img.format == 'JPEG':
+                img.draft('RGB', (max_px, max_px))
+            img.load()
+            clean = resize_image(strip_exif(img), max_px=max_px)
+            out = io.BytesIO()
+            clean.save(out, 'WEBP', quality=88, method=6)
+            return out.getvalue()
+    except Exception:
+        return None
+
+
 # -----------------------------
 # Roles without schema change (mapping via is_admin/level)
 # -----------------------------

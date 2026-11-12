@@ -230,3 +230,79 @@ def test_mobile_api_wrong_codes_count_towards_daily_cap():
     utils.clear_failures('admin_api:user:' + utils.hashed_key('boss'))
     resp = client.get('/api/admin/mobile/ping', headers={**headers, 'X-TOTP-Code': totp.now()})
     assert resp.status_code == 401
+
+
+# ------------------------------------------- uploads: no plaintext on disk
+
+def _jpeg_with_gps(size=(4000, 3000)):
+    import io
+    from PIL import Image
+    img = Image.new('RGB', size, (120, 30, 200))
+    exif = Image.Exif()
+    exif[0x010F] = 'SpyCam'          # Make
+    exif[0x8825] = {2: (48, 51, 0)}  # GPS latitude
+    buf = io.BytesIO()
+    img.save(buf, 'JPEG', exif=exif, quality=80)
+    buf.seek(0)
+    return buf
+
+
+class _NoSave:
+    """FileStorage stand-in whose save() must never be called."""
+
+    def __init__(self, stream, filename):
+        self.stream, self.filename = stream, filename
+
+    def save(self, *a, **k):  # pragma: no cover - the assertion is the test
+        raise AssertionError('the plaintext upload was written to disk')
+
+
+def test_upload_pipeline_never_writes_plaintext(tmp_path, monkeypatch):
+    import io
+    from PIL import Image
+    from app import services
+    monkeypatch.setenv('UPLOAD_DIR', str(tmp_path / 'up'))
+    reset()
+    uid = make_user('alice')
+    with app.test_request_context():
+        from app.models import User
+        user = db.session.get(User, uid)
+        path, kind = services._store_upload(_NoSave(_jpeg_with_gps(), 'trip.jpg'), 'chat', user=user)
+        doc, doc_kind = services._store_upload(_NoSave(io.BytesIO(b'%PDF-1.4 secret'), 'a.pdf'),
+                                               'chat', user=user)
+    files = sorted(p.name for p in (tmp_path / 'up').iterdir())
+    assert all(name.endswith('.enc') for name in files) and len(files) == 2
+    assert kind == 'image' and path.endswith('.webp.enc') and doc.endswith('.pdf.enc')
+    for name in files:
+        assert ((tmp_path / 'up' / name).stat().st_mode & 0o777) == 0o600
+        raw = (tmp_path / 'up' / name).read_bytes()
+        assert b'SpyCam' not in raw and b'secret' not in raw and b'WEBP' not in raw[:64]
+    with Image.open(io.BytesIO(services.read_upload_bytes(path))) as img:
+        assert img.format == 'WEBP' and max(img.size) <= 1600
+        assert not img.info.get('exif') and not img.getexif()
+    assert services.read_upload_bytes(doc) == b'%PDF-1.4 secret'
+
+
+def test_blocked_image_is_quarantined_from_memory(tmp_path, monkeypatch):
+    import pytest
+    from app import services
+    from app.image_safety import dhash_of_bytes, format_dhash, sha256_of_bytes
+    from app.models import BlockedImageHash, User
+    monkeypatch.setenv('UPLOAD_DIR', str(tmp_path / 'up'))
+    monkeypatch.setenv('QUARANTINE_DIR', str(tmp_path / 'q'))
+    reset()
+    uid = make_user('mallory')
+    data = _jpeg_with_gps((64, 48)).getvalue()
+    with app.test_request_context():
+        db.session.add(BlockedImageHash(sha256=sha256_of_bytes(data),
+                                        dhash=format_dhash(dhash_of_bytes(data)), label='t'))
+        db.session.commit()
+        user = db.session.get(User, uid)
+        import io
+        with pytest.raises(services.UploadRefused):
+            services._store_upload(_NoSave(io.BytesIO(data), 'x.jpg'), 'chat', user=user)
+        assert db.session.get(User, uid).is_banned
+    quarantined = [p for p in (tmp_path / 'q').iterdir() if not p.name.endswith('.txt')]
+    assert len(quarantined) == 1 and quarantined[0].read_bytes() == data
+    assert (quarantined[0].stat().st_mode & 0o777) == 0o600
+    assert not (tmp_path / 'up').exists() or not any((tmp_path / 'up').iterdir())
