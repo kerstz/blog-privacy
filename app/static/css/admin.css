@@ -129,6 +129,7 @@
 .flash-success { border-left-color: var(--moon); color: var(--moon-bright); }
 .flash-danger  { border-left-color: var(--ember); color: var(--ember-bright); }
 .flash-info    { border-left-color: var(--ash-dim); }
+.flash-warning { border-left-color: var(--ember-bright); color: var(--ash); }
 
 /* ------------------------------------------------------------- Page head */
 

@@ -83,6 +83,9 @@
            « Login failed », « Too many requests », « Account suspended » ou
            « Message sent » restaient invisibles et s'accumulaient en session
            jusqu'a une page d'administration. #}
+        {% if maintenance_on and current_user.is_authenticated and current_user.is_admin %}
+            <p class="flash flash-warning maintenance-banner" role="status">{{ t('maintenance.banner') }}</p>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="flashes" role="status">

@@ -38,7 +38,9 @@ from app.services import (
     export_user_data,
     generate_recovery_codes,
     invalidate_other_sessions,
+    maintenance_enabled,
     recovery_codes_left,
+    set_maintenance,
     second_factor_locked,
     security_alert,
     verify_second_factor,
@@ -137,6 +139,44 @@ def enforce_password_change():
     if request.endpoint in ('change_password', 'logout', 'static', 'static_v'):
         return
     return redirect(url_for('change_password'))
+
+
+# Maintenance mode (flask maintenance on|off, or the admin dashboard): visitors
+# get a 503 page while the operator restores a backup or migrates by hand;
+# admins keep the whole site, and can still sign in to turn it off.
+MAINTENANCE_OPEN_ENDPOINTS = {'static', 'healthz', 'robots_txt', 'login', 'login_totp', 'logout'}
+
+
+@app.before_request
+def maintenance_mode():
+    if not maintenance_enabled():
+        return None
+    endpoint = request.endpoint or ''
+    if endpoint in MAINTENANCE_OPEN_ENDPOINTS or endpoint.startswith('api_admin_mobile'):
+        return None   # the mobile API authenticates (admins only) by itself
+    if getattr(current_user, 'is_authenticated', False) and current_user.is_admin:
+        return None
+    response = app.make_response((render_template('maintenance.html'), 503))
+    response.headers['Retry-After'] = '600'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.context_processor
+def inject_maintenance_state():
+    return {'maintenance_on': maintenance_enabled()}
+
+
+@app.route('/admin/maintenance', methods=['POST'])
+@admin_required
+def admin_maintenance():
+    if EmptyForm().validate_on_submit():
+        enabled = request.form.get('state') == 'on'
+        set_maintenance(enabled)
+        security_alert(f"maintenance mode {'ON' if enabled else 'OFF'} by @{current_user.username}")
+        flash('Maintenance mode is on: visitors see the maintenance page.' if enabled
+              else 'Maintenance mode is off: the blog is open again.', 'success')
+    return redirect(url_for('admin_dashboard'))
 
 
 @app.before_request

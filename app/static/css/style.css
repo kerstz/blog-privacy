@@ -844,6 +844,7 @@ footer {
 .flash-success { border-left-color: var(--moon); color: var(--moon-bright); }
 .flash-danger  { border-left-color: var(--ember); color: var(--ember-bright); }
 .flash-info    { border-left-color: var(--ash-dim); }
+.flash-warning { border-left-color: var(--ember-bright); color: var(--ash); }
 
 /* ---- Additions for the merged feature set (no JavaScript anywhere) ---- */
 
@@ -917,3 +918,7 @@ button.logout-btn { cursor: pointer; font: inherit; }
 }
 .feed-link a { color: var(--ash-mid); }
 .feed-link a:hover { color: var(--moon-bright); }
+
+/* Maintenance page (503) */
+.maintenance-page { max-width: var(--measure); margin: 4rem auto; text-align: center; }
+.maintenance-page h1 { font-family: var(--font-display); }

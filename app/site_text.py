@@ -46,6 +46,7 @@ GROUPS = [
     ('totp', 'Two-factor authentication'),
     ('donate', 'Donate page'),
     ('misc', 'Notifications & profile'),
+    ('maintenance', 'Maintenance mode'),
 ]
 
 # Textes longs : rendus via le parseur BBCode (echappe puis mis en forme), les
@@ -128,6 +129,13 @@ DEFAULTS = {
     'posts.category.heading': {'en': 'Category',    'fr': 'Catégorie'},
     'posts.none_found':  {'en': 'No posts found.', 'fr': 'Aucun article trouvé.'},
     'posts.feed':        {'en': 'RSS feed of this list', 'fr': 'Flux RSS de cette liste'},
+
+    # -------------------------------------------------------- maintenance
+    'maintenance.title': {'en': 'Back soon', 'fr': 'Bientôt de retour'},
+    'maintenance.body':  {'en': 'The blog is closed for a short maintenance. Please come back in a few minutes.',
+                          'fr': 'Le blog est fermé pour une courte maintenance. Revenez dans quelques minutes.'},
+    'maintenance.banner': {'en': 'Maintenance mode is on: visitors only see the maintenance page.',
+                           'fr': 'Mode maintenance actif : les visiteurs ne voient que la page de maintenance.'},
 
     # -------------------------------------------------------------- about
     'about.eyebrow':     {'en': 'About',           'fr': 'À propos'},

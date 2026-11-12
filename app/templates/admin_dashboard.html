@@ -51,6 +51,21 @@
     </a>
 </div>
 
+<h2 class="desk-section">Maintenance mode</h2>
+<form method="POST" action="{{ url_for('admin_maintenance') }}" class="maintenance-toggle">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if maintenance_on %}
+        <p class="desk-lede">On: visitors see the maintenance page; admins keep the whole site.</p>
+        <input type="hidden" name="state" value="off">
+        <button type="submit" class="btn btn-primary">Open the blog again</button>
+    {% else %}
+        <p class="desk-lede">Off. Turn it on before restoring a backup or migrating by hand
+            (also <code>flask maintenance on|off</code>).</p>
+        <input type="hidden" name="state" value="on">
+        <button type="submit" class="btn btn-secondary">Close the blog for maintenance</button>
+    {% endif %}
+</form>
+
 {# Les totaux ne demandent aucune action : une ligne discrete suffit. Ils
    occupaient auparavant quatre grandes cartes en haut de page. #}
 <h2 class="desk-section">The site, in numbers</h2>

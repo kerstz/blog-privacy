@@ -65,7 +65,7 @@ pytest -q tests/                # security regression tests (requirements-dev.tx
 - Events are per-user only (SSE), never broadcast; the stream re-validates the account on each heartbeat
 - Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
 - `GET /healthz`: anonymous health probe (`ok`/503), nothing else
-- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`, `flask purge-messages --days N`, `flask purge-notifications --days 90`, `flask rotate-key [--dry-run]`; admin view `/admin/contact`
+- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`, `flask purge-messages --days N`, `flask purge-notifications --days 90`, `flask rotate-key [--dry-run]`, `flask maintenance on|off|status`; admin view `/admin/contact`
 - Rate limiting: `hit_rate_limit()` / `@rate_limit` (persistent SQLite store, keys hashed)
 - Admin routes use `@admin_required`
 - Edit `requirements.in`, re-lock with `uv pip compile --generate-hashes` (see README.md); keep it CVE-free (`pip-audit -r requirements.lock --require-hashes --disable-pip --strict`); see SECURITY.md

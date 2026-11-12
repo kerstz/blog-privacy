@@ -133,6 +133,10 @@ proxy de confiance) ; le verrou par compte reste.
   choisir ; `--dry-run` compte d'abord), `flask purge-notifications --days 90`
   les anciennes notifications. À lancer depuis cron, par exemple chaque semaine :
   `17 5 * * 1 cd /srv/blog && venv/bin/flask purge-messages --days 180`.
+- Mode maintenance : `flask maintenance on|off|status`, ou le bouton du tableau
+  de bord admin. Les visiteurs reçoivent une page 503 bilingue (`Retry-After`),
+  les admins gardent tout le site avec un bandeau ; `/healthz` et la connexion
+  restent ouverts. À activer avant de restaurer une sauvegarde ou de migrer à la main.
 - `deploy/torrc.example` active `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
 
 ## Dépendances

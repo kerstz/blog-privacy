@@ -153,6 +153,10 @@ IP is not meaningful (onion, no trusted proxy); the per-account lock remains.
   counts first), `flask purge-notifications --days 90` old notifications.
   Run them from cron, for example weekly:
   `17 5 * * 1 cd /srv/blog && venv/bin/flask purge-messages --days 180`.
+- Maintenance mode: `flask maintenance on|off|status`, or the button on the
+  admin dashboard. Visitors get a bilingual 503 page (`Retry-After`), admins
+  keep the whole site with a banner; `/healthz` and sign-in stay open. Use it
+  before restoring a backup or migrating by hand.
 - `deploy/torrc.example` enables `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
 
 ## Dependencies

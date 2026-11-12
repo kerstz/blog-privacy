@@ -121,6 +121,17 @@ def rotate_key(dry_run):
                    'ENCRYPTION_OLD_ITERATIONS from the environment and restart the app.')
 
 
+@app.cli.command('maintenance')
+@click.argument('state', type=click.Choice(['on', 'off', 'status']))
+def maintenance(state):
+    """Maintenance mode: visitors get a 503 page, admins keep the site."""
+    from app.services import maintenance_enabled, maintenance_flag_path, set_maintenance
+    if state != 'status':
+        set_maintenance(state == 'on')
+    click.echo(f"Maintenance mode: {'ON' if maintenance_enabled() else 'off'} "
+               f"(flag file {maintenance_flag_path()})")
+
+
 @app.cli.command('unlock')
 @click.argument('username', required=False)
 @click.option('--all', 'unlock_all', is_flag=True,

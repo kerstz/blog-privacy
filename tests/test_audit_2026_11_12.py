@@ -620,3 +620,57 @@ def test_tag_and_category_feeds_list_only_their_published_posts():
     # the main feed is unchanged
     main = client.get('/feed.xml').get_data(as_text=True)
     assert 'Onion notes' in main and 'Cooking' in main and 'Draft onion' not in main
+
+
+# ------------------------------------------- feature: maintenance mode
+
+def test_maintenance_mode_closes_the_site_to_visitors_only(tmp_path, monkeypatch):
+    from test_security_fixes import PASSWORD, basic, logged_in
+    monkeypatch.setenv('MAINTENANCE_FLAG', str(tmp_path / 'maintenance.on'))
+    reset()
+    make_user('alice')
+    make_user('boss', admin=True)
+    post_id = make_post(make_user('writer', admin=True))
+    runner = app.test_cli_runner()
+    assert 'Maintenance mode: off' in runner.invoke(args=['maintenance', 'status']).output
+    assert 'Maintenance mode: ON' in runner.invoke(args=['maintenance', 'on']).output
+
+    anon = app.test_client()
+    for url in ('/', f'/post/{post_id}', '/feed.xml', '/register'):
+        resp = anon.get(url)
+        assert resp.status_code == 503, url
+        assert resp.headers['Retry-After'] == '600'
+    html = anon.get('/?lang=fr').get_data(as_text=True)
+    assert 'Bientôt de retour' in html
+    assert anon.get('/healthz').status_code == 200
+    assert anon.get('/login').status_code == 200
+    # readers who sign in still get the maintenance page...
+    assert logged_in('alice').get('/').status_code == 503
+    # ...admins keep the whole site and see a banner
+    boss = logged_in('boss')
+    page = boss.get('/')
+    assert page.status_code == 200 and 'Maintenance mode is on' in page.get_data(as_text=True)
+    assert boss.get('/admin_dashboard').status_code == 200
+    # the mobile API keeps its own (admin) authentication: 404 when disabled, not 503
+    monkeypatch.delenv('MOBILE_API_ENABLED', raising=False)
+    assert anon.get('/api/admin/mobile/ping', headers=basic('boss', PASSWORD)).status_code == 404
+
+    # the admin dashboard turns it off (CSRF-protected POST)
+    resp = boss.post('/admin/maintenance', data={'state': 'off'})
+    assert resp.status_code == 302
+    assert anon.get('/').status_code == 200
+    assert not (tmp_path / 'maintenance.on').exists()
+    boss.post('/admin/maintenance', data={'state': 'on'})
+    assert anon.get('/').status_code == 503
+    assert 'Maintenance mode: off' in runner.invoke(args=['maintenance', 'off']).output
+    assert anon.get('/').status_code == 200
+
+
+def test_maintenance_toggle_is_admin_only(tmp_path, monkeypatch):
+    from test_security_fixes import logged_in
+    monkeypatch.setenv('MAINTENANCE_FLAG', str(tmp_path / 'maintenance.on'))
+    reset()
+    make_user('alice')
+    logged_in('alice').post('/admin/maintenance', data={'state': 'on'})
+    app.test_client().post('/admin/maintenance', data={'state': 'on'})
+    assert not (tmp_path / 'maintenance.on').exists()

@@ -403,6 +403,36 @@ def invalidate_other_sessions(user):
     db.session.commit()
 
 
+# Maintenance mode: a flag file, so every worker and the CLI see the same
+# state and it survives a restart. MAINTENANCE_FLAG overrides its location
+# (default: next to the persistent rate limiter, instance/maintenance.on).
+def maintenance_flag_path():
+    configured = (os.environ.get('MAINTENANCE_FLAG') or '').strip()
+    if configured:
+        return os.path.abspath(configured)
+    from app.utils import _STATE_DB_PATH
+    return os.path.join(os.path.dirname(os.path.abspath(_STATE_DB_PATH)), 'maintenance.on')
+
+
+def maintenance_enabled():
+    return os.path.exists(maintenance_flag_path())
+
+
+def set_maintenance(enabled):
+    """Turn maintenance mode on or off (idempotent)."""
+    path = maintenance_flag_path()
+    if enabled:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as fh:
+            fh.write(datetime.utcnow().isoformat() + 'Z\n')
+    else:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+
+
 # Security alerts: written to the application log only (nothing leaves the
 # server; the former Telegram bridge was removed on purpose).
 def security_alert(text):
