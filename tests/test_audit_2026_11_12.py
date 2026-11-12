@@ -1,0 +1,89 @@
+"""Regression tests of the 2026-11-12 audit (production readiness pass)."""
+import os
+import re
+import sys
+import time
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from test_security_fixes import app, make_post, make_user, reset  # noqa: E402
+from app import db, utils  # noqa: E402
+from app.models import Comment  # noqa: E402
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+# ------------------------------------------- BBCode: no attribute breakout
+
+BREAKOUT_PAYLOADS = [
+    # a tag written inside a URL used to be expanded inside the href attribute
+    '[url]http://a.example/[img]http://b.example/x/style=position:fixed;top:0;left:0;'
+    'width:100vw;height:100vh;opacity:0;[/img][/url]',
+    '[img]http://x.example/[color=red]a[/color][/img]',
+    '[url=http://a.example/[b]x[/url]',
+    '[img=10,10]http://x.example/[size=12]a[/size][/img]',
+    '[url]http://a.example/[url]http://b.example/[/url][/url]',
+]
+
+
+def _attribute_values(html):
+    return re.findall(r'\s(?:href|src|style)="([^"]*)"', html)
+
+
+def test_bbcode_tags_inside_urls_never_reach_an_attribute():
+    for payload in BREAKOUT_PAYLOADS:
+        raw = utils.parse_bbcode(payload)
+        for value in _attribute_values(raw):
+            assert '<' not in value and '>' not in value, (payload, raw)
+        # an attribute never ends inside a generated tag: every quote is paired
+        for tag in re.findall(r'<[a-z][^>]*>', raw):
+            assert tag.count('"') % 2 == 0, (payload, tag)
+        assert '[' not in ''.join(_attribute_values(raw)), (payload, raw)
+
+
+def test_comment_cannot_inject_style_on_a_link():
+    reset()
+    admin = make_user('boss', admin=True)
+    post_id = make_post(admin)
+    with app.app_context():
+        for payload in BREAKOUT_PAYLOADS:
+            db.session.add(Comment(content=payload, content_format='bbcode',
+                                   post_id=post_id, author_id=admin))
+        db.session.commit()
+    html = app.test_client().get(f'/post/{post_id}').get_data(as_text=True)
+    section = html.split('comments-section', 1)[1]
+    assert not re.search(r'<a[^>]*\sstyle=', section)
+    assert 'style="color:red"><' not in section
+
+
+def test_comment_output_goes_through_the_allow_list():
+    """Defence in depth: the BBCode output is filtered by nh3 at render time."""
+    out = str(app.jinja_env.filters['comment_html']('[b]bold[/b] [url=http://e.example]l[/url]'))
+    assert '<strong>bold</strong>' in out
+    assert 'rel="nofollow noopener noreferrer"' in out
+    out = str(app.jinja_env.filters['bbcode']('[b]t[/b] <b onclick=x>t</b>'))
+    assert '<strong>t</strong>' in out
+    assert not re.search(r'<[^>]*onclick', out)
+
+
+def test_bbcode_formatting_still_rendered():
+    out = utils.render_user_bbcode(
+        '[b]b[/b] [i]i[/i] [u]u[/u] [s]s[/s] [quote]q[/quote] [code]c[/code] '
+        '[color=red]r[/color] [size=20]z[/size] [center]m[/center] '
+        '[list][*]one[/list] [list=1][*]two[/list] [img]/uploads/a.webp[/img] '
+        '[url=https://example.org/?a=1&b=[2]]x[/url]')
+    for fragment in ('<strong>b</strong>', '<em>i</em>', '<u>u</u>', '<s>s</s>',
+                     '<blockquote>q</blockquote>', '<pre><code>c</code></pre>',
+                     'style="color:red"', 'font-size:20px', 'text-align:center',
+                     '<ul><li>one</li></ul>', '<ol><li>two</li></ol>',
+                     '<img src="/uploads/a.webp"'):
+        assert fragment in out, fragment
+    assert 'https://example.org/?a=1&amp;b=%5B2' in out
+
+
+def test_bbcode_url_tags_do_not_backtrack_for_seconds():
+    """A line of unclosed [url=...] tags used to cost ~3 s of CPU per render."""
+    started = time.perf_counter()
+    utils.parse_bbcode('[url=a]' * 700)
+    utils.parse_bbcode(('[url=http://a]' + '[b]' * 3) * 200)
+    assert time.perf_counter() - started < 0.5

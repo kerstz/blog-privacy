@@ -212,20 +212,23 @@ def urlize_filter(s):
 
 @app.template_filter('bbcode')
 def bbcode_filter(s):
-    # parse_bbcode echappe le texte AVANT de generer le HTML.
-    from app.utils import parse_bbcode
-    return Markup(parse_bbcode(s or ''))  # nosec B704
+    # parse_bbcode echappe le texte AVANT de generer le HTML ; la sortie passe
+    # ensuite par la liste blanche nh3 (defense en profondeur).
+    from app.utils import render_user_bbcode
+    return Markup(render_user_bbcode(s or ''))  # nosec B704
 
 
 @app.template_filter('comment_html')
 def comment_html_filter(comment):
     """HTML sur d'un commentaire : objet Comment (BBCode ou ancien HTML assaini)
     ou simple chaine (traitee comme du BBCode)."""
-    from app.utils import parse_bbcode, sanitize_legacy_html
+    # BBCode: escaped by parse_bbcode, then filtered by the nh3 allow-list
+    # (a parser bug can no longer reach the page as raw markup).
+    from app.utils import render_user_bbcode, sanitize_legacy_html
     if isinstance(comment, str) or comment is None:
-        return Markup(parse_bbcode(comment or ''))  # nosec B704
+        return Markup(render_user_bbcode(comment or ''))  # nosec B704
     if comment.content_format == 'bbcode':
-        return Markup(parse_bbcode(comment.content or ''))  # nosec B704
+        return Markup(render_user_bbcode(comment.content or ''))  # nosec B704
     return Markup(sanitize_legacy_html(comment.content or ''))  # nosec B704
 
 

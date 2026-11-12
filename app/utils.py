@@ -39,10 +39,16 @@ _BB_TAGS = [
 def _sanitize_url(url: str, allow_data: bool = False) -> str:
     """Allow only absolute http(s) URLs. Input is already HTML-escaped.
     `data:image/...` is accepted only when allow_data is set (legacy <img>),
-    never for links."""
+    never for links.
+
+    "[" and "]" are percent-encoded: parse_bbcode() expands the tags one after
+    the other, so a tag written INSIDE a URL (`[url]http://a/[img]...[/img][/url]`)
+    used to be expanded later inside the href attribute, whose quotes it broke
+    (attribute injection: style="position:fixed..." overlay links).
+    """
     url = (url or '').strip()
     if re.match(r'^https?://[^\s"\'<>]+$', url, re.IGNORECASE):
-        return url
+        return url.replace('[', '%5B').replace(']', '%5D')
     if allow_data and re.match(r'^data:image/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=]+$', url, re.IGNORECASE):
         return url
     return '#'
@@ -72,7 +78,10 @@ def parse_bbcode(text: str) -> str:
         return ''
     html = str(escape(text))
     # [url=...]text[/url] and [url]link[/url]
-    html = re.sub(r"\[url=(.+?)\](.*?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(2)}</a>", html, flags=re.IGNORECASE)
+    # The target is `[^\]\n]+` (it cannot run past the first "]"): with `.+?`
+    # a line of unclosed "[url=a]" tags backtracked in cubic time (seconds of
+    # CPU per page view for a 5000-character comment).
+    html = re.sub(r"\[url=([^\]\n]+)\](.*?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(2)}</a>", html, flags=re.IGNORECASE)
     html = re.sub(r"\[url\](.+?)\[/url\]", lambda m: f"<a href=\"{_sanitize_url(m.group(1))}\" rel=\"nofollow noopener noreferrer\">{m.group(1)}</a>", html, flags=re.IGNORECASE)
     # [img]...[/img] and [img=width,height]...[/img]
     def _img_simple(m):
@@ -106,7 +115,7 @@ def parse_bbcode(text: str) -> str:
     for align in ('center', 'left', 'right', 'justify'):
         html = re.sub(rf"\[{align}\](.*?)\[/{align}\]", rf'<p style="text-align:{align}">\1</p>', html, flags=re.IGNORECASE | re.DOTALL)
     # colors and sizes (strictly validated values)
-    html = re.sub(r"\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]{1,20})\](.*?)\[/color\]", r"<span style=\"color:\1\">\2</span>", html, flags=re.IGNORECASE | re.DOTALL)
+    html = re.sub(r"\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]{1,20})\](.*?)\[/color\]", r'<span style="color:\1">\2</span>', html, flags=re.IGNORECASE | re.DOTALL)
     def _size_repl(m):
         size = max(8, min(int(m.group(1)), 48))
         return f"<span style=\"font-size:{size}px\">{m.group(2)}</span>"
@@ -182,6 +191,12 @@ def render_rich_html(text: str) -> str:
     if _ANY_HTML_TAG_RE.search(text):
         return sanitize_rich_html(text)
     return sanitize_rich_html(parse_bbcode(text))
+
+
+def render_user_bbcode(text: str) -> str:
+    """BBCode written by a user (comment, reply): escaped and converted by
+    parse_bbcode(), then filtered by the nh3 allow-list."""
+    return sanitize_user_html(parse_bbcode(text or ''))
 
 
 def render_comment_html(text: str) -> str:
