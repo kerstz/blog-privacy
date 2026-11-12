@@ -53,6 +53,74 @@ def encrypt_legacy():
     click.echo(f"Encrypted {messages} legacy message(s) and {files} file(s).")
 
 
+@app.cli.command('rotate-key')
+@click.option('--dry-run', is_flag=True, help='Only check that everything can be re-encrypted.')
+def rotate_key(dry_run):
+    """Re-encrypt messages, 2FA secrets and uploads with the current key.
+
+    Run after moving the old values to ENCRYPTION_OLD_KEY / ENCRYPTION_OLD_SALT /
+    ENCRYPTION_OLD_ITERATIONS and setting the new ENCRYPTION_* values (also
+    the way to raise ENCRYPTION_ITERATIONS on an existing install). Idempotent:
+    data already under the current key is simply re-encrypted again. Exits
+    with an error if something could not be read, so the old key must not be
+    removed before a clean run.
+    """
+    from cryptography.fernet import InvalidToken
+    from app.models import User
+    from app.services import _uploads_root, write_token_file
+
+    if not message_encryption.has_previous_key:
+        raise click.UsageError('ENCRYPTION_OLD_KEY is not set: nothing to rotate from. '
+                               'See SECURITY.md, "Rotating the encryption key".')
+    counts = {'messages': 0, 'totp': 0, 'files': 0}
+    failures = []
+
+    for message in Message.query.filter(Message.is_encrypted.is_(True)).all():
+        if not message.content or not message_encryption.is_ciphertext(message.content):
+            continue  # empty or legacy plaintext (flask encrypt-legacy)
+        rotated = message_encryption.rotate_message(message.content)
+        if not dry_run:
+            message.content = rotated
+        counts['messages'] += 1
+    for user in User.query.filter(User.totp_secret.isnot(None)).all():
+        if not message_encryption.is_ciphertext(user.totp_secret):
+            continue  # legacy plaintext secret, encrypted at the next login
+        rotated = message_encryption.rotate_message(user.totp_secret)
+        if not dry_run:
+            user.totp_secret = rotated
+        counts['totp'] += 1
+    if not dry_run:
+        db.session.commit()
+
+    root = _uploads_root()
+    names = sorted(os.listdir(root)) if os.path.isdir(root) else []
+    for name in names:
+        path = os.path.join(root, name)
+        if not name.endswith(ENCRYPTED_SUFFIX) or not os.path.isfile(path):
+            continue
+        with open(path, 'rb') as fh:
+            token = fh.read()
+        try:
+            rotated = message_encryption.rotate_bytes(token)
+        except InvalidToken:
+            failures.append(name)
+            continue
+        if not dry_run:
+            write_token_file(path, rotated)
+        counts['files'] += 1
+
+    verb = 'Would re-encrypt' if dry_run else 'Re-encrypted'
+    click.echo(f"{verb} {counts['messages']} message(s), {counts['totp']} 2FA secret(s) "
+               f"and {counts['files']} file(s).")
+    if failures:
+        click.echo(f"{len(failures)} file(s) could not be decrypted with any key: "
+                   + ', '.join(failures[:10]), err=True)
+        raise SystemExit(1)
+    if not dry_run:
+        click.echo('Done. Remove ENCRYPTION_OLD_KEY / ENCRYPTION_OLD_SALT / '
+                   'ENCRYPTION_OLD_ITERATIONS from the environment and restart the app.')
+
+
 @app.cli.command('unlock')
 @click.argument('username', required=False)
 @click.option('--all', 'unlock_all', is_flag=True,

@@ -561,10 +561,14 @@ ENCRYPTED_SUFFIX = '.enc'
 def write_encrypted_file(target, plain):
     """Encrypt `plain` (bytes) and write it atomically to `target` (mode 0600).
     The ciphertext is checked to decrypt back to the same bytes first."""
-    from app.encryption import message_encryption
     token = message_encryption.encrypt_bytes(plain)
     if message_encryption.decrypt_bytes(token) != plain:
         raise RuntimeError('encryption self-check failed')
+    return write_token_file(target, token)
+
+
+def write_token_file(target, token):
+    """Write an already encrypted token atomically to `target` (mode 0600)."""
     tmp = target + '.tmp'
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:

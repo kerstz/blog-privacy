@@ -414,3 +414,96 @@ def test_comment_on_unpublished_post_cannot_be_edited_by_its_author():
     assert client.post(f'/edit_comment/{cid}/{post_id}', data={'content': 'changed'}).status_code == 404
     with app.app_context():
         assert db.session.get(Comment, cid).content == 'mine'
+
+
+# ------------------------------------------- encryption key rotation
+
+def test_rotate_key_reencrypts_messages_totp_and_files(tmp_path, monkeypatch):
+    import base64
+    from cryptography.fernet import Fernet, InvalidToken
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from app import services
+    from app.encryption import message_encryption
+    from app.models import Message, User
+
+    def fernet(key, salt, iterations):
+        kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=salt.encode(), iterations=iterations)
+        return Fernet(base64.urlsafe_b64encode(kdf.derive(key.encode())))
+
+    monkeypatch.setenv('UPLOAD_DIR', str(tmp_path / 'up'))
+    (tmp_path / 'up').mkdir()
+    old_key, old_salt = os.environ['ENCRYPTION_KEY'], os.environ['ENCRYPTION_SALT']
+    old_iter = int(os.environ.get('ENCRYPTION_ITERATIONS') or 100000)
+    reset()
+    alice, boss = make_user('alice'), make_user('boss', admin=True)
+    with app.app_context():
+        msg = Message(sender_id=alice, receiver_id=boss, file_path='uploads/chat_k.pdf.enc')
+        msg.set_encrypted_content('private words')
+        db.session.add(msg)
+        user = db.session.get(User, alice)
+        services._store_totp_secret(user, 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP')
+        user.totp_enabled = True
+        db.session.commit()
+    services.write_encrypted_file(str(tmp_path / 'up' / 'chat_k.pdf.enc'), b'attachment')
+    assert app.test_cli_runner().invoke(args=['rotate-key']).exit_code != 0  # no old key set
+
+    try:
+        # new key + more iterations; the previous values become ENCRYPTION_OLD_*
+        monkeypatch.setenv('ENCRYPTION_OLD_KEY', old_key)
+        monkeypatch.setenv('ENCRYPTION_OLD_SALT', old_salt)
+        monkeypatch.setenv('ENCRYPTION_OLD_ITERATIONS', str(old_iter))
+        monkeypatch.setenv('ENCRYPTION_KEY', 'n' * 40)
+        monkeypatch.setenv('ENCRYPTION_SALT', 'm' * 20)
+        monkeypatch.setenv('ENCRYPTION_ITERATIONS', '600000')
+        message_encryption.configure()
+        with app.app_context():
+            assert Message.query.one().get_decrypted_content() == 'private words'  # still readable
+        dry = app.test_cli_runner().invoke(args=['rotate-key', '--dry-run'])
+        assert dry.exit_code == 0 and 'Would re-encrypt 1 message(s), 1 2FA secret(s) and 1 file(s)' in dry.output
+        result = app.test_cli_runner().invoke(args=['rotate-key'])
+        assert result.exit_code == 0, result.output
+        assert 'Re-encrypted 1 message(s), 1 2FA secret(s) and 1 file(s)' in result.output
+
+        # the old key alone reads nothing any more, the new one alone reads everything
+        for var in ('ENCRYPTION_OLD_KEY', 'ENCRYPTION_OLD_SALT', 'ENCRYPTION_OLD_ITERATIONS'):
+            monkeypatch.delenv(var)
+        message_encryption.configure()
+        previous = fernet(old_key, old_salt, old_iter)
+        with app.app_context():
+            msg = Message.query.one()
+            assert msg.get_decrypted_content() == 'private words'
+            try:
+                previous.decrypt(base64.urlsafe_b64decode(msg.content.encode()))
+                raise AssertionError('message still readable with the old key')
+            except InvalidToken:
+                pass
+            assert services._totp_secret(db.session.get(User, alice)) == 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+        assert services.read_upload_bytes('uploads/chat_k.pdf.enc') == b'attachment'
+        token = (tmp_path / 'up' / 'chat_k.pdf.enc').read_bytes()
+        try:
+            previous.decrypt(token)
+            raise AssertionError('file still readable with the old key')
+        except InvalidToken:
+            pass
+        assert ((tmp_path / 'up' / 'chat_k.pdf.enc').stat().st_mode & 0o777) == 0o600
+    finally:
+        monkeypatch.undo()
+        message_encryption.configure()
+
+
+def test_rotate_key_fails_loudly_on_unreadable_file(tmp_path, monkeypatch):
+    from app.encryption import message_encryption
+    monkeypatch.setenv('UPLOAD_DIR', str(tmp_path / 'up'))
+    (tmp_path / 'up').mkdir()
+    (tmp_path / 'up' / 'chat_bad.pdf.enc').write_bytes(b'not a fernet token')
+    reset()
+    try:
+        monkeypatch.setenv('ENCRYPTION_OLD_KEY', 'o' * 40)
+        message_encryption.configure()
+        result = app.test_cli_runner().invoke(args=['rotate-key'])
+        assert result.exit_code == 1
+        assert 'chat_bad.pdf.enc' in result.output
+    finally:
+        monkeypatch.undo()
+        message_encryption.configure()
