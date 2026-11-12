@@ -21,6 +21,8 @@ os.environ['SESSION_COOKIE_SECURE'] = '0'
 # variable is already set and these are no-ops.
 os.environ.setdefault('SECURITY_STATE_DB',
                       os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), 's.db'))
+for _var, _sub in (('UPLOAD_DIR', 'uploads'), ('QUARANTINE_DIR', 'quarantine')):
+    os.environ.setdefault(_var, os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), _sub))
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

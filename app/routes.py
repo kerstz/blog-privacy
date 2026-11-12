@@ -81,8 +81,8 @@ action_rate_limit_buckets = _RATE_LIMIT_STORE
 
 
 def _uploads_root():
-    return os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
-                                        UPLOAD_FOLDER))
+    from app.services import _uploads_root as uploads_root
+    return uploads_root()
 
 
 def _absolute_upload_path(stored_path):

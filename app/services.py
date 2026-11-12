@@ -117,6 +117,12 @@ def _project_root():
 
 
 def _uploads_root():
+    """Directory of the uploaded files: UPLOAD_DIR when set (absolute path,
+    e.g. a data partition), otherwise <project>/uploads. Database rows keep
+    the "uploads/<name>" form either way."""
+    configured = (os.environ.get('UPLOAD_DIR') or '').strip()
+    if configured:
+        return os.path.abspath(configured)
     return os.path.abspath(os.path.join(_project_root(), UPLOAD_FOLDER))
 
 

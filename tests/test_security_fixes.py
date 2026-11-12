@@ -26,6 +26,8 @@ os.environ['SESSION_COOKIE_SECURE'] = '0'
 # variable is already set and these are no-ops.
 os.environ.setdefault('SECURITY_STATE_DB',
                       os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), 's.db'))
+for _var, _sub in (('UPLOAD_DIR', 'uploads'), ('QUARANTINE_DIR', 'quarantine')):
+    os.environ.setdefault(_var, os.path.join(__import__('tempfile').mkdtemp(prefix='blog-tests-'), _sub))
 os.environ.pop('MOBILE_API_ENABLED', None)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -718,8 +720,8 @@ def test_delete_user_with_messages_likes_comments():
     reader = make_user('reader')
     post_id = make_post(admin)
     tmp = tempfile.mkdtemp()
-    old_folder = routes.UPLOAD_FOLDER
-    routes.UPLOAD_FOLDER = tmp
+    old_folder = os.environ.get('UPLOAD_DIR')
+    os.environ['UPLOAD_DIR'] = tmp
     try:
         attachment = os.path.join(tmp, 'f.txt')
         open(attachment, 'w').write('x')
@@ -751,7 +753,10 @@ def test_delete_user_with_messages_likes_comments():
         assert not os.path.exists(attachment)
         assert '[deleted]' in app.test_client().get(f'/post/{post_id}').get_data(as_text=True)
     finally:
-        routes.UPLOAD_FOLDER = old_folder
+        if old_folder is None:
+            os.environ.pop('UPLOAD_DIR', None)
+        else:
+            os.environ['UPLOAD_DIR'] = old_folder
 
 
 def test_delete_user_refuses_self_and_admin():

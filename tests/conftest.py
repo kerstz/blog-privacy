@@ -1,8 +1,9 @@
 """Shared test setup: one process can run every test file together.
 
 The environment is prepared BEFORE `app` is imported (the app reads it at
-import time) and nothing here ever points at instance/ or a real database:
-databases and the rate-limiter state live in a throwaway directory.
+import time) and nothing here ever points at instance/, uploads/ or a real
+database: databases, uploads, quarantine and the rate-limiter state live in a
+throwaway directory.
 """
 import os
 import tempfile
@@ -15,6 +16,10 @@ os.environ.setdefault('ENCRYPTION_KEY', 'k' * 32)
 os.environ.setdefault('ENCRYPTION_SALT', 's' * 16)
 os.environ.setdefault('DATABASE_URL', f'sqlite:///{_TMP}/t.db')
 os.environ.setdefault('SECURITY_STATE_DB', f'{_TMP}/s.db')
+# Uploads and quarantined files of the tests never land in the project's
+# uploads/ or instance/quarantine (the operator's data).
+os.environ.setdefault('UPLOAD_DIR', f'{_TMP}/uploads')
+os.environ.setdefault('QUARANTINE_DIR', f'{_TMP}/quarantine')
 os.environ['SESSION_COOKIE_SECURE'] = '0'
 for _name in ('TELEGRAM_BOT_TOKEN', 'TELEGRAM_ADMIN_CHAT_ID'):
     os.environ.pop(_name, None)

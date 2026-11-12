@@ -13,6 +13,8 @@ import pytest
 _TMP = tempfile.mkdtemp()
 os.environ.update(
     SECURITY_STATE_DB=f'{_TMP}/security_state.db',
+    UPLOAD_DIR=f'{_TMP}/uploads',
+    QUARANTINE_DIR=f'{_TMP}/quarantine',
     SECRET_KEY='t' * 48,
     ENCRYPTION_KEY='k' * 32,
     ENCRYPTION_SALT='s' * 16,
@@ -173,7 +175,8 @@ def test_upload_access_control_and_exif_strip():
     name = path.split('/')[-1]
     assert 'holiday' not in name  # random name, no user filename on disk
     assert name.endswith('.webp.enc')  # re-encoded to WebP, then encrypted at rest
-    with open(path, 'rb') as f:
+    from app.services import _absolute_upload_path
+    with open(_absolute_upload_path(path), 'rb') as f:
         raw = f.read()
     assert b'WEBP' not in raw[:64] and b'SpyCam' not in raw  # unreadable on disk
     from app.services import read_upload_bytes
@@ -185,7 +188,7 @@ def test_upload_access_control_and_exif_strip():
     assert login('admin').get(f'/uploads/{name}').status_code == 200
     assert login('bob').get(f'/uploads/{name}').status_code == 404
     assert app.test_client().get(f'/uploads/{name}').status_code == 404
-    os.remove(path)
+    os.remove(_absolute_upload_path(path))
 
 
 def test_svg_upload_rejected():
@@ -576,7 +579,9 @@ def test_security_alerts_sent(monkeypatch):
 
 def test_encrypt_legacy_command(tmp_path):
     from app.encryption import message_encryption
-    legacy_file = os.path.join('uploads', 'legacy_test_file.txt')
+    from app.services import _uploads_root
+    os.makedirs(_uploads_root(), exist_ok=True)
+    legacy_file = os.path.join(_uploads_root(), 'legacy_test_file.txt')
     with open(legacy_file, 'w') as f:
         f.write('old plaintext attachment')
     with app.app_context():
@@ -592,7 +597,7 @@ def test_encrypt_legacy_command(tmp_path):
         assert m.file_path.endswith('.enc') and not os.path.exists(legacy_file)
         from app.services import read_upload_bytes
         assert read_upload_bytes(m.file_path) == b'old plaintext attachment'
-        os.remove(m.file_path)
+        os.remove(os.path.join(_uploads_root(), os.path.basename(m.file_path)))
 
 
 def test_antispam_honeypot_and_timing():

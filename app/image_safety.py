@@ -58,9 +58,14 @@ def _project_root():
 
 
 def quarantine_dir():
-    """Dossier de quarantaine, hors de la racine web et hors de uploads/."""
-    path = os.path.join(_project_root(), 'instance', QUARANTINE_DIRNAME)
-    os.makedirs(path, exist_ok=True)
+    """Dossier de quarantaine, hors de la racine web et hors de uploads/.
+
+    QUARANTINE_DIR (chemin absolu) le deplace ; par defaut instance/quarantine.
+    """
+    configured = (os.environ.get('QUARANTINE_DIR') or '').strip()
+    path = os.path.abspath(configured) if configured else \
+        os.path.join(_project_root(), 'instance', QUARANTINE_DIRNAME)
+    os.makedirs(path, mode=0o700, exist_ok=True)
     return path
 
 
