@@ -578,3 +578,45 @@ def test_purge_notifications_keeps_recent_ones():
     assert res.exit_code == 0 and 'Deleted 1 notification(s) older than 90 day(s)' in res.output
     with app.app_context():
         assert Notification.query.count() == 1
+
+
+# ------------------------------------------- feature: per-tag / category feeds
+
+def _tagged_posts():
+    from app.models import Post, Tag
+    admin = make_user('boss', admin=True)
+    with app.app_context():
+        tor = Tag(name='Tor', slug='tor')
+        db.session.add(tor)
+        for title, tags, category, published in (('Onion notes', [tor], 'Privacy', True),
+                                                  ('Cooking', [], 'Life', True),
+                                                  ('Draft onion', [tor], 'Privacy', False)):
+            post = Post(title=title, content='body', author_id=admin, is_published=published,
+                        is_draft=not published, category=category)
+            post.tags = tags
+            db.session.add(post)
+        db.session.commit()
+
+
+def test_tag_and_category_feeds_list_only_their_published_posts():
+    reset()
+    _tagged_posts()
+    client = app.test_client()
+    for url, heading in (('/tag/tor/feed.xml', 'Tag: Tor'), ('/category/privacy/feed.xml', 'Category: Privacy')):
+        resp = client.get(url)
+        assert resp.status_code == 200 and resp.mimetype == 'application/rss+xml'
+        xml = resp.get_data(as_text=True)
+        assert 'Onion notes' in xml
+        assert 'Cooking' not in xml and 'Draft onion' not in xml
+        assert f'<title>depressedyoungmanblog — {heading}</title>' in xml
+        assert f'href="http://localhost{url}" rel="self"' in xml
+    assert client.get('/tag/nope/feed.xml').status_code == 404
+    assert client.get('/category/nope/feed.xml').status_code == 404
+    # the listing pages advertise their own feed
+    html = client.get('/tag/tor').get_data(as_text=True)
+    assert 'type="application/rss+xml" title="RSS — Tag: Tor" href="/tag/tor/feed.xml"' in html
+    assert 'RSS feed of this list' in html
+    assert 'Flux RSS de cette liste' in client.get('/category/privacy?lang=fr').get_data(as_text=True)
+    # the main feed is unchanged
+    main = client.get('/feed.xml').get_data(as_text=True)
+    assert 'Onion notes' in main and 'Cooking' in main and 'Draft onion' not in main

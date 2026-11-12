@@ -2347,29 +2347,45 @@ def delete_own_account():
 #  Discovery: categories, tags, search, RSS
 # ─────────────────────────────────────────────────────────────────
 
-def _post_listing(posts, heading, empty_message=None, query=None):
+def _post_listing(posts, heading, empty_message=None, query=None, feed_url=None):
     return render_template('post_list.html', posts=posts, heading=heading,
                            empty_message=empty_message or get_text('posts.none_found'),
-                           query=query)
+                           query=query, feed_url=feed_url)
 
 
-@app.route('/tag/<slug>')
-def posts_by_tag(slug):
-    tag = Tag.query.filter_by(slug=slug).first_or_404()
-    posts = _published_posts_query().filter(Post.tags.any(Tag.id == tag.id)) \
-        .order_by(Post.date_posted.desc()).all()
-    return _post_listing(posts, f"{get_text('posts.tag.heading')}: {tag.name}")
+def _tag_or_404(slug):
+    return Tag.query.filter_by(slug=slug).first_or_404()
 
 
-@app.route('/category/<slug>')
-def posts_by_category(slug):
+def _category_or_404(slug):
     names = [c for (c,) in db.session.query(Post.category).filter(Post.category.isnot(None)).distinct()]
     name = next((c for c in names if slugify(c) == slug), None)
     if not name:
         abort(404)
-    posts = _published_posts_query().filter(Post.category == name) \
-        .order_by(Post.date_posted.desc()).all()
-    return _post_listing(posts, f"{get_text('posts.category.heading')}: {name}")
+    return name
+
+
+def _tag_posts(tag):
+    return _published_posts_query().filter(Post.tags.any(Tag.id == tag.id)) \
+        .order_by(Post.date_posted.desc())
+
+
+def _category_posts(name):
+    return _published_posts_query().filter(Post.category == name).order_by(Post.date_posted.desc())
+
+
+@app.route('/tag/<slug>')
+def posts_by_tag(slug):
+    tag = _tag_or_404(slug)
+    return _post_listing(_tag_posts(tag).all(), f"{get_text('posts.tag.heading')}: {tag.name}",
+                         feed_url=url_for('tag_feed', slug=tag.slug))
+
+
+@app.route('/category/<slug>')
+def posts_by_category(slug):
+    name = _category_or_404(slug)
+    return _post_listing(_category_posts(name).all(), f"{get_text('posts.category.heading')}: {name}",
+                         feed_url=url_for('category_feed', slug=slug))
 
 
 @app.route('/search')
@@ -2391,10 +2407,39 @@ def search():
     return _post_listing(posts, f'{heading}: "{query}"', get_text('posts.search.none'), query=query)
 
 
-@app.route('/feed.xml')
-def rss_feed():
-    posts = Post.query.filter(Post.is_published.is_(True)).order_by(Post.date_posted.desc()).limit(20).all()
-    xml = render_template('feed.xml', posts=posts, base_url=request.url_root.rstrip('/'))
+FEED_SIZE = 20
+
+
+def _feed_response(posts, subtitle=None, page_url=None):
+    """RSS 2.0 document for `posts` (already filtered and ordered)."""
+    xml = render_template('feed.xml', posts=posts, base_url=request.url_root.rstrip('/'),
+                          subtitle=subtitle, page_url=page_url or url_for('index'))
     response = app.response_class(xml, mimetype='application/rss+xml')
     response.headers['Cache-Control'] = 'public, max-age=900'
     return response
+
+
+@app.route('/feed.xml')
+def rss_feed():
+    posts = Post.query.filter(Post.is_published.is_(True)).order_by(Post.date_posted.desc()) \
+        .limit(FEED_SIZE).all()
+    return _feed_response(posts)
+
+
+# Readers who follow one subject subscribe to it alone: RSS is how a Tor user
+# without JavaScript keeps up with a site, so the feed must not force them to
+# take everything.
+@app.route('/tag/<slug>/feed.xml')
+def tag_feed(slug):
+    tag = _tag_or_404(slug)
+    return _feed_response(_tag_posts(tag).limit(FEED_SIZE).all(),
+                          f"{get_text('posts.tag.heading')}: {tag.name}",
+                          url_for('posts_by_tag', slug=tag.slug))
+
+
+@app.route('/category/<slug>/feed.xml')
+def category_feed(slug):
+    name = _category_or_404(slug)
+    return _feed_response(_category_posts(name).limit(FEED_SIZE).all(),
+                          f"{get_text('posts.category.heading')}: {name}",
+                          url_for('posts_by_category', slug=slug))

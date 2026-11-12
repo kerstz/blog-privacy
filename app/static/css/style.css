@@ -908,3 +908,12 @@ button.logout-btn { cursor: pointer; font: inherit; }
 .skip-link:focus {
     top: 0.5rem;
 }
+
+/* Per-tag / per-category RSS link under a listing heading */
+.feed-link {
+    margin: -0.5rem 0 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+}
+.feed-link a { color: var(--ash-mid); }
+.feed-link a:hover { color: var(--moon-bright); }

@@ -24,7 +24,8 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Aucune requête vers des tiers** : pas de police web, pas de CDN, pas de widget intégré, images externes affichées en lien
 - **Prêt pour Tor** : en-tête `Onion-Location`, configuration du service onion dans `deploy/`
 - **Articles** en BBCode (ou HTML simple), brouillons, publication programmée, révisions, **catégories et tags**
-- **Recherche** et **flux RSS** (`/feed.xml`)
+- **Recherche** et **flux RSS** (`/feed.xml`, plus un par étiquette et par
+  catégorie : `/tag/<slug>/feed.xml`, `/category/<slug>/feed.xml`)
 - **Commentaires imbriqués**, likes, notifications, XP, niveaux et badges
 - **Chat privé chiffré** entre chaque utilisateur et l'admin (messages **et pièces jointes** chiffrés au repos)
 - **Double authentification TOTP** avec **codes de secours** à usage unique

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-    <title>depressedyoungmanblog</title>
-    <link>{{ base_url }}/</link>
-    <description>Latest posts</description>
-    <atom:link href="{{ base_url }}{{ url_for('rss_feed') }}" rel="self" type="application/rss+xml"/>
+    <title>depressedyoungmanblog{% if subtitle %} — {{ subtitle }}{% endif %}</title>
+    <link>{{ base_url }}{{ page_url }}</link>
+    <description>{{ subtitle or 'Latest posts' }}</description>
+    <atom:link href="{{ base_url }}{{ request.path }}" rel="self" type="application/rss+xml"/>
     {% for post in posts %}
     <item>
         <title>{{ post.title }}</title>

@@ -17,7 +17,8 @@ required, no third-party requests, built to run as a Tor onion service.
 ## What it does
 
 - **Blog** — posts in BBCode (or basic HTML), drafts, scheduled publishing,
-  revisions, categories and tags, search, RSS feed (`/feed.xml`)
+  revisions, categories and tags, search, RSS feeds (`/feed.xml`, and one per
+  tag and category: `/tag/<slug>/feed.xml`, `/category/<slug>/feed.xml`)
 - **Comments** — nested, BBCode, parsed server-side so they work without JavaScript
 - **Encrypted chat** with the site owner — Fernet at rest (messages **and**
   attachments)

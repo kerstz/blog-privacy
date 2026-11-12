@@ -127,6 +127,7 @@ DEFAULTS = {
     'posts.tag.heading': {'en': 'Tag',              'fr': 'Étiquette'},
     'posts.category.heading': {'en': 'Category',    'fr': 'Catégorie'},
     'posts.none_found':  {'en': 'No posts found.', 'fr': 'Aucun article trouvé.'},
+    'posts.feed':        {'en': 'RSS feed of this list', 'fr': 'Flux RSS de cette liste'},
 
     # -------------------------------------------------------------- about
     'about.eyebrow':     {'en': 'About',           'fr': 'À propos'},
