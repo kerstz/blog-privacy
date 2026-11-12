@@ -225,6 +225,7 @@ if command -v rsync >/dev/null 2>&1; then
         --exclude '.git' --exclude '.venv' --exclude '__pycache__' \
         --exclude 'instance' --exclude 'uploads' --exclude '.env' \
         --exclude 'archive' --exclude 'docs' --exclude 'tools' \
+        --exclude 'backups' --exclude 'logs' --exclude '.pytest_cache' --exclude '.ruff_cache' \
         "${SRC_DIR}/" "${APP_DIR}/"
 else
     run cp -r "${SRC_DIR}/app" "${SRC_DIR}/migrations" "${SRC_DIR}/wsgi.py" \
@@ -327,6 +328,9 @@ step "Compte administrateur"
 
 ADMIN_PASSWORD=""
 if (( ! DRY_RUN )); then
+    # Fichier d'etat prive (mktemp) : un nom fixe dans /tmp, ecrit par root,
+    # pourrait etre un lien symbolique pose par un autre utilisateur.
+    ADMIN_STATUS="$(mktemp)"
     ADMIN_PASSWORD="$("${VENV_DIR}/bin/python" - <<'PY'
 import secrets, string
 # 24 caracteres d'un alphabet sans ambiguite visuelle (ni O/0 ni l/1/I) :
@@ -364,15 +368,15 @@ with app.app_context():
         db.session.commit()
         print('CREATED', file=sys.stderr)
 PY
-    ) 2>/tmp/.dym_admin_status || die "Creation du compte admin impossible."
+    ) 2>"$ADMIN_STATUS" || { rm -f "$ADMIN_STATUS"; die "Creation du compte admin impossible."; }
 
-    if grep -q EXISTS /tmp/.dym_admin_status; then
+    if grep -q EXISTS "$ADMIN_STATUS"; then
         ADMIN_PASSWORD=""
         warn "Le compte ${ADMIN_USERNAME} existe deja : mot de passe inchange."
     else
         ok "Compte ${ADMIN_USERNAME} cree"
     fi
-    rm -f /tmp/.dym_admin_status
+    rm -f "$ADMIN_STATUS"
 else
     info "[dry-run] creation du compte ${ADMIN_USERNAME}"
 fi

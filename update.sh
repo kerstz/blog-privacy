@@ -177,13 +177,31 @@ encrypt_stream() {  # stdin -> $1.gpg|$1.enc ; prints the output path
     fi
 }
 
+# gpg -d also outputs a plain, UNENCRYPTED OpenPGP message (exit 0): only
+# accept data gpg really decrypted with the passphrase and verified
+# (status DECRYPTION_OKAY). Same check as backup.sh.
+gpg_decrypt_to() {  # $1 = encrypted file, $2 = output file, $3 = passphrase
+    local status
+    if ! status="$(gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 \
+            --status-fd 1 --yes -o "$2" -d "$1" 3<<<"$3")" \
+            || ! grep -q '^\[GNUPG:\] DECRYPTION_OKAY' <<<"$status"; then
+        rm -f "$2"
+        log "!! $1: wrong passphrase, or not an encrypted backup. Refusing it." >&2
+        return 1
+    fi
+}
+
 decrypt_stream() {  # $1 = backup file -> tar.gz stream on stdout
-    local file="$1" pass
+    local file="$1" pass tmp
     case "$file" in
         *.tar.gz) cat "$file" ;;
         *.gpg)
             pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file" >&2; return 1; }
-            gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 -d "$file" 3<<<"$pass" ;;
+            mkdir -p "$ROOT/instance"
+            tmp="$(mktemp "$ROOT/instance/.decrypt.XXXXXX")" || return 1
+            if ! gpg_decrypt_to "$file" "$tmp" "$pass"; then rm -f "$tmp"; return 1; fi
+            cat "$tmp"
+            rm -f "$tmp" ;;
         *.enc)
             pass="$(backup_passphrase)" || { log "!! BACKUP_PASSPHRASE is needed to read $file" >&2; return 1; }
             if [ ! -f "$file.hmac" ] || [ "$(cat "$file.hmac")" != "$(mac_file "$file" "$pass")" ]; then
@@ -228,9 +246,12 @@ make_backup() {
         BACKUP_FILE="$base"
     fi
     chmod 600 "$BACKUP_FILE"
-    # keep only the most recent update backups
-    ls -1t "$BACKUP_DIR"/update_backup_*.tar.gz "$BACKUP_DIR"/update_backup_*.tar.gz.gpg \
-        "$BACKUP_DIR"/update_backup_*.tar.gz.enc 2>/dev/null \
+    # keep only the most recent update backups. `ls` fails when a pattern
+    # matches nothing (usually two of the three): with pipefail that made
+    # make_backup return 2 and `make_backup || exit 1` stopped EVERY update
+    # right after the backup.
+    { ls -1t "$BACKUP_DIR"/update_backup_*.tar.gz "$BACKUP_DIR"/update_backup_*.tar.gz.gpg \
+        "$BACKUP_DIR"/update_backup_*.tar.gz.enc 2>/dev/null || true; } \
         | tail -n +$((KEEP_UPDATE_BACKUPS + 1)) | while read -r f; do rm -f "$f" "$f.hmac"; done
 }
 

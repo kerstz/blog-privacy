@@ -46,8 +46,13 @@ EXCLUDES=(
     --exclude='*.db'
     --exclude='*.sqlite*'
     --exclude='node_modules'
+    # backups (database + uploads + .env of THIS machine) and logs stay here
+    --exclude='backups'
+    --exclude='logs'
+    --exclude='.pytest_cache'
+    --exclude='.ruff_cache'
 )
-ok "Exclus : .env, .git, .venv, instance/, uploads/, bases de donnees"
+ok "Exclus : .env, .git, .venv, instance/, uploads/, backups/, logs/, bases de donnees"
 
 step "Archive"
 
@@ -55,7 +60,7 @@ tar czf "$ARCHIVE" -C "$(dirname "$SRC_DIR")" "${EXCLUDES[@]}" "$(basename "$SRC
 ok "$ARCHIVE ($(du -h "$ARCHIVE" | cut -f1))"
 
 # Controle : rien de sensible ne doit avoir echappe aux exclusions.
-LEAKS="$(tar tzf "$ARCHIVE" | grep -E '(^|/)\.env$|\.db$|\.sqlite|(^|/)\.git/' || true)"
+LEAKS="$(tar tzf "$ARCHIVE" | grep -E '(^|/)\.env$|\.db$|\.sqlite|(^|/)\.git/|^[^/]+/backups/' || true)"
 if [[ -n "$LEAKS" ]]; then
     warn "Fichiers sensibles dans l'archive — NE PAS L'ENVOYER :"
     printf '%s\n' "$LEAKS" | sed 's/^/     /'

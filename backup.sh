@@ -19,6 +19,13 @@
 #   BACKUP_KEEP=14          number of backups kept locally (default 14)
 #   BACKUP_REMOTE=user@host:/path/   optional rsync target for an off-site copy
 #
+# Environment overrides (e.g. the deploy/deploy-onion.sh layout, where the
+# secrets live in /etc and uploads/ + instance/ are symlinks to /var/lib):
+#   BLOG_ENV_FILE=/etc/depressedyoungmanblog.env   settings + secrets file
+#                           (default: .env next to this script); it is the
+#                           ".env" saved in the backup
+#   BACKUP_DIR=/path        where backups are written (default: ./backups)
+#
 # Encryption: gpg --symmetric AES256 (authenticated, MDC) is always preferred.
 # Fallback without gpg: openssl AES-256-CBC + PBKDF2 (600000 iterations), which
 # is NOT authenticated by itself, so an HMAC-SHA256 sidecar "<file>.enc.hmac"
@@ -32,12 +39,13 @@ umask 077
 
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
-BACKUP_DIR="$ROOT/backups"
+BACKUP_DIR="${BACKUP_DIR:-$ROOT/backups}"
+ENV_FILE="${BLOG_ENV_FILE:-$ROOT/.env}"
 MARKER="# blog-privacy backup ($ROOT)"
 
 env_get() {
-    [ -f "$ROOT/.env" ] || return 0
-    { grep -E "^[[:space:]]*$1=" "$ROOT/.env" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
+    [ -f "$ENV_FILE" ] || return 0
+    { grep -E "^[[:space:]]*$1=" "$ENV_FILE" || true; } | tail -n1 | cut -d= -f2- | sed -e 's/^["'\'']//' -e 's/["'\'']$//'
 }
 usage() { sed -n '3,/^# ----/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 1; }
 
@@ -65,6 +73,22 @@ with open(sys.argv[1], "rb") as f:
     for b in iter(lambda: f.read(1 << 20), b""):
         h.update(b)
 print(h.hexdigest())' "$1"
+}
+
+# gpg -d also "decrypts" a plain, UNENCRYPTED OpenPGP message (literal data)
+# and exits 0: a backup swapped for such a file (on the off-site copy, say)
+# would be restored without the passphrase and without any integrity check.
+# Decrypt into a file and accept it only if gpg really decrypted it with the
+# passphrase and verified its integrity (status DECRYPTION_OKAY).
+gpg_decrypt_to() {  # $1 = encrypted file, $2 = output file, $3 = passphrase
+    local status
+    if ! status="$(gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 \
+            --status-fd 1 --yes -o "$2" -d "$1" 3<<<"$3")" \
+            || ! grep -q '^\[GNUPG:\] DECRYPTION_OKAY' <<<"$status"; then
+        rm -f "$2"
+        echo "Decryption failed: wrong passphrase, or the file is not an encrypted backup (refusing it)." >&2
+        return 1
+    fi
 }
 
 encrypt() {  # stdin -> $1
@@ -101,20 +125,27 @@ for path in glob.glob(os.path.join(root, 'instance', '*.db')) + glob.glob(os.pat
     src.backup(dst)
     dst.close(); src.close()
 PYEOF
-    [ -d uploads ] && cp -a uploads "$staging/uploads"
-    [ -f .env ] && cp -a .env "$staging/.env"
+    # uploads/ may be a symlink (deploy-onion.sh layout): copy its content.
+    if [ -d uploads ]; then
+        mkdir -p "$staging/uploads"
+        cp -a uploads/. "$staging/uploads/"
+    fi
+    if [ -f "$ENV_FILE" ]; then cp -p "$ENV_FILE" "$staging/.env"; fi
 
     out="$(tar -C "$staging" -czf - . | encrypt "$BACKUP_DIR/backup_$stamp.tar.gz")"
     chmod 600 "$out"
     echo "Encrypted backup: $out"
 
     local keep old; keep="${BACKUP_KEEP:-$(env_get BACKUP_KEEP)}"; keep="${keep:-14}"
-    ls -1t "$BACKUP_DIR"/backup_*.tar.gz.gpg "$BACKUP_DIR"/backup_*.tar.gz.enc 2>/dev/null \
+    # `ls` fails when one of the patterns matches nothing (there is usually only
+    # one format): with pipefail that used to end the run with exit 2 before
+    # the retention and the off-site copy.
+    { ls -1t "$BACKUP_DIR"/backup_*.tar.gz.gpg "$BACKUP_DIR"/backup_*.tar.gz.enc 2>/dev/null || true; } \
         | tail -n +$((keep + 1)) | while read -r old; do rm -f "$old" "$old.hmac"; done
 
     local remote; remote="${BACKUP_REMOTE:-$(env_get BACKUP_REMOTE)}"
     if [ -n "$remote" ]; then
-        rsync -a "$out" "$remote" && echo "Copied off-site to $remote"
+        rsync -a -- "$out" "$remote" && echo "Copied off-site to $remote"
     fi
 }
 
@@ -128,7 +159,10 @@ do_restore() {
     mkdir -p "$dest"
     local pass; pass="$(passphrase)"
     case "$file" in
-        *.gpg) gpg --batch --quiet --pinentry-mode loopback --passphrase-fd 3 -d "$file" 3<<<"$pass" | tar -C "$dest" -xzf - ;;
+        *.gpg)
+            gpg_decrypt_to "$file" "$dest/.backup-payload.tar.gz" "$pass" || exit 1
+            tar -C "$dest" -xzf "$dest/.backup-payload.tar.gz"
+            rm -f "$dest/.backup-payload.tar.gz" ;;
         *.enc)
             if [ -f "$file.hmac" ]; then
                 [ "$(cat "$file.hmac")" = "$(mac_file "$file" "$pass")" ] \
@@ -170,7 +204,12 @@ schedule() {
             esac
             passphrase >/dev/null
             mkdir -p "$ROOT/logs"
-            { printf '%s\n' "$cur" | grep -vF "$MARKER" | sed '/^$/d'; echo "$cron cd '$ROOT' && ./backup.sh run >> '$ROOT/logs/backup.log' 2>&1 $MARKER"; } | crontab -
+            # Keep the overrides in the scheduled command (quoted paths only).
+            local envs=""
+            case "$ROOT$ENV_FILE$BACKUP_DIR" in *"'"*) echo "Paths must not contain a quote."; exit 1 ;; esac
+            [ "$ENV_FILE" != "$ROOT/.env" ] && envs+="BLOG_ENV_FILE='$ENV_FILE' "
+            [ "$BACKUP_DIR" != "$ROOT/backups" ] && envs+="BACKUP_DIR='$BACKUP_DIR' "
+            { printf '%s\n' "$cur" | grep -vF "$MARKER" | sed '/^$/d'; echo "$cron cd '$ROOT' && ${envs}./backup.sh run >> '$ROOT/logs/backup.log' 2>&1 $MARKER"; } | crontab -
             echo "Scheduled backups enabled: $cron (log: logs/backup.log)" ;;
     esac
 }

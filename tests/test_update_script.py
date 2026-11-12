@@ -368,3 +368,113 @@ def test_backup_sh_restore_still_reads_legacy_enc(tmp_path):
     src = BACKUP.read_text()
     assert "legacy" in src.lower()
     assert re.search(r"openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000", src)
+
+
+# ------------------------------------------------------------------ audit 2026-11-12
+
+def _gpg_store(src, dest, gnupghome):
+    """An UNENCRYPTED OpenPGP message (literal data): `gpg -d` outputs it with
+    exit code 0 and without asking for any passphrase."""
+    subprocess.run(["gpg", "--batch", "--yes", "--store", "-o", str(dest), str(src)],
+                   env={"GNUPGHOME": str(gnupghome), "PATH": os.environ["PATH"]},
+                   check=True, capture_output=True, timeout=60)
+
+
+def _evil_tarball(tmp_path):
+    evil = tmp_path / "evil"
+    make_db(evil / "instance" / "app.db", "forged")
+    (evil / ".env").write_text("UPDATE_RESTART_CMD=touch /tmp/pwned\n")
+    payload = tmp_path / "evil.tar.gz"
+    with tarfile.open(payload, "w:gz") as tf:
+        tf.add(evil / "instance" / "app.db", arcname="instance/app.db")
+        tf.add(evil / ".env", arcname=".env")
+    return payload
+
+
+@pytest.mark.skipif(not HAVE_GPG, reason="gpg not installed")
+def test_update_restore_refuses_unencrypted_gpg_backup(tmp_path, repo):
+    gh = tmp_path / "gpghome"
+    gh.mkdir(mode=0o700)
+    make_db(repo / "instance" / "app.db", "live")
+    fake = tmp_path / "update_backup_x.tar.gz.gpg"
+    _gpg_store(_evil_tarball(tmp_path), fake, gh)
+    env = {"BACKUP_PASSPHRASE": "correct horse battery staple", "GNUPGHOME": str(gh)}
+    try:
+        res = run_fn(tmp_path, repo, f'decrypt_stream "{fake}" > "$ROOT/out.bin"', **env)
+        assert res.returncode != 0
+        assert "Refusing" in res.stderr
+        res = run_fn(tmp_path, repo, f'restore_db_from_backup "{fake}"', **env)
+        assert res.returncode != 0
+        assert read_db(repo / "instance" / "app.db") == "live"
+        assert not list((repo / "instance").glob(".decrypt.*"))
+    finally:
+        subprocess.run(["gpgconf", "--kill", "all"], env={"GNUPGHOME": str(gh), "PATH": os.environ["PATH"]},
+                       capture_output=True)
+
+
+@pytest.mark.skipif(not HAVE_GPG, reason="gpg not installed")
+def test_backup_sh_onion_layout_round_trip_and_forged_backup_refused(tmp_path):
+    """deploy-onion.sh layout: secrets in /etc (BLOG_ENV_FILE), instance/ and
+    uploads/ are symlinks to the data directory. The backup must hold the
+    real files, restore them, and refuse an unencrypted look-alike."""
+    root = tmp_path / "app"
+    (root / "venv" / "bin").mkdir(parents=True)
+    (root / "venv" / "bin" / "python").symlink_to(sys.executable)
+    shutil.copy(BACKUP, root / "backup.sh")
+    data = tmp_path / "data"
+    make_db(data / "instance" / "blog.db", "v1")
+    (data / "uploads").mkdir()
+    (data / "uploads" / "chat_x.webp.enc").write_bytes(b"ciphertext")
+    (root / "instance").symlink_to(data / "instance")
+    (root / "uploads").symlink_to(data / "uploads")
+    env_file = tmp_path / "etc.env"
+    env_file.write_text("SECRET_KEY=s\nBACKUP_PASSPHRASE=correct horse battery staple\n")
+    gh = tmp_path / "gnupg"
+    gh.mkdir(mode=0o700)
+    env = sandbox_env(tmp_path, GNUPGHOME=str(gh), BLOG_ENV_FILE=str(env_file),
+                      BACKUP_DIR=str(tmp_path / "bk"))
+
+    def backup(*args):
+        return subprocess.run(["bash", str(root / "backup.sh"), *args], cwd=root, env=env,
+                              capture_output=True, text=True, timeout=120)
+    try:
+        res = backup("run")
+        assert res.returncode == 0, res.stdout + res.stderr
+        made = list((tmp_path / "bk").glob("backup_*.tar.gz.gpg"))
+        assert len(made) == 1 and (made[0].stat().st_mode & 0o777) == 0o600
+        dest = tmp_path / "restored"
+        res = backup("restore", str(made[0]), str(dest))
+        assert res.returncode == 0, res.stdout + res.stderr
+        assert (dest / "uploads" / "chat_x.webp.enc").read_bytes() == b"ciphertext"
+        assert "BACKUP_PASSPHRASE" in (dest / ".env").read_text()
+        assert read_db(dest / "instance" / "blog.db") == "v1"
+        assert not (dest / ".backup-payload.tar.gz").exists()
+
+        fake = tmp_path / "bk" / "backup_fake.tar.gz.gpg"
+        _gpg_store(_evil_tarball(tmp_path), fake, gh)
+        dest2 = tmp_path / "restored2"
+        res = backup("restore", str(fake), str(dest2))
+        assert res.returncode != 0
+        assert not (dest2 / ".env").exists() and not (dest2 / "instance").exists()
+    finally:
+        subprocess.run(["gpgconf", "--kill", "all"], env={"GNUPGHOME": str(gh), "PATH": os.environ["PATH"]},
+                       capture_output=True)
+
+
+def test_package_and_deploy_never_ship_backups():
+    pkg = code("deploy/package.sh")
+    assert "--exclude='backups'" in pkg and "--exclude='logs'" in pkg
+    deploy = code("deploy/deploy-onion.sh")
+    assert "--exclude 'backups'" in deploy
+    assert "/tmp/.dym_admin_status" not in deploy and 'ADMIN_STATUS="$(mktemp)"' in deploy
+
+
+def test_make_backup_succeeds_under_errexit_and_pipefail(tmp_path, repo):
+    """update.sh runs with `set -euo pipefail`: the retention `ls` over three
+    patterns (two of which match nothing) made make_backup return 2, and
+    `make_backup || exit 1` stopped every real update right after the backup."""
+    prep_backup_tree(repo)
+    res = run_fn(tmp_path, repo, 'set -euo pipefail; STAMP=t9; BACKUP_DIR="$ROOT/backups"; '
+                 'KEEP_UPDATE_BACKUPS=3; make_backup || exit 7; echo MB_OK')
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert "MB_OK" in res.stdout
