@@ -4,7 +4,8 @@ from flask import url_for, flash, redirect, request, session, has_request_contex
 from flask_login import current_user
 from app import app, db, bcrypt
 from app.models import User, Post, Comment, Revision, Message, Like, Notification, Badge, Tag
-from app.utils import process_image_file, hit_rate_limit, anonymous_client_key
+from app.utils import (SHARED_ANON_LIMIT_FACTOR, anonymous_client_key, client_ip_is_meaningful,
+                       hit_rate_limit, process_image_file)
 from app.encryption import message_encryption
 from functools import wraps
 from datetime import datetime
@@ -62,6 +63,11 @@ def _action_rate_limited(action_key, max_calls, window_seconds, actor_key=None):
     """
     if actor_key is None:
         actor_key = anonymous_client_key()
+        if actor_key.startswith('anon:') and not client_ip_is_meaningful():
+            # Every anonymous visitor of an onion service shares this key: the
+            # limit is then a server-protection ceiling, not a per-visitor one
+            # (otherwise one visitor could exhaust search or contact for all).
+            max_calls *= SHARED_ANON_LIMIT_FACTOR
     return hit_rate_limit(f"{action_key}:{actor_key}", max_calls, window_seconds)
 
 

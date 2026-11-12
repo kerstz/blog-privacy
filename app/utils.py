@@ -1,7 +1,7 @@
 # app/utils.py
 from app import db
 from functools import wraps
-from flask import redirect, url_for, flash, request, current_app
+from flask import redirect, url_for, flash, request
 from flask_login import current_user
 from app.models import Post
 from datetime import datetime
@@ -477,12 +477,12 @@ def client_ip_is_meaningful() -> bool:
     every request comes from loopback: the "IP" is then the same for everybody
     and per-IP counters would be GLOBAL (one anonymous visitor could lock out
     everyone, admin included). In that case the IP must not be used as a key.
+
+    With TRUSTED_PROXY_COUNT, ProxyFix has already replaced remote_addr by the
+    forwarded address. Tor traffic routed through that proxy (deploy/torrc.example)
+    is forwarded as 127.0.0.1 and stays "not meaningful": trusting the proxy
+    does not make the loopback address of every Tor visitor a personal one.
     """
-    try:
-        if int(current_app.config.get('TRUSTED_PROXY_COUNT', 0) or 0) > 0:
-            return True
-    except RuntimeError:
-        pass
     addr = request.remote_addr
     if not addr:
         return False

@@ -64,9 +64,14 @@ def test_client_ip_is_meaningful():
         assert not utils.client_ip_is_meaningful()
     with app.test_request_context('/', environ_base={'REMOTE_ADDR': '198.51.100.1'}):
         assert utils.client_ip_is_meaningful()
+    # Behind a trusted proxy remote_addr is the forwarded address (ProxyFix):
+    # a public one identifies the client, the loopback one (Tor routed through
+    # the proxy) does not (audit 2026-11-12, it used to be "meaningful").
     app.config['TRUSTED_PROXY_COUNT'] = 1
     try:
         with app.test_request_context('/', environ_base={'REMOTE_ADDR': '127.0.0.1'}):
+            assert not utils.client_ip_is_meaningful()
+        with app.test_request_context('/', environ_base={'REMOTE_ADDR': '198.51.100.1'}):
             assert utils.client_ip_is_meaningful()
     finally:
         app.config['TRUSTED_PROXY_COUNT'] = 0

@@ -87,3 +87,70 @@ def test_bbcode_url_tags_do_not_backtrack_for_seconds():
     utils.parse_bbcode('[url=a]' * 700)
     utils.parse_bbcode(('[url=http://a]' + '[b]' * 3) * 200)
     assert time.perf_counter() - started < 0.5
+
+
+# ------------------------------------------- Tor behind a trusted proxy
+
+class _BehindProxy:
+    """Run the app behind ProxyFix, as with TRUSTED_PROXY_COUNT=1 in production
+    (Caddy/nginx in front, Tor routed through the proxy: deploy/torrc.example)."""
+
+    def __enter__(self):
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        self.orig = app.wsgi_app
+        app.wsgi_app = ProxyFix(self.orig, x_for=1, x_proto=1, x_host=1)
+        app.config['TRUSTED_PROXY_COUNT'] = 1
+        return self
+
+    def __exit__(self, *exc):
+        app.wsgi_app = self.orig
+        app.config['TRUSTED_PROXY_COUNT'] = 0
+
+
+TOR = {'X-Forwarded-For': '127.0.0.1'}
+
+
+def test_tor_visitor_behind_trusted_proxy_cannot_lock_everyone_out():
+    from test_security_fixes import PASSWORD
+    reset()
+    make_user('alice')
+    make_user('boss', admin=True)
+    with _BehindProxy():
+        attacker = app.test_client()
+        for i in range(8):
+            attacker.post('/login', headers=TOR,
+                          data={'username': f'ghost{i}', 'password': 'wrong-password-1'})
+        for name in ('alice', 'boss'):
+            resp = app.test_client().post('/login', headers=TOR,
+                                          data={'username': name, 'password': PASSWORD})
+            assert resp.status_code == 302, name
+
+
+def test_clearnet_client_behind_trusted_proxy_keeps_its_own_lock():
+    from test_security_fixes import PASSWORD
+    reset()
+    make_user('alice')
+    with _BehindProxy():
+        attacker = app.test_client()
+        bad = {'X-Forwarded-For': '203.0.113.7'}
+        for i in range(5):
+            attacker.post('/login', headers=bad,
+                          data={'username': f'ghost{i}', 'password': 'wrong-password-1'})
+        resp = attacker.post('/login', headers=bad, data={'username': 'alice', 'password': PASSWORD})
+        assert resp.status_code == 200  # this client is locked...
+        resp = app.test_client().post('/login', headers={'X-Forwarded-For': '203.0.113.8'},
+                                      data={'username': 'alice', 'password': PASSWORD})
+        assert resp.status_code == 302  # ...nobody else is
+
+
+def test_shared_anonymous_limits_are_a_ceiling_not_per_visitor():
+    """Search (30/min per visitor) must not be exhausted for every onion
+    visitor by one of them: anonymous loopback clients share a higher ceiling."""
+    reset()
+    onion = app.test_client()
+    codes = {onion.get('/search?q=hello').status_code for _ in range(40)}
+    assert codes == {200}
+    clearnet = app.test_client()
+    clearnet.environ_base['REMOTE_ADDR'] = '203.0.113.9'
+    codes = [clearnet.get('/search?q=hello').status_code for _ in range(31)]
+    assert codes[-1] == 429
