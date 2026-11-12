@@ -525,3 +525,56 @@ def test_migrations_build_the_model_schema_on_a_blank_database(tmp_path):
         assert res.returncode == 0, (args, res.stdout + res.stderr)
         out = res.stdout + res.stderr
     assert 'No new upgrade operations detected' in out
+
+
+# ------------------------------------------- feature: retention purges
+
+def test_purge_messages_deletes_old_rows_and_their_files(tmp_path, monkeypatch):
+    from datetime import datetime, timedelta
+    from app import services
+    from app.models import Message, User
+    monkeypatch.setenv('UPLOAD_DIR', str(tmp_path / 'up'))
+    (tmp_path / 'up').mkdir()
+    reset()
+    alice, boss = make_user('alice'), make_user('boss', admin=True)
+    old = datetime.utcnow() - timedelta(days=200)
+    with app.app_context():
+        for name, when in (('old.pdf.enc', old), ('shared.pdf.enc', old), ('shared.pdf.enc', datetime.utcnow()),
+                           ('avatar.webp.enc', old), (None, old), (None, datetime.utcnow())):
+            msg = Message(sender_id=alice, receiver_id=boss, timestamp=when,
+                          file_path=f'uploads/{name}' if name else None)
+            msg.set_encrypted_content('x')
+            db.session.add(msg)
+        db.session.get(User, alice).profile_picture = 'uploads/avatar.webp.enc'
+        db.session.commit()
+    for name in ('old.pdf.enc', 'shared.pdf.enc', 'avatar.webp.enc'):
+        services.write_encrypted_file(str(tmp_path / 'up' / name), b'data')
+    runner = app.test_cli_runner()
+    assert runner.invoke(args=['purge-messages']).exit_code != 0          # no default period
+    dry = runner.invoke(args=['purge-messages', '--days', '180', '--dry-run'])
+    assert 'Would delete 4 message(s) and 1 attachment(s)' in dry.output
+    with app.app_context():
+        assert Message.query.count() == 6
+    res = runner.invoke(args=['purge-messages', '--days', '180'])
+    assert res.exit_code == 0 and 'Deleted 4 message(s) and 1 attachment(s)' in res.output
+    with app.app_context():
+        assert Message.query.count() == 2
+    assert not (tmp_path / 'up' / 'old.pdf.enc').exists()
+    assert (tmp_path / 'up' / 'shared.pdf.enc').exists()   # still used by a recent message
+    assert (tmp_path / 'up' / 'avatar.webp.enc').exists()  # still a profile picture
+
+
+def test_purge_notifications_keeps_recent_ones():
+    from datetime import datetime, timedelta
+    from app.models import Notification
+    reset()
+    uid = make_user('alice')
+    with app.app_context():
+        db.session.add(Notification(user_id=uid, type='like', title='t', message='m',
+                                    created_at=datetime.utcnow() - timedelta(days=100)))
+        db.session.add(Notification(user_id=uid, type='like', title='t', message='m'))
+        db.session.commit()
+    res = app.test_cli_runner().invoke(args=['purge-notifications'])
+    assert res.exit_code == 0 and 'Deleted 1 notification(s) older than 90 day(s)' in res.output
+    with app.app_context():
+        assert Notification.query.count() == 1

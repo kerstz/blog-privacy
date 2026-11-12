@@ -126,6 +126,12 @@ proxy de confiance) ; le verrou par compte reste.
 - `flask unlock <pseudo>` (ou `flask unlock --all`) lève un verrou de connexion.
 - `/admin/contact` liste les messages du formulaire de contact (l'email est
   facultatif) ; `flask purge-contact --days 90` supprime les anciens.
+- Conservation : ce qui n'est plus sur le serveur ne peut pas être lu par qui le
+  saisit. `flask purge-messages --days 180` supprime les messages du chat de plus
+  de 180 jours et leurs pièces jointes (pas de valeur par défaut : à vous de
+  choisir ; `--dry-run` compte d'abord), `flask purge-notifications --days 90`
+  les anciennes notifications. À lancer depuis cron, par exemple chaque semaine :
+  `17 5 * * 1 cd /srv/blog && venv/bin/flask purge-messages --days 180`.
 - `deploy/torrc.example` active `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
 
 ## Dépendances

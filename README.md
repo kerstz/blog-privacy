@@ -146,6 +146,12 @@ IP is not meaningful (onion, no trusted proxy); the per-account lock remains.
 - `flask unlock <username>` (or `flask unlock --all`) clears a login lock.
 - `/admin/contact` lists contact-form messages (the email is optional);
   `flask purge-contact --days 90` deletes old ones.
+- Retention: what is no longer on the server cannot be read by whoever seizes
+  it. `flask purge-messages --days 180` deletes chat messages older than 180
+  days and their attachments (no default: choose your period; `--dry-run`
+  counts first), `flask purge-notifications --days 90` old notifications.
+  Run them from cron, for example weekly:
+  `17 5 * * 1 cd /srv/blog && venv/bin/flask purge-messages --days 180`.
 - `deploy/torrc.example` enables `HiddenServicePoWDefensesEnabled 1` (Tor 0.4.8+).
 
 ## Dependencies
@@ -190,7 +196,7 @@ app/
   routes.py        web routes, security headers
   services.py      shared helpers (auth, TOTP, uploads, chat, deletion cascades)
   mobile_api.py    mobile admin REST API + SSE
-  cli.py           maintenance commands (flask encrypt-legacy, unlock, purge-contact)
+  cli.py           maintenance commands (flask encrypt-legacy, rotate-key, unlock, purge-*)
   models.py        database models
   forms.py         WTForms classes (anti-spam, validators)
   site_text.py     bilingual copy, admin-editable

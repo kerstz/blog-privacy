@@ -145,6 +145,55 @@ def unlock(username, unlock_all):
     click.echo(f'Lockout cleared for {name}.')
 
 
+@app.cli.command('purge-messages')
+@click.option('--days', required=True, type=click.IntRange(min=1),
+              help='Delete chat messages (and their attachments) older than this many days.')
+@click.option('--dry-run', is_flag=True, help='Only count what would be deleted.')
+def purge_messages(days, dry_run):
+    """Delete old chat messages and their attachment files (data minimisation).
+
+    What is no longer on the server cannot be read by whoever seizes it. The
+    period is the operator's choice: there is no default. Run it from cron,
+    e.g. weekly: `flask purge-messages --days 180`.
+    """
+    from app.services import _absolute_upload_path
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    old = Message.query.filter(Message.timestamp < cutoff).all()
+    files = {m.file_path for m in old if m.file_path}
+    # A file still referenced by a newer message or used as a profile picture stays.
+    kept = {m.file_path for m in Message.query.filter(Message.timestamp >= cutoff,
+                                                      Message.file_path.in_(files))} if files else set()
+    kept |= {u.profile_picture for u in User.query.filter(User.profile_picture.in_(files))} if files else set()
+    doomed = sorted(files - kept)
+    if dry_run:
+        click.echo(f"Would delete {len(old)} message(s) and {len(doomed)} attachment(s) "
+                   f"older than {days} day(s).")
+        return
+    for message in old:
+        db.session.delete(message)
+    db.session.commit()
+    removed = 0
+    for stored in doomed:
+        path = _absolute_upload_path(stored)
+        if path and os.path.isfile(path):
+            os.remove(path)
+            removed += 1
+    click.echo(f"Deleted {len(old)} message(s) and {removed} attachment(s) older than {days} day(s).")
+
+
+@app.cli.command('purge-notifications')
+@click.option('--days', default=90, show_default=True, type=click.IntRange(min=1),
+              help='Delete notifications older than this many days.')
+def purge_notifications(days):
+    """Delete old notifications (they keep who liked or answered what, and when)."""
+    from app.models import Notification
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    count = Notification.query.filter(Notification.created_at < cutoff).delete()
+    db.session.commit()
+    click.echo(f"Deleted {count} notification(s) older than {days} day(s).")
+
+
 @app.cli.command('purge-contact')
 @click.option('--days', default=CONTACT_RETENTION_DAYS, show_default=True, type=click.IntRange(min=0),
               help='Delete contact messages older than this many days.')

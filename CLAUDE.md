@@ -70,7 +70,7 @@ pytest -q tests/                # needs requirements-dev.txt
 - `bandit -r app create_admin.py wsgi.py -q` and `pip-audit -r requirements.lock --require-hashes --disable-pip --strict` must stay clean; edit requirements.in then re-lock
 - Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
 - `GET /healthz`: anonymous health probe (`ok`/503), nothing else
-- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`; admin view `/admin/contact`
+- CLI: `flask unlock <user>|--all`, `flask purge-contact --days 90`, `flask purge-messages --days N`, `flask purge-notifications --days 90`, `flask rotate-key [--dry-run]`; admin view `/admin/contact`
 
 ## Environment variables
 - `SECRET_KEY` (>= 32 chars) - Flask secret key
