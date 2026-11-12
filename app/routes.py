@@ -38,6 +38,7 @@ from app.services import (
     generate_recovery_codes,
     invalidate_other_sessions,
     recovery_codes_left,
+    second_factor_locked,
     security_alert,
     verify_second_factor,
     CHAT_ALLOWED_EXTENSIONS,
@@ -961,7 +962,7 @@ def login_totp():
         # 5 failures per 5 min per account, counted server-side: the session
         # cookie is replayable by the client, so a counter living in it could
         # be bypassed.
-        if hit_rate_limit(f"totp_fail:{user.id}", 5, 300, record=False):
+        if hit_rate_limit(f"totp_fail:{user.id}", 5, 300, record=False) or second_factor_locked(user):
             _clear_pre_2fa()
             flash('Too many invalid codes. Please log in again later.', 'danger')
             return redirect(url_for('login'))

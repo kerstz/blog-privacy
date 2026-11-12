@@ -337,15 +337,56 @@ def use_recovery_code(user, code):
     return True
 
 
+# Second factor brute force: the short per-entry-point limits (5 per 5 or 15
+# minutes) still allow about 1,500 guesses a day to someone who knows the
+# password, i.e. most likely a valid TOTP code within a year. Every failed
+# code, wherever it is typed (login, re-authentication, 2FA disable, mobile
+# API), also counts towards a daily cap per account. `flask unlock <user>`
+# clears it.
+SECOND_FACTOR_DAILY_FAILURES = 20
+SECOND_FACTOR_WINDOW = 86400
+
+
+def _second_factor_key(user):
+    return f"2fa_fail_day:{user.id}"
+
+
+def second_factor_locked(user):
+    """True once the account reached its daily cap of wrong 2FA codes."""
+    return bool(user) and hit_rate_limit(_second_factor_key(user), SECOND_FACTOR_DAILY_FAILURES,
+                                         SECOND_FACTOR_WINDOW, record=False)
+
+
+def record_second_factor_failure(user):
+    """Count one wrong 2FA code; logs an alert when the daily cap is reached."""
+    if not user:
+        return
+    hit_rate_limit(_second_factor_key(user), SECOND_FACTOR_DAILY_FAILURES, SECOND_FACTOR_WINDOW)
+    if second_factor_locked(user) and \
+            not hit_rate_limit(f"alert_2fa_day:{user.id}", 1, SECOND_FACTOR_WINDOW):
+        security_alert(f"2FA locked for 24 h on @{user.username}: {SECOND_FACTOR_DAILY_FAILURES} "
+                       "wrong codes (the password is known to someone); `flask unlock` clears it")
+
+
 def verify_second_factor(user, code):
-    """TOTP code (one-time) or recovery code."""
+    """TOTP code (one-time) or recovery code.
+
+    Refused without even checking the code once the daily cap of wrong codes
+    is reached; every failure counts towards that cap.
+    """
+    if second_factor_locked(user):
+        return False
     code = (code or '').strip()
     if re.fullmatch(r'\d{6}', code):
         if _verify_totp_once(user, code):
             db.session.commit()   # persists the replay counter
             return True
+        record_second_factor_failure(user)
         return False
-    return use_recovery_code(user, code)
+    if use_recovery_code(user, code):
+        return True
+    record_second_factor_failure(user)
+    return False
 
 
 # Sessions

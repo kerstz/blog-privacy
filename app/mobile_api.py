@@ -17,6 +17,8 @@ from app.services import (
     mobile_event_lock,
     mobile_event_subscribers,
     publish_mobile_event,
+    record_second_factor_failure,
+    second_factor_locked,
     serialize_chat_message,
 )
 
@@ -108,11 +110,13 @@ def authenticate_admin_api():
             'to use the mobile API.', 403)
     if user.totp_enabled:
         # The code is sent on every stateless call: allow_reuse (about 90 s).
-        if not _verify_totp_once(user, request.headers.get('X-TOTP-Code', ''),
-                                 allow_reuse=True):
+        # Wrong codes also count towards the account's daily 2FA cap.
+        if second_factor_locked(user) or not _verify_totp_once(
+                user, request.headers.get('X-TOTP-Code', ''), allow_reuse=True):
             record_failure(user_key)
             if use_client_lock:
                 record_failure(client_key)
+            record_second_factor_failure(user)
             return None, _admin_api_error(
                 'A valid two-factor code is required in the X-TOTP-Code header.', 401,
                 **{'WWW-Authenticate': 'Basic realm="Admin Mobile API"'})

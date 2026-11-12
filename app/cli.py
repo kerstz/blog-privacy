@@ -71,7 +71,8 @@ def unlock(username, unlock_all):
     clear_rate_limit('login:k:' + hashed_key(name.lower()))    # login rate limit
     user = User.query.filter_by(username=name).first()
     if user:
-        for prefix in ('totp_fail', 'totp_setup_fail', 'totp_disable_fail', 'reauth_fail'):
+        for prefix in ('totp_fail', 'totp_setup_fail', 'totp_disable_fail', 'reauth_fail',
+                       '2fa_fail_day', 'alert_2fa_day'):
             clear_rate_limit(f'{prefix}:{user.id}')
     click.echo(f'Lockout cleared for {name}.')
 

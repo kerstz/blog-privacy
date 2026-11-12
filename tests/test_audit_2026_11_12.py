@@ -154,3 +154,79 @@ def test_shared_anonymous_limits_are_a_ceiling_not_per_visitor():
     clearnet.environ_base['REMOTE_ADDR'] = '203.0.113.9'
     codes = [clearnet.get('/search?q=hello').status_code for _ in range(31)]
     assert codes[-1] == 429
+
+
+# ------------------------------------------- 2FA: daily cap on wrong codes
+
+def _wrong_codes(user_id, count, valid):
+    """Type `count` wrong codes through verify_second_factor (the shared path of
+    login, re-authentication and 2FA disable), skipping the valid ones."""
+    from app import services
+    from app.models import User
+    wrong = [f'{n:06d}' for n in range(1000) if f'{n:06d}' not in valid][:count]
+    with app.app_context():
+        user = db.session.get(User, user_id)
+        for code in wrong:
+            assert not services.verify_second_factor(user, code)
+
+
+def test_second_factor_daily_cap_blocks_login_until_unlock():
+    import pyotp
+    from test_security_fixes import pass_step_one, totp_user
+    from app import services
+    reset()
+    secret = totp_user('twofa')
+    totp = pyotp.TOTP(secret)
+    with app.app_context():
+        from app.models import User
+        uid = User.query.filter_by(username='twofa').one().id
+    valid = {totp.at(time.time() + d) for d in (-60, -30, 0, 30, 60)}
+    _wrong_codes(uid, services.SECOND_FACTOR_DAILY_FAILURES, valid)
+    client = pass_step_one('twofa')
+    resp = client.post('/login/totp', data={'code': totp.now()})
+    assert resp.status_code == 302 and '/login/totp' not in resp.headers['Location']
+    assert not client.get('/account/security').status_code == 200
+    # the operator clears it
+    result = app.test_cli_runner().invoke(args=['unlock', 'twofa'])
+    assert result.exit_code == 0
+    client = pass_step_one('twofa')
+    resp = client.post('/login/totp', data={'code': totp.now()})
+    assert resp.status_code == 302
+    assert client.get('/account/security').status_code == 200
+
+
+def test_recovery_code_not_consumed_while_locked():
+    from test_security_fixes import totp_user
+    from app import services
+    from app.models import User
+    reset()
+    totp_user('twofa')
+    with app.app_context():
+        user = User.query.filter_by(username='twofa').one()
+        codes = services.generate_recovery_codes(user)
+        db.session.commit()
+        uid = user.id
+    _wrong_codes(uid, services.SECOND_FACTOR_DAILY_FAILURES, set())
+    with app.app_context():
+        user = db.session.get(User, uid)
+        assert not services.verify_second_factor(user, codes[0])
+        assert services.recovery_codes_left(user) == len(codes)
+
+
+def test_mobile_api_wrong_codes_count_towards_daily_cap():
+    from test_security_fixes import PASSWORD, basic
+    from test_audit_fixes import _totp_admin
+    from app import services
+    reset()
+    totp = _totp_admin('boss')
+    client = app.test_client()
+    headers = basic('boss', PASSWORD)
+    valid = {totp.at(time.time() + d) for d in (-60, -30, 0, 30, 60)}
+    wrong = [f'{n:06d}' for n in range(100) if f'{n:06d}' not in valid]
+    for i in range(services.SECOND_FACTOR_DAILY_FAILURES):
+        utils.clear_failures('admin_api:user:' + utils.hashed_key('boss'))  # past the 15-min lock
+        resp = client.get('/api/admin/mobile/ping', headers={**headers, 'X-TOTP-Code': wrong[i]})
+        assert resp.status_code == 401
+    utils.clear_failures('admin_api:user:' + utils.hashed_key('boss'))
+    resp = client.get('/api/admin/mobile/ping', headers={**headers, 'X-TOTP-Code': totp.now()})
+    assert resp.status_code == 401
