@@ -507,3 +507,21 @@ def test_rotate_key_fails_loudly_on_unreadable_file(tmp_path, monkeypatch):
     finally:
         monkeypatch.undo()
         message_encryption.configure()
+
+
+# ------------------------------------------- migrations
+
+def test_migrations_build_the_model_schema_on_a_blank_database(tmp_path):
+    """`flask db upgrade` on an empty file must give exactly the schema of the
+    models (`flask db check`), and the chain must go down and up again."""
+    import subprocess
+    env = dict(os.environ, DATABASE_URL=f'sqlite:///{tmp_path}/fresh.db', FLASK_APP='wsgi.py',
+               SECURITY_STATE_DB=str(tmp_path / 's.db'), PYTHONWARNINGS='ignore')
+    out = ''
+    for args in (['db', 'upgrade'], ['db', 'check'], ['db', 'downgrade', 'base'],
+                 ['db', 'upgrade'], ['db', 'check']):
+        res = subprocess.run([sys.executable, '-m', 'flask', *args], cwd=REPO, env=env,
+                             capture_output=True, text=True, timeout=300)
+        assert res.returncode == 0, (args, res.stdout + res.stderr)
+        out = res.stdout + res.stderr
+    assert 'No new upgrade operations detected' in out
