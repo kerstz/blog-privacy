@@ -29,6 +29,9 @@ niveau « Le plus sûr » et peut être servi en site `.onion`.
 - **Commentaires imbriqués**, likes, notifications, XP, niveaux et badges
 - **Chat privé chiffré** entre chaque utilisateur et l'admin (messages **et pièces jointes** chiffrés au repos)
 - **Double authentification TOTP** avec **codes de secours** à usage unique
+- **Export Markdown** : tous les articles, brouillons compris, en fichiers Markdown
+  avec en-tête YAML dans un zip (`/admin/posts/export.zip`, lien sur la page des
+  articles) : lisibles sans ce logiciel, prêts pour Hugo / Jekyll / Zola
 - **Page sécurité du compte** : changer de mot de passe, se déconnecter partout, télécharger ses données, supprimer son compte
 - **Anti-spam sans JS** (champ piège + délai minimum, sans captcha)
 - **API mobile admin** (désactivée par défaut ; Basic Auth + `X-TOTP-Code` obligatoire pour les admins, flux SSE)

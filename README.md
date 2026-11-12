@@ -27,6 +27,9 @@ required, no third-party requests, built to run as a Tor onion service.
 - **Moderation** — flag an image and it is fingerprinted, blocked for good, and its
   sender banned; re-encoded copies are caught too
 - **2FA** — TOTP per account, with one-time recovery codes
+- **Markdown export** — every post, drafts included, as Markdown files with YAML
+  front matter in one zip (`/admin/posts/export.zip`, link on the posts page):
+  readable without this software, ready for Hugo / Jekyll / Zola
 - **Account security page** — change password, log out everywhere, download my
   data, delete my account
 - **Mobile admin API** (off by default) — Basic Auth + mandatory `X-TOTP-Code` for admins, SSE event stream

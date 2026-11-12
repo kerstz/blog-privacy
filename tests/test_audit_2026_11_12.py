@@ -674,3 +674,43 @@ def test_maintenance_toggle_is_admin_only(tmp_path, monkeypatch):
     logged_in('alice').post('/admin/maintenance', data={'state': 'on'})
     app.test_client().post('/admin/maintenance', data={'state': 'on'})
     assert not (tmp_path / 'maintenance.on').exists()
+
+
+# ------------------------------------------- feature: Markdown export of posts
+
+def test_posts_export_is_markdown_with_front_matter():
+    import io
+    import zipfile
+    from datetime import datetime
+    from app.models import Post, Tag
+    from test_security_fixes import logged_in
+    reset()
+    admin = make_user('boss', admin=True)
+    make_user('alice')
+    with app.app_context():
+        tag = Tag(name='Tor "notes"', slug='tor-notes')
+        db.session.add(tag)
+        post = Post(title='Night: "quiet"', author_id=admin, is_published=True, is_draft=False,
+                    category='Privacy', date_posted=datetime(2026, 8, 24, 3, 47, 12),
+                    content='[b]bold[/b] [url=https://example.org]link[/url]\n[list][*]one\n[*]two[/list]')
+        post.tags = [tag]
+        db.session.add(post)
+        db.session.add(Post(title='Old editor', author_id=admin, is_published=False, is_draft=True,
+                            content='<p>legacy <em>html</em></p>', date_posted=datetime(2026, 1, 2)))
+        db.session.commit()
+        pid = post.id
+    assert app.test_client().get('/admin/posts/export.zip').status_code == 302
+    assert logged_in('alice').get('/admin/posts/export.zip').status_code == 302
+    resp = logged_in('boss').get('/admin/posts/export.zip')
+    assert resp.status_code == 200 and resp.mimetype == 'application/zip'
+    assert resp.headers['Cache-Control'] == 'no-store'
+    archive = zipfile.ZipFile(io.BytesIO(resp.data))
+    names = archive.namelist()
+    assert names == ['2026-01-02-old-editor-2.md', f'2026-08-24-night-quiet-{pid}.md']
+    first = archive.read(names[1]).decode()
+    assert first.startswith('---\ntitle: "Night: \\"quiet\\""\ndate: 2026-08-24T03:47:12Z\n'
+                            'published: true\ncategory: "Privacy"\ntags: ["Tor \\"notes\\""]\n---\n')
+    assert '**bold** [link](https://example.org)' in first
+    assert '- one\n- two' in first
+    draft = archive.read(names[0]).decode()
+    assert 'published: false' in draft and '<p>legacy <em>html</em></p>' in draft

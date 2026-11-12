@@ -443,6 +443,50 @@ def security_alert(text):
         pass
 
 
+# Posts export (Markdown, one file per post, in a zip)
+def _front_matter_value(value):
+    # JSON strings and lists are valid YAML flow scalars: safe quoting for free.
+    return json.dumps(value, ensure_ascii=False)
+
+
+def export_posts_zip(posts):
+    """Bytes of a zip archive with one Markdown file per post.
+
+    Each file starts with a YAML front matter (title, date, published,
+    scheduled, category, tags) readable by static site generators (Hugo,
+    Jekyll, Eleventy, Zola...). Built in memory: nothing is written to disk.
+    """
+    import io
+    import zipfile
+    from app.utils import bbcode_to_markdown
+
+    buf = io.BytesIO()
+    used = set()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for post in posts:
+            stamp = post.date_posted or datetime.utcnow()
+            name = f"{stamp:%Y-%m-%d}-{slugify(post.title) or 'post'}-{post.id}.md"
+            if name in used:  # pragma: no cover - the id makes names unique
+                continue
+            used.add(name)
+            lines = [
+                '---',
+                f'title: {_front_matter_value(post.title)}',
+                f'date: {stamp.isoformat(timespec="seconds")}Z',
+                f'published: {"true" if post.is_published else "false"}',
+            ]
+            if post.scheduled_date:
+                lines.append(f'scheduled: {post.scheduled_date.isoformat(timespec="seconds")}Z')
+            if post.category:
+                lines.append(f'category: {_front_matter_value(post.category)}')
+            lines.append(f'tags: {_front_matter_value(sorted(t.name for t in post.tags))}')
+            lines += ['---', '', bbcode_to_markdown(post.content)]
+            info = zipfile.ZipInfo(name, date_time=stamp.timetuple()[:6])
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, '\n'.join(lines))
+    return buf.getvalue()
+
+
 # Personal data export
 def export_user_data(user):
     """Everything the blog stores about a user, readable (messages decrypted)."""

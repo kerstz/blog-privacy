@@ -129,6 +129,49 @@ def parse_bbcode(text: str) -> str:
 
 
 # -----------------------------
+# BBCode -> Markdown (post export)
+# -----------------------------
+
+def bbcode_to_markdown(text: str) -> str:
+    """Best-effort conversion of a post written in BBCode to Markdown, for the
+    export. Markup with no Markdown equivalent ([color], [size], alignment)
+    keeps its text and loses the styling; [u] becomes <u>, which Markdown
+    renderers accept. A post written with the old HTML editor is returned as
+    is: Markdown allows raw HTML."""
+    text = (text or '').replace('\r\n', '\n')
+    if _ANY_HTML_TAG_RE.search(text):
+        return text
+    flags = re.IGNORECASE | re.DOTALL
+
+    def code_block(m):
+        return '\n```\n' + m.group(1).strip('\n') + '\n```\n'
+
+    def quote_block(m):
+        return '\n' + '\n'.join('> ' + line for line in m.group(1).strip('\n').split('\n')) + '\n'
+
+    def bullet_list(m, ordered=False):
+        items = [it.strip() for it in re.findall(r"\[\*\]([^\[]*(?:\[(?!\*\])[^\[]*)*)", m.group(1))]
+        lines = [(f'{n}. ' if ordered else '- ') + it for n, it in enumerate(items, 1) if it]
+        return '\n' + '\n'.join(lines) + '\n'
+
+    text = re.sub(r"\[code\](.*?)\[/code\]", code_block, text, flags=flags)
+    text = re.sub(r"\[quote\](.*?)\[/quote\]", quote_block, text, flags=flags)
+    text = re.sub(r"\[list=1\](.*?)\[/list\]", lambda m: bullet_list(m, True), text, flags=flags)
+    text = re.sub(r"\[list\](.*?)\[/list\]", bullet_list, text, flags=flags)
+    text = re.sub(r"\[url=([^\]\n]+)\](.*?)\[/url\]", r"[\2](\1)", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[url\](.+?)\[/url\]", r"<\1>", text, flags=re.IGNORECASE)
+    text = re.sub(r"\[img(?:=\d{0,4}(?:,\d{0,4})?)?\](.+?)\[/img\]", r"![](\1)", text, flags=re.IGNORECASE)
+    for tag, mark in (('b', '**'), ('i', '*'), ('s', '~~')):
+        text = re.sub(rf"\[{tag}\](.*?)\[/{tag}\]", lambda m, mark=mark: f"{mark}{m.group(1)}{mark}",
+                      text, flags=flags)
+    text = re.sub(r"\[u\](.*?)\[/u\]", r"<u>\1</u>", text, flags=flags)
+    text = re.sub(r"\[(?:color=[^\]]{1,20}|size=\d{1,3}|center|left|right|justify)\]", '', text,
+                  flags=re.IGNORECASE)
+    text = re.sub(r"\[/(?:color|size|center|left|right|justify)\]", '', text, flags=re.IGNORECASE)
+    return re.sub(r'\n{3,}', '\n\n', text).strip() + '\n'
+
+
+# -----------------------------
 # HTML sanitization (nh3 / ammonia allow-list)
 # -----------------------------
 

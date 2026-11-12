@@ -1420,6 +1420,19 @@ def manage_posts():
     posts = Post.query.order_by(Post.date_posted.desc()).all()
     return render_template('manage_posts.html', form=form, posts=posts)
 
+@app.route('/admin/posts/export.zip')
+@admin_required
+def export_posts():
+    """Every post (drafts included) as Markdown files with front matter, zipped:
+    a readable copy of the writing that outlives this software."""
+    from app.services import export_posts_zip
+    posts = Post.query.order_by(Post.date_posted.asc(), Post.id.asc()).all()
+    return Response(export_posts_zip(posts), mimetype='application/zip', headers={
+        'Content-Disposition': 'attachment; filename=posts-markdown.zip',
+        'Cache-Control': 'no-store',
+    })
+
+
 @app.route('/manage_users', methods=['GET', 'POST'])
 @admin_required
 def manage_users():
