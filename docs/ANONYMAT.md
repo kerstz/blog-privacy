@@ -15,6 +15,9 @@ ce qui reste à faire.
 > Mise à jour (audit 2026-10-16) : Flask-SocketIO et tout le WebSocket ont depuis été
 > retirés de l'application ; les passages ci-dessous qui les mentionnent sont
 > conservés comme historique.
+>
+> Mise à jour (audit 2026-11-12) : l'état de chaque point de la section 2 est
+> résumé en section 4. La section 2 est conservée telle qu'écrite en août.
 
 ---
 
@@ -304,3 +307,34 @@ tête du fichier, mais le supprimer ou l'utiliser réellement serait plus sain.
    celui de l'application subsiste.
 6. **`ENCRYPTION_ITERATIONS`** reste à 100 000 pour ne pas rendre illisibles les
    messages déjà en base. Sur une installation neuve, poser 600 000.
+
+---
+
+## 4. État au 12 novembre 2026
+
+| Point (section 2) | État |
+|---|---|
+| 2.1 Chiffrement non de bout en bout | Inchangé, assumé et écrit dans le README (« chiffré au repos »). Une vraie E2E exige du JavaScript. |
+| 2.2 Suppression de compte | Fait (septembre) : `/account/security`, avec export des données. |
+| 2.2 Purge des messages, pièces jointes, notifications | Fait : `flask purge-messages --days N` (période au choix de l'opérateur, pas de défaut), `flask purge-notifications`, `flask purge-contact`. À planifier dans cron. |
+| 2.2 `ContactMessage.email` en clair | L'adresse est devenue facultative ; purge par `flask purge-contact`. Pas chiffrée. |
+| 2.2 Fichier supprimé avec le message | Fait pour la suppression de compte et la purge. |
+| 2.3 Polices auto-hébergées | Non fait (choix de design : piles système). |
+| 2.3 `totp_secret` en clair | Fait (Fernet) ; le secret en attente pendant l'activation est aussi chiffré dans le cookie de session. |
+| 2.3 Codes de secours, changement de mot de passe, invalidation de session | Faits (septembre). Plafond quotidien de codes 2FA faux ajouté en novembre. |
+| 2.3 Argon2id | Non fait (bcrypt reste correct). |
+| 2.3 `security.txt` | Non fait : demande une adresse de contact, décision de l'opérateur. |
+| 2.3 CSP par nonce | Sans objet : `script-src 'none'`, `style-src 'self'`. |
+| 2.3 Horodatages | Fait : pages publiques et RSS au jour près (`PUBLIC_TIME_PRECISION=minute` pour revenir à l'heure). La base garde l'heure exacte. |
+| 2.4 Limiteur en mémoire | Fait : SQLite persistant, clés HMAC. Les visiteurs Tor derrière un proxy de confiance ne partagent plus un verrou unique. |
+| 2.4 Base non chiffrée | Inchangé : chiffrement du disque (LUKS) recommandé. |
+| 2.4 Service onion | Fait : `deploy/deploy-onion.sh`, `deploy/harden-tor.sh`. |
+| 2.4 Tests, `pip-audit`, `bandit` | Faits (CI). Les migrations sont testées sur une base vierge. |
+| 2.4 `routes.py` monolithique | Découpé (`services.py`, `mobile_api.py`, `cli.py`). |
+| 2.5 `config.py` | Supprimé. |
+| 3.6 `ENCRYPTION_ITERATIONS` bloqué à 100 000 | Débloqué : `flask rotate-key` (même clé, 600 000 itérations). |
+
+Nouveau en novembre : les pièces jointes ne sont plus jamais écrites en clair
+sur le disque (l'original avec ses EXIF/GPS l'était, puis supprimé). Reste
+ouvert : les pièces jointes autres que les images (PDF, bureautique, vidéos)
+gardent leurs propres métadonnées.

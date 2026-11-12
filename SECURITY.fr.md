@@ -5,6 +5,104 @@
 > La version de référence est l'anglaise ([SECURITY.md](SECURITY.md), avec le
 > détail complet des CVE) ; ce fichier en est la traduction.
 
+## Version d'audit production - novembre 2026 (2)
+
+**Lisez d'abord la note de mise à jour : `./update.sh` ne pouvait pas installer
+cette version tout seul.**
+
+### Note de mise à jour (étape manuelle, une fois)
+
+`update.sh` s'arrêtait juste après sa sauvegarde à chaque vraie mise à jour (voir
+plus bas) : une installation qui comptait sur lui, ou sur `auto-update.sh`, n'a
+reçu aucune des versions publiées depuis. Mettez à jour une fois à la main, puis
+`update.sh` refonctionne :
+
+```bash
+cd /srv/blog                       # votre copie
+git fetch
+GNUPGHOME="$UPDATE_GPG_HOME" git verify-commit origin/main   # si vous signez/vérifiez
+git merge --ff-only origin/main
+./update.sh                        # sauvegarde, dépendances, migrations, tests, redémarrage
+```
+
+### Correctifs de sécurité
+- **Les commentaires pouvaient injecter des attributs (injection HTML stockée).**
+  Une balise BBCode écrite dans une URL (`[url]http://a/[img]...[/img][/url]`)
+  était développée ensuite à l'intérieur du `href` généré et en cassait les
+  guillemets : tout compte inscrit pouvait donner un `style` à un lien (par
+  exemple un lien invisible pleine page vers un autre site). Les URL encodent
+  désormais `[`/`]`, et les commentaires passent par la liste blanche `nh3` à
+  l'affichage. Une ligne de balises `[url=...]` non fermées coûtait aussi environ
+  3 s de CPU par affichage (retour arrière cubique) : corrigé.
+- **Les visiteurs Tor derrière un proxy de confiance partageaient un seul verrou.**
+  Avec `TRUSTED_PROXY_COUNT` et Tor passant par Caddy/nginx (le montage
+  documenté), chaque visiteur onion valait `127.0.0.1` mais était traité comme
+  un client identifiable : cinq mauvais mots de passe de n'importe qui bloquaient
+  la connexion de tous les utilisateurs Tor, admins compris. Une adresse de
+  boucle locale n'identifie plus jamais un client. Les limites anonymes de la
+  recherche et du contact sur un onion sont un plafond partagé (x20).
+- **Force brute 2FA.** En plus des limites courtes (5 codes par 5 ou 15 min),
+  chaque code faux (connexion, ré-authentification, désactivation 2FA, API
+  mobile) compte dans un plafond de 20 par compte et par jour ; au-delà le code
+  n'est même pas vérifié et une alerte est journalisée. `flask unlock <pseudo>`
+  le lève.
+- **Sauvegardes : une archive forgée était restaurée.** `gpg -d` sort aussi un
+  message OpenPGP *non chiffré* sans demander de phrase secrète : une sauvegarde
+  remplacée par un tel fichier (copie hors site, `backups/`) était restaurée par
+  `backup.sh restore` et par le retour arrière de mise à jour sans aucun
+  contrôle. Les deux exigent maintenant le statut gpg `DECRYPTION_OKAY`.
+- **Les pièces jointes ne touchent plus le disque en clair.** Le fichier
+  d'origine (photo avec ses balises EXIF/GPS) était écrit dans `uploads/`, puis
+  ré-encodé, chiffré et supprimé : récupérable sur le disque. Tout se passe
+  maintenant en mémoire. Les JPEG sont décodés en taille réduite.
+- **Dates publiques sans heure.** Articles, commentaires et flux RSS affichaient
+  la minute de chaque commentaire (fuseau horaire, habitudes). Les pages
+  publiques n'affichent plus que le jour ; `PUBLIC_TIME_PRECISION=minute`
+  rétablit l'ancien affichage.
+- Le secret 2FA en attente est chiffré dans le cookie de session (lisible) ; HSTS
+  n'est jamais envoyé à un nom `.onion` ni à une sonde locale ;
+  `Permissions-Policy` refuse `browsing-topics` ; un commentaire sur un article
+  repassé en brouillon n'est plus modifiable.
+
+### Exploitation
+- **`update.sh` n'allait jamais au bout d'une mise à jour** : le `ls` de rétention
+  sur trois motifs échouait sous `set -o pipefail` et `make_backup || exit 1`
+  arrêtait tout. `backup.sh run` sortait en erreur de la même façon, avant la
+  rétention et la copie hors site (`BACKUP_REMOTE`).
+- `backup.sh` fonctionne avec l'installation `deploy/deploy-onion.sh` :
+  `BLOG_ENV_FILE` (secrets dans `/etc`), `BACKUP_DIR`, `uploads/` en lien
+  symbolique copié par son contenu (l'archive contenait un lien mort et aucune
+  pièce jointe).
+- `deploy/package.sh` et `deploy-onion.sh` n'emportent jamais `backups/` ni `logs/`.
+- Les tests n'écrivent plus dans `uploads/` ni `instance/quarantine` du projet
+  (`UPLOAD_DIR`, `QUARANTINE_DIR`) ; la chaîne Alembic est testée sur une base
+  vierge en CI.
+- Dépendances : alembic 1.20.1, click 8.5.1, cryptography 50.0.2, MarkupSafe
+  3.0.4, python-dotenv 1.2.4 (dév. : pytest 9.2.0, ruff 0.17.4) ; actions GitHub
+  checkout v7.0.1 / setup-python v7.1.0. `pip-audit` et `osv-scanner` : rien.
+
+### Nouveautés
+- **Rotation de clé** : `flask rotate-key` (voir *Changer la clé de chiffrement*).
+- **Conservation** : `flask purge-messages --days N`, `flask purge-notifications`.
+- **Mode maintenance** : `flask maintenance on|off|status` ou le tableau de bord admin.
+- **Flux RSS par étiquette et par catégorie** ; **export Markdown** de tous les articles.
+
+## Changer la clé de chiffrement
+
+Après une fuite supposée d'`ENCRYPTION_KEY`, ou pour passer une installation
+existante à 600000 itérations PBKDF2 (même clé, nouvelles itérations) :
+
+1. `./backup.sh run` (et gardez le `.env` actuel en lieu sûr).
+2. Dans `.env`, recopiez les valeurs actuelles dans `ENCRYPTION_OLD_KEY`,
+   `ENCRYPTION_OLD_SALT`, `ENCRYPTION_OLD_ITERATIONS`, puis mettez les nouvelles
+   `ENCRYPTION_KEY` / `ENCRYPTION_SALT` / `ENCRYPTION_ITERATIONS=600000`.
+3. Redémarrez l'application : elle lit les deux clés et écrit avec la nouvelle.
+4. `flask rotate-key --dry-run`, puis `flask rotate-key` : messages, secrets 2FA
+   et toutes les pièces jointes `.enc` sont rechiffrés avec la nouvelle clé. La
+   commande s'arrête en erreur si quelque chose est illisible : n'allez pas plus
+   loin dans ce cas.
+5. Retirez les trois lignes `ENCRYPTION_OLD_*`, redémarrez, lancez `./backup.sh run`.
+
 ## Version d'audit - novembre 2026
 
 **Mettez à jour avec `./update.sh`.**
@@ -221,6 +319,13 @@ Chaîne d'approvisionnement : Python 3.12+, dépendances installées avec
 
 ## Limites connues
 
+- Les images sont ré-encodées (aucune métadonnée ne survit) ; les autres pièces
+  jointes (PDF, bureautique, vidéos) sont chiffrées au repos mais **pas**
+  nettoyées : leurs métadonnées (nom de l'auteur, logiciel, GPS des vidéos)
+  arrivent chez le destinataire. Nettoyez-les avant envoi.
+- Werkzeug écrit un envoi de plus de 500 Ko dans un fichier temporaire pendant
+  la lecture de la requête (`PrivateTmp=true` comme dans `deploy/blog.service`,
+  et chiffrement du disque).
 - `style-src-attr 'unsafe-inline'` reste nécessaire pour les attributs `style=""` (couleurs et tailles BBCode assainies) ; les éléments `<style>` sont bloqués (`style-src 'self'`). Les scripts sont entièrement bloqués.
 - Les flux SSE vivent dans le processus : un seul worker gunicorn (montez en charge avec des threads).
 - `[img]` uniquement pour les images hébergées sur le blog ; pas encore d'interface de bibliothèque d'images.

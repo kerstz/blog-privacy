@@ -60,8 +60,12 @@ pytest -q tests/                # needs requirements-dev.txt
 - Logout is POST + CSRF
 - TOTP secrets are encrypted at rest (`_totp_secret` / `_store_totp_secret`); replay
   protection is `User.totp_last_counter`
-- Uploads go through `_store_upload()` (block-list screening, WebP re-encode, `.enc`)
-  and are served by `_send_upload()`; read them with `read_upload_bytes()`
+- Uploads go through `_store_upload()` (in memory: block-list screening, WebP re-encode,
+  then one encrypted `.enc` write; never plaintext on disk) and are served by
+  `_send_upload()`; read them with `read_upload_bytes()`
+- BBCode from users is rendered with `render_user_bbcode()` (parse_bbcode + nh3)
+- Tests never touch the project's `instance/` or `uploads/`: conftest points
+  `UPLOAD_DIR`, `QUARANTINE_DIR`, `SECURITY_STATE_DB` and the DB at a temp dir
 - Comments: `content_format='bbcode'` = plain text escaped + BBCode; `NULL` = legacy HTML
   sanitized at render. Never use `|safe` on user content (`|comment_html`, `|rich_html`, `|bbcode`)
 - UI texts go through `t('key')` and `site_text.DEFAULTS` (EN + FR)
@@ -82,3 +86,7 @@ pytest -q tests/                # needs requirements-dev.txt
 - `SECURITY_STATE_DB` - persistent rate limiter file (default instance/security_state.db)
 - `ONION_ADDRESS` - adds the Onion-Location header
 - `MOBILE_API_ENABLED` - mobile admin API (default false; `/api/admin/mobile/*` returns 404 unless true). Admins must have TOTP and send the code in `X-TOTP-Code`
+- `ENCRYPTION_OLD_KEY` / `ENCRYPTION_OLD_SALT` / `ENCRYPTION_OLD_ITERATIONS` - previous key during a rotation (`flask rotate-key`)
+- `UPLOAD_DIR` / `QUARANTINE_DIR` / `MAINTENANCE_FLAG` - data locations (defaults: uploads/, instance/quarantine, instance/maintenance.on)
+- `PUBLIC_TIME_PRECISION` - `day` (default) or `minute`: dates on public pages and RSS
+- `BLOG_ENV_FILE` / `BACKUP_DIR` - backup.sh overrides (deploy-onion.sh layout)

@@ -108,6 +108,21 @@ redémarrée après chaque mise à jour réussie ; chaque étape est consignée 
 Définissez `BACKUP_PASSPHRASE` dans `.env` et gardez-en une copie hors du serveur.
 `BACKUP_REMOTE` (optionnel) copie chaque sauvegarde ailleurs avec rsync.
 
+Restaurer une sauvegarde (procédure testée ; la restauration n'écrase jamais les
+données en service) :
+
+```bash
+flask maintenance on                              # les visiteurs voient une page 503
+./backup.sh restore backups/backup_<date>.tar.gz.gpg /tmp/restore
+sudo systemctl stop blog
+cp /tmp/restore/instance/*.db instance/ && cp -a /tmp/restore/uploads/. uploads/
+# seulement si les secrets sont perdus aussi : cp /tmp/restore/.env .env
+sudo systemctl start blog && flask maintenance off
+rm -rf /tmp/restore
+```
+
+L'installation `deploy-onion.sh` est décrite dans [deploy/README.md](deploy/README.md).
+
 ## Écrire des articles
 
 Articles, commentaires et réponses utilisent le BBCode (voir `/editor_help` sur
@@ -122,8 +137,8 @@ arrivent de `127.0.0.1`, il n'y a pas d'IP client exploitable, et s'inscrire,
 publier, téléverser ou deviner des mots de passe ne coûte rien. La défense repose
 donc sur des limites par compte, la preuve de travail Tor, un traitement strict
 des entrées et l'absence de JavaScript, pas sur la réputation d'IP. Le verrou de
-connexion par client est ignoré quand l'IP n'est pas significative (onion, pas de
-proxy de confiance) ; le verrou par compte reste.
+connexion par client est ignoré quand l'IP n'est pas significative (boucle locale :
+onion, y compris Tor passant par un proxy de confiance) ; le verrou par compte reste.
 
 ## Exploitation
 

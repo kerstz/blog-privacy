@@ -54,8 +54,9 @@ password, printed once and written to `/root/depressedyoungmanblog-credentials.t
 
 ## Why one gunicorn worker
 
-The rate limiter lives in process memory. With four workers each would keep its
-own counter and every published limit would be four times looser than it says.
+The server-sent event streams of the mobile admin API live in the process (the
+rate limiter itself is persistent, in SQLite, and shared by every worker). Scale
+with threads, not workers.
 
 ## What it does not do
 
@@ -116,7 +117,27 @@ sudo tar czf - /var/lib/tor/depressedyoungmanblog | age -p > onion-key.tar.gz.ag
 ```
 
 Back up `/var/lib/depressedyoungmanblog` too — that is the database and every
-attachment. Encrypt both before they leave the machine.
+attachment. `backup.sh` handles this layout (secrets in `/etc`, data behind the
+`instance/` and `uploads/` symlinks): put `BACKUP_PASSPHRASE` in
+`/etc/depressedyoungmanblog.env`, then
+
+```bash
+sudo BLOG_ENV_FILE=/etc/depressedyoungmanblog.env BACKUP_DIR=/var/backups/depressedyoungmanblog \
+    /opt/depressedyoungmanblog/backup.sh run          # or: enable daily
+```
+
+The archive is encrypted (gpg AES-256) and holds the database, the attachments
+and the secrets file. Copy it, and the passphrase, off the machine. Restoring:
+
+```bash
+sudo /opt/depressedyoungmanblog/.venv/bin/flask maintenance on   # from /opt/depressedyoungmanblog, env loaded
+sudo BLOG_ENV_FILE=/etc/depressedyoungmanblog.env \
+    /opt/depressedyoungmanblog/backup.sh restore /var/backups/depressedyoungmanblog/backup_<stamp>.tar.gz.gpg /root/restore
+sudo systemctl stop depressedyoungmanblog
+# copy /root/restore/instance/*.db and /root/restore/uploads/ into /var/lib/depressedyoungmanblog/
+sudo chown -R dymblog:dymblog /var/lib/depressedyoungmanblog
+sudo systemctl start depressedyoungmanblog    # then: flask maintenance off
+```
 
 ## Day to day
 

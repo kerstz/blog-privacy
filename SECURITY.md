@@ -9,6 +9,98 @@
 > (HMAC) instead of IP addresses. The remaining items of this changelog still
 > apply.
 
+## Production audit release - November 2026 (2)
+
+**Read the upgrade note first: `./update.sh` could not install this release
+by itself.**
+
+### Upgrade note (manual step, once)
+
+`update.sh` stopped right after its backup on every real update (see below), so
+an install that relied on it, or on `auto-update.sh`, never received the
+releases published since. Update once by hand, then `update.sh` works again:
+
+```bash
+cd /srv/blog                       # your checkout
+git fetch
+GNUPGHOME="$UPDATE_GPG_HOME" git verify-commit origin/main   # if you sign/verify
+git merge --ff-only origin/main
+./update.sh                        # backup, dependencies, migrations, tests, restart
+```
+
+### Security fixes
+- **Comments could inject attributes (stored HTML injection).** A BBCode tag
+  written inside a URL (`[url]http://a/[img]...[/img][/url]`) was expanded
+  later inside the generated `href` and broke out of its quotes: any registered
+  user could give a link a `style` (for instance an invisible full-page link to
+  another site). URLs now have `[`/`]` percent-encoded, and comments go through
+  the `nh3` allow-list at render time. A line of unclosed `[url=...]` tags also
+  cost about 3 s of CPU per page view (cubic backtracking): fixed.
+- **Tor visitors behind a trusted proxy shared one lock.** With
+  `TRUSTED_PROXY_COUNT` set and Tor routed through Caddy/nginx (the documented
+  setup), every onion visitor was `127.0.0.1` yet treated as an identifiable
+  client: five wrong passwords from anyone locked every Tor user, admins
+  included, out of the login form, and per-IP limits were shared. A loopback
+  address is now never a client identity. Anonymous search/contact limits on
+  an onion are a shared ceiling (x20), as for the other forms.
+- **2FA brute force.** On top of the short limits (5 codes per 5 or 15 min),
+  every wrong code (login, re-authentication, 2FA disable, mobile API) counts
+  towards 20 per account and per day; past it the code is not even checked and
+  an alert is logged. `flask unlock <user>` clears it.
+- **Backups: forged archives were restored.** `gpg -d` also outputs an
+  *unencrypted* OpenPGP message without asking for a passphrase: a backup
+  replaced by one (off-site copy, `backups/`) was restored by `backup.sh restore`
+  and by the update rollback without any check. Both now require gpg's
+  `DECRYPTION_OKAY` status.
+- **Uploads no longer touch the disk in clear.** The original file (photo with
+  its EXIF/GPS tags) was saved to `uploads/`, then re-encoded, encrypted and
+  deleted: recoverable from the disk. The pipeline now runs in memory. JPEG
+  photos are decoded at reduced size (less memory per upload).
+- **Public dates without time of day.** Posts, comments and the RSS feed showed
+  the minute every reader commented (time zone, habits). The public pages now
+  show the day; `PUBLIC_TIME_PRECISION=minute` restores the old display.
+- The pending 2FA secret is stored encrypted in the (readable) session cookie;
+  HSTS is never sent to a `.onion` name or a loopback probe; `Permissions-Policy`
+  denies `browsing-topics`; a comment on a post taken back to draft can no
+  longer be edited.
+
+### Operations fixes
+- **`update.sh` never completed an update**: the retention `ls` over three file
+  patterns failed under `set -o pipefail` and `make_backup || exit 1` stopped
+  every run. `backup.sh run` exited with an error the same way, before the
+  retention and the off-site copy (`BACKUP_REMOTE`).
+- `backup.sh` works with the `deploy/deploy-onion.sh` layout: `BLOG_ENV_FILE`
+  (secrets in `/etc`), `BACKUP_DIR`, symlinked `uploads/` copied by content
+  (the archive used to hold a dangling link and no attachment).
+- `deploy/package.sh` and `deploy-onion.sh` never ship `backups/` or `logs/`.
+- Tests no longer write into the project's `uploads/` and `instance/quarantine`
+  (`UPLOAD_DIR`, `QUARANTINE_DIR`); the Alembic chain is tested on a blank
+  database in CI.
+- Dependencies: alembic 1.20.1, click 8.5.1, cryptography 50.0.2, MarkupSafe
+  3.0.4, python-dotenv 1.2.4 (dev: pytest 9.2.0, ruff 0.17.4); GitHub Actions
+  checkout v7.0.1 / setup-python v7.1.0. `pip-audit` and `osv-scanner`: nothing.
+
+### New
+- **Key rotation**: `flask rotate-key` (see *Rotating the encryption key*).
+- **Retention**: `flask purge-messages --days N`, `flask purge-notifications`.
+- **Maintenance mode**: `flask maintenance on|off|status` or the admin dashboard.
+- **Feeds per tag and per category**; **Markdown export** of every post.
+
+## Rotating the encryption key
+
+Use it after a suspected leak of `ENCRYPTION_KEY`, or to move an existing
+install to 600000 PBKDF2 iterations (same key, new iterations):
+
+1. `./backup.sh run` (and keep the current `.env` somewhere safe).
+2. In `.env`, copy the current values to `ENCRYPTION_OLD_KEY`,
+   `ENCRYPTION_OLD_SALT`, `ENCRYPTION_OLD_ITERATIONS`, then set the new
+   `ENCRYPTION_KEY` / `ENCRYPTION_SALT` / `ENCRYPTION_ITERATIONS=600000`.
+3. Restart the app: it reads both keys and writes with the new one.
+4. `flask rotate-key --dry-run`, then `flask rotate-key`: messages, 2FA secrets
+   and every `.enc` attachment are re-encrypted with the new key. It stops with
+   an error if anything cannot be read; do not go on in that case.
+5. Remove the three `ENCRYPTION_OLD_*` lines, restart, run `./backup.sh run`.
+
 ## Audit release - November 2026
 
 **Update with `./update.sh`.**
@@ -318,6 +410,13 @@ CI actions are pinned by commit SHA.
 
 ## Known limitations
 
+- Images are re-encoded (no metadata survives); other attachments (PDF, office
+  files, videos) are encrypted at rest but **not** stripped: their own metadata
+  (author name, software, GPS in videos) reaches the recipient. Strip them
+  before sending.
+- Werkzeug spools an upload larger than 500 KB to a temporary file while the
+  request is parsed (use `PrivateTmp=true`, as `deploy/blog.service` does, and
+  full-disk encryption).
 - `style-src-attr 'unsafe-inline'` is still needed for `style=""` attributes (sanitized BBCode colors and sizes); `<style>` elements are blocked (`style-src 'self'`). Scripts are fully blocked (`script-src 'none'`).
 - SSE streams live in the process, so use one gunicorn worker (scale with threads).
 - `[img]` for images hosted on the blog only; there is no image library UI yet.

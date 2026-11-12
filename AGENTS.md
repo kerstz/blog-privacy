@@ -61,7 +61,9 @@ pytest -q tests/                # security regression tests (requirements-dev.tx
 - Logout is POST + CSRF
 - `bandit -r app create_admin.py wsgi.py -q` must stay clean (annotate reviewed false positives with a reason line + `# nosec <ID>`)
 - Never use `|safe` on user/admin HTML: use `|comment_html` (BBCode) or `|rich_html` (posts/pages)
-- Uploads go through `_store_upload()` (random name, block-list screening, metadata stripped) and are served by `_send_upload()` (access controlled)
+- Uploads go through `_store_upload()` (in memory: random name, block-list screening, metadata stripped, encrypted before the only write) and are served by `_send_upload()` (access controlled)
+- User BBCode is rendered with `render_user_bbcode()` (parse_bbcode + nh3 allow-list)
+- Tests never touch the project's `instance/` or `uploads/` (conftest sets `UPLOAD_DIR`, `QUARANTINE_DIR`, `SECURITY_STATE_DB` to a temp dir)
 - Events are per-user only (SSE), never broadcast; the stream re-validates the account on each heartbeat
 - Threat model: the anonymous Tor visitor is the nominal adversary (no client IP; per-account limits, not per-IP)
 - `GET /healthz`: anonymous health probe (`ok`/503), nothing else

@@ -129,6 +129,20 @@ runs the tests when pytest is installed) and **rolls back automatically** if
 anything fails. It never touches `.env` and never deletes data. Set
 `BACKUP_PASSPHRASE` in `.env` and keep a copy of it outside the server.
 
+Restoring a backup (tested procedure; the restore never writes over live data):
+
+```bash
+flask maintenance on                              # visitors get a 503 page
+./backup.sh restore backups/backup_<stamp>.tar.gz.gpg /tmp/restore
+sudo systemctl stop blog
+cp /tmp/restore/instance/*.db instance/ && cp -a /tmp/restore/uploads/. uploads/
+# only if the secrets were lost too: cp /tmp/restore/.env .env
+sudo systemctl start blog && flask maintenance off
+rm -rf /tmp/restore
+```
+
+The `deploy-onion.sh` layout is covered in [deploy/README.md](deploy/README.md).
+
 ## Writing posts
 
 Posts, comments and replies use BBCode: see `/editor_help` on your blog.
@@ -143,7 +157,8 @@ the app from `127.0.0.1`, there is no usable client IP, and signing up, posting,
 uploading and guessing passwords cost the attacker nothing. Defences therefore
 rely on per-account limits, proofs of work (Tor PoW), strict input handling and
 no JavaScript, not on IP reputation. Per-client login locks are skipped when the
-IP is not meaningful (onion, no trusted proxy); the per-account lock remains.
+IP is not meaningful (loopback: onion, including Tor routed through a trusted
+proxy); the per-account lock remains.
 
 ## Operations
 
