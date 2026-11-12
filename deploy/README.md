@@ -146,3 +146,33 @@ systemctl status depressedyoungmanblog
 journalctl -u depressedyoungmanblog -f
 cat /var/lib/tor/depressedyoungmanblog/hostname
 ```
+
+## Classic install (HTTPS domain, optional onion), step by step
+
+For a server with a domain name, using the files of this folder. Debian/Ubuntu
+with Python 3.12+, run as root:
+
+```bash
+useradd --system --home /srv/blog --shell /usr/sbin/nologin blog
+git clone https://github.com/kerstz/blog-privacy /srv/blog && cd /srv/blog
+git verify-commit HEAD            # if you have imported the release key
+python3 -m venv venv && venv/bin/pip install --require-hashes -r requirements.lock
+cp .env.example .env              # then edit it:
+#   SECRET_KEY / ENCRYPTION_KEY / ENCRYPTION_SALT: python3 -c "import secrets; print(secrets.token_urlsafe(48))"
+#   ENCRYPTION_ITERATIONS=600000   (new database only)
+#   SESSION_COOKIE_SECURE=true, TRUSTED_PROXY_COUNT=1, BACKUP_PASSPHRASE=...
+mkdir -p instance uploads backups
+chown -R blog:blog instance uploads backups .env && chmod 600 .env
+sudo -u blog bash -c 'set -a; . ./.env; set +a; FLASK_APP=wsgi.py venv/bin/flask db upgrade'
+sudo -u blog bash -c 'set -a; . ./.env; set +a; venv/bin/python create_admin.py'
+cp deploy/blog.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now blog
+curl -s http://127.0.0.1:8000/healthz          # -> ok
+# Caddy: deploy/Caddyfile (replace the domain) -> /etc/caddy/Caddyfile, systemctl reload caddy
+# Onion (optional): deploy/torrc.example -> /etc/tor/torrc, then ONION_ADDRESS in .env
+```
+
+Then: sign in, enable 2FA (`/totp/setup`) and keep the recovery codes;
+`./backup.sh enable daily` (keep `BACKUP_PASSPHRASE` off the server); decide the
+update policy (`update.sh` refuses unsigned commits unless told otherwise, see
+its header) and the retention (`flask purge-messages --days N` in cron).
+
