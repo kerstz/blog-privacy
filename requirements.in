@@ -3,25 +3,25 @@
 #   see "Dependencies" in README.md (uv pip compile --generate-hashes ...)
 # Python 3.12+ is required.
 alembic==1.20.1
-bcrypt==4.3.0
+bcrypt==5.0.0
 click==8.5.1
 cryptography==50.0.2
-email-validator==2.3.0
+email-validator==2.4.0
 Flask==3.1.3
 Flask-Bcrypt==1.0.1
 Flask-Login==0.6.3
 Flask-Migrate==4.1.0
 Flask-SQLAlchemy==3.1.1
 Flask-WTF==1.3.0
-gunicorn==26.2.0
+gunicorn==27.0.1
 itsdangerous==2.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.4
-nh3==0.3.7
+nh3==0.3.8
 Pillow==13.0.0
-pyotp==2.10.0
+pyotp==2.12.1
 python-dotenv==1.2.4
 qrcode==8.2
-SQLAlchemy==2.0.54
+SQLAlchemy==2.1.9
 Werkzeug==3.1.9
-WTForms==3.2.2
+WTForms==3.3.2
